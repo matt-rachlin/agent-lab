@@ -1,0 +1,94 @@
+# LiteLLM proxy config. Maps every model the lab uses (local + Ollama Cloud)
+# to a stable `model_name`. Code references the model_name; proxy handles routing.
+
+model_list:
+  # ---- local Ollama models (host network via containers.internal) ----
+  - model_name: qwen3-14b-q4
+    litellm_params:
+      model: ollama_chat/qwen3:14b-q4_K_M
+      api_base: http://host.containers.internal:11434
+
+  - model_name: qwen3-8b-q5
+    litellm_params:
+      model: ollama_chat/qwen3:8b-q5_K_M
+      api_base: http://host.containers.internal:11434
+
+  - model_name: llama3.1-8b-q4
+    litellm_params:
+      model: ollama_chat/llama3.1:8b-instruct-q4_K_M
+      api_base: http://host.containers.internal:11434
+
+  - model_name: phi-4-q4
+    litellm_params:
+      model: ollama_chat/phi-4:14b-q4_K_M
+      api_base: http://host.containers.internal:11434
+
+  - model_name: gemma3-12b-q4
+    litellm_params:
+      model: ollama_chat/gemma3:12b-it-q4_K_M
+      api_base: http://host.containers.internal:11434
+
+  # ---- Ollama Cloud (Pro tier, requires OLLAMA_API_KEY) ----
+  - model_name: gpt-oss-20b-cloud
+    litellm_params:
+      model: ollama_chat/gpt-oss:20b-cloud
+      api_base: https://ollama.com
+      api_key: os.environ/OLLAMA_API_KEY
+      max_tokens: 16384       # hard cloud cap; clamp client-side
+      timeout: 600
+      stream_timeout: 600
+
+  - model_name: gpt-oss-120b-cloud
+    litellm_params:
+      model: ollama_chat/gpt-oss:120b-cloud
+      api_base: https://ollama.com
+      api_key: os.environ/OLLAMA_API_KEY
+      max_tokens: 16384
+      timeout: 600
+
+  - model_name: qwen3-coder-480b-cloud
+    litellm_params:
+      model: ollama_chat/qwen3-coder:480b-cloud
+      api_base: https://ollama.com
+      api_key: os.environ/OLLAMA_API_KEY
+      max_tokens: 16384
+      timeout: 900
+
+  - model_name: deepseek-v31-671b-cloud
+    litellm_params:
+      model: ollama_chat/deepseek-v3.1:671b-cloud
+      api_base: https://ollama.com
+      api_key: os.environ/OLLAMA_API_KEY
+      max_tokens: 16384
+      timeout: 900
+
+  - model_name: kimi-k2-thinking-cloud
+    litellm_params:
+      model: ollama_chat/kimi-k2-thinking
+      api_base: https://ollama.com
+      api_key: os.environ/OLLAMA_API_KEY
+      max_tokens: 16384
+      timeout: 900
+
+# Spend tracking, retries, fallbacks
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  request_timeout: 600
+  num_retries: 3
+  # Cloud 429s — back off aggressively
+  fallbacks:
+    - gpt-oss-120b-cloud: ["gpt-oss-20b-cloud", "qwen3-14b-q4"]
+    - qwen3-coder-480b-cloud: ["gpt-oss-120b-cloud"]
+    - deepseek-v31-671b-cloud: ["gpt-oss-120b-cloud"]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true
+  # Spend tracking
+  custom_key_generate: null
+
+router_settings:
+  routing_strategy: simple-shuffle
+  cooldown_time: 30          # seconds to cool down a model after 429
