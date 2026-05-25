@@ -176,9 +176,16 @@ def expand_matrix(
 # ----------------------------------------------------------------------------
 
 
-def _build_messages(task_payload: dict[str, Any]) -> list[dict[str, str]]:
+def _build_messages(
+    task_payload: dict[str, Any], config_system: str | None = None
+) -> list[dict[str, str]]:
+    """Build the chat-completion message list.
+
+    Precedence for the system message: task-level `system` field wins if set;
+    otherwise the sweep-config `system_prompt` (from RunConfig.extra) is used.
+    """
     messages: list[dict[str, str]] = []
-    system = task_payload.get("system")
+    system = task_payload.get("system") or config_system
     if system:
         messages.append({"role": "system", "content": str(system)})
     messages.append({"role": "user", "content": str(task_payload["input"])})
@@ -305,7 +312,10 @@ def execute_cell(cell: Cell, *, litellm_key: str, timeout: int) -> CellResult:
         }
     )
 
-    messages = _build_messages(cell.task_payload)
+    config_system = cell.config.extra.get("system_prompt") if cell.config.extra else None
+    if config_system is None:
+        config_system = getattr(cell.config, "system_prompt", None)
+    messages = _build_messages(cell.task_payload, config_system=config_system)
     result: CellResult
 
     try:
