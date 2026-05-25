@@ -12,6 +12,28 @@ rootless Podman 5.x and gVisor `runsc release-20260520.0`. The two extra
 flags are not optional under that combination — see
 `containers/Containerfile.agent-sandbox` and the docstring at the top of
 `~/.config/containers/containers.conf` for the why.
+
+**Network allow-list (v0.1, DNS-restricted)**
+
+When `network=["a.example", "b.example"]` is passed:
+
+  * The container joins the default rootless Podman bridge (NAT'd egress).
+  * `/etc/hosts` is populated via `--add-host=NAME:IP` for each allow-listed
+    name, where IP is resolved on the host at `start()` time.
+  * `--dns=127.0.0.1` points DNS at a loopback port nothing is listening on,
+    so any name NOT pre-resolved into `/etc/hosts` fails to resolve at all.
+
+This is "DNS-restricted, not L3-firewalled". A model that already knows the
+literal IP of a non-allow-listed host could still reach it. Acceptable for
+v0.1 because:
+  * Our agent reaches HTTP endpoints by hostname (`http_fetch`),
+  * Full default-deny iptables injection into a rootless netns requires
+    `slirp4netns` + custom port handlers we haven't yet built,
+  * The MCP `http_fetch` tool re-validates the hostname against
+    `LAB_HTTP_ALLOWLIST` before issuing the request, layered on top.
+
+Tracked for hardening as part of EXP-002 follow-up if the model ever bypasses
+the host-validation path.
 """
 
 from __future__ import annotations
@@ -19,6 +41,7 @@ from __future__ import annotations
 import contextlib
 import io
 import shutil
+import socket
 import subprocess
 import tarfile
 import time
@@ -70,6 +93,8 @@ class _PodmanArgs:
     mem_limit: str
     cpu_limit: float
     env: dict[str, str] = field(default_factory=dict)
+    add_hosts: list[tuple[str, str]] = field(default_factory=list)
+    dns_servers: list[str] = field(default_factory=list)
 
     def to_argv(self) -> list[str]:
         argv = [
@@ -96,6 +121,10 @@ class _PodmanArgs:
         elif self.runtime:
             argv += [f"--runtime={self.runtime}"]
         argv += [f"--network={self.network}"]
+        for host, ip in self.add_hosts:
+            argv += [f"--add-host={host}:{ip}"]
+        for dns in self.dns_servers:
+            argv += [f"--dns={dns}"]
         for k, v in sorted(self.env.items()):
             argv += ["--env", f"{k}={v}"]
         argv += [
@@ -118,6 +147,8 @@ def _build_run_argv(
     mem_limit: str,
     cpu_limit: float,
     env: dict[str, str] | None,
+    add_hosts: list[tuple[str, str]] | None = None,
+    dns_servers: list[str] | None = None,
 ) -> list[str]:
     """Pure helper exposed for unit tests; mirrors `_PodmanArgs.to_argv`."""
 
@@ -129,7 +160,28 @@ def _build_run_argv(
         mem_limit=mem_limit,
         cpu_limit=cpu_limit,
         env=env or {},
+        add_hosts=list(add_hosts or []),
+        dns_servers=list(dns_servers or []),
     ).to_argv()
+
+
+def _resolve_host_ipv4(name: str) -> str:
+    """Look up the first IPv4 address for `name` on the host.
+
+    Used at sandbox start time to bake allow-listed hostnames into the
+    container's `/etc/hosts`. Raises `SandboxError` on lookup failure so
+    `Sandbox.start()` fails fast instead of producing a broken sandbox.
+    """
+
+    try:
+        infos = socket.getaddrinfo(name, None, family=socket.AF_INET)
+    except socket.gaierror as exc:
+        raise SandboxError(f"could not resolve allow-listed host {name!r}: {exc}") from exc
+    for info in infos:
+        sockaddr = info[4]
+        if sockaddr and isinstance(sockaddr[0], str):
+            return sockaddr[0]
+    raise SandboxError(f"no IPv4 address returned for allow-listed host {name!r}")
 
 
 class Sandbox:
@@ -154,12 +206,20 @@ class Sandbox:
         workspace_files: dict[str, bytes] | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
+        # Allow-list of (host, ip) pairs to bake into the container's
+        # `/etc/hosts`; empty in non-allow-list modes.
+        self._allowed_hosts: list[str] = []
         if isinstance(network, list):
-            # v0.1: ephemeral netavark allow-lists are TODO for 6c. For now
-            # we degrade to no-network so the wrong-default never silently
-            # grants egress to the public internet.
-            # NOTE: revisit in 6c when http_fetch lands.
-            self._network_arg = "none"
+            # DNS-restricted allow-list mode (see module docstring). We
+            # resolve the listed hosts at `start()` time, not now, so the
+            # constructor stays cheap and predictable for tests.
+            if not network:
+                # Empty list == nothing reachable == prefer the unambiguous
+                # `none` mode over a no-op bridge.
+                self._network_arg = "none"
+            else:
+                self._network_arg = "podman"  # default rootless bridge
+                self._allowed_hosts = list(network)
         elif network in ("none", "host"):
             self._network_arg = network
         else:
@@ -192,6 +252,15 @@ class Sandbox:
 
         if self._started:
             return
+        add_hosts: list[tuple[str, str]] = []
+        dns_servers: list[str] = []
+        if self._allowed_hosts:
+            # Resolve each allow-listed host to a stable IPv4 at start time,
+            # then pin DNS at a non-listening loopback port so unrelated names
+            # cannot resolve.
+            for host in self._allowed_hosts:
+                add_hosts.append((host, _resolve_host_ipv4(host)))
+            dns_servers = ["127.0.0.1"]
         argv = _build_run_argv(
             image=self.image,
             name=self.container_name,
@@ -200,6 +269,8 @@ class Sandbox:
             mem_limit=self.mem_limit,
             cpu_limit=self.cpu_limit,
             env=self.env,
+            add_hosts=add_hosts,
+            dns_servers=dns_servers,
         )
         try:
             proc = subprocess.run(

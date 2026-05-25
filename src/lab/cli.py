@@ -529,9 +529,75 @@ def agent_run(
 
 @agent_tools_app.command("list")
 def agent_tools_list() -> None:
-    """List registered agent tools (placeholder)."""
-    console.print("6c — not yet implemented")
-    raise typer.Exit(code=2)
+    """List registered agent tools with their parameter schemas.
+
+    Schemas come from the FastMCP servers themselves — never hand-coded — so
+    this is the authoritative view of the tool surface the agent will see.
+    """
+    from lab.inspect_bridge.tools import discover_tool_schemas
+
+    schemas = discover_tool_schemas()
+    table = Table("Tool", "Required", "Optional", "Description")
+    for name in sorted(schemas):
+        s = schemas[name]
+        props = s.input_schema.get("properties", {})
+        required = set(s.input_schema.get("required", []))
+        req_str = ", ".join(sorted(p for p in props if p in required))
+        opt_str = ", ".join(sorted(p for p in props if p not in required))
+        desc = (s.description.splitlines()[0] if s.description else "").strip()
+        table.add_row(name, req_str or "(none)", opt_str or "(none)", desc[:60])
+    console.print(table)
+
+
+@agent_tools_app.command("test")
+def agent_tools_test(
+    name: str = typer.Argument(..., help="Tool name to smoke-test"),
+) -> None:
+    """Run a tool's smoke test end-to-end inside the sandbox.
+
+    Each tool has a hard-coded minimal-effort call that exercises the
+    happy path (e.g. `fs_write` writes a file, `fs_read` reads it back).
+    Useful for validating that a freshly-built sandbox image is wired up
+    correctly without spinning up a whole eval.
+    """
+    from lab.agent.sandbox import Sandbox, gvisor_available
+    from lab.agent.tools import TOOL_SERVERS
+    from lab.inspect_bridge.tools import _invoke_tool_via_sandbox_sync
+
+    if name not in TOOL_SERVERS:
+        console.print(f"[red]unknown tool[/]: {name} (known: {sorted(TOOL_SERVERS)})")
+        raise typer.Exit(code=2)
+    if not gvisor_available():
+        console.print("[red]gVisor not available — run `just sandbox-build` and install runsc[/]")
+        raise typer.Exit(code=2)
+    smoke_args: dict[str, dict[str, object]] = {
+        "fs_write": {"path": "smoke.txt", "content": "hello\n", "mode": "overwrite"},
+        "fs_read": {"path": "smoke.txt"},
+        "fs_grep": {"pattern": "hello", "path": "."},
+        "shell_exec": {"command": "echo ok"},
+        "http_fetch": {"url": "https://example.com/"},
+        "python_eval": {"code": "print(2+2)"},
+    }
+    args = smoke_args[name]
+    network: str | list[str] = "none"
+    env: dict[str, str] = {}
+    workspace_files: dict[str, bytes] = {}
+    if name == "http_fetch":
+        network = ["example.com"]
+        env = {"LAB_HTTP_ALLOWLIST": "example.com"}
+    elif name in {"fs_read", "fs_grep"}:
+        # Stage a file so the read/grep have something to look at.
+        workspace_files = {"smoke.txt": b"hello smoke\n"}
+    with Sandbox(network=network, env=env, workspace_files=workspace_files) as sb:
+        try:
+            result = _invoke_tool_via_sandbox_sync(sb, TOOL_SERVERS[name], name, args)
+        except Exception as exc:
+            console.print(f"[red]tool {name} failed[/]: {exc}")
+            raise typer.Exit(code=1) from exc
+    import json as _json
+
+    console.print(f"[green]{name} OK[/]")
+    console.print(_json.dumps(result, indent=2, default=str))
 
 
 @agent_sandbox_app.command("build")

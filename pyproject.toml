@@ -37,6 +37,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "tenacity>=9.0.0",
     "inspect-ai>=0.3.226",
+    "mcp>=1.27.1",
 ]
 
 [project.optional-dependencies]

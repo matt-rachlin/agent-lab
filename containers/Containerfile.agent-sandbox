@@ -31,6 +31,29 @@ RUN ln -sf /usr/bin/python3.13 /usr/local/bin/python3 \
 RUN curl -fsSL https://astral.sh/uv/install.sh \
         | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh
 
+# MCP client/server + httpx + pydantic for the in-sandbox tool servers
+# (`lab.agent.tools.*`). Installed into the 3.13 site-packages explicitly:
+# Fedora 43's default `python3` is 3.14, but we want the 3.13 we explicitly
+# pinned above. Bootstrap pip into 3.13 via `ensurepip` and install from
+# there, so `python -m lab.agent.tools.*` and the deps resolve against the
+# same interpreter.
+RUN python3.13 -m ensurepip --upgrade \
+    && python3.13 -m pip install --no-cache-dir \
+        "mcp>=1.27" \
+        "httpx>=0.27" \
+        "pydantic>=2.9" \
+    && rm -rf /root/.cache
+
+# Copy the lab.agent subpackage into a system path so `python3 -m
+# lab.agent.tools.fs_read` resolves without us having to install the whole
+# `lab` distribution. We mirror just `lab.agent` — nothing else from src/lab
+# is safe to include here (it'd drag in psycopg, boto3, etc).
+COPY src/lab/agent /usr/lib/python3.13/site-packages/lab/agent
+RUN install -m 0644 /dev/null /usr/lib/python3.13/site-packages/lab/__init__.py \
+    && find /usr/lib/python3.13/site-packages/lab -name __pycache__ -exec rm -rf {} + \
+    && find /usr/lib/python3.13/site-packages/lab -type d -exec chmod 0755 {} + \
+    && find /usr/lib/python3.13/site-packages/lab -type f -exec chmod 0644 {} +
+
 # Non-root execution user. uid/gid 10001 keeps us well clear of host users.
 RUN groupadd -g 10001 agent \
     && useradd -m -u 10001 -g 10001 -s /bin/bash agent \

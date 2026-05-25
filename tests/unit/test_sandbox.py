@@ -114,16 +114,43 @@ def test_sandbox_rejects_invalid_network() -> None:
         Sandbox(network="public")  # type: ignore[arg-type]
 
 
-def test_sandbox_list_network_degrades_to_none() -> None:
-    """v0.1: a list of allowed hosts isn't wired up yet; degrade to none."""
+def test_sandbox_list_network_uses_bridge_with_allow_list() -> None:
+    """List-mode joins the default bridge and stores the allow-list for /etc/hosts."""
 
     sb = Sandbox(network=["example.com"])
+    assert sb._network_arg == "podman"
+    assert sb._allowed_hosts == ["example.com"]
+
+
+def test_sandbox_empty_list_network_falls_back_to_none() -> None:
+    """An empty allow-list is unambiguously "no network", not "open bridge"."""
+
+    sb = Sandbox(network=[])
     assert sb._network_arg == "none"
+    assert sb._allowed_hosts == []
 
 
 def test_sandbox_default_network_is_none() -> None:
     sb = Sandbox()
     assert sb._network_arg == "none"
+    assert sb._allowed_hosts == []
+
+
+def test_build_run_argv_add_hosts_and_dns() -> None:
+    argv = _build_run_argv(
+        image="img",
+        name="n",
+        runtime="runsc",
+        network="podman",
+        mem_limit="1g",
+        cpu_limit=2.0,
+        env=None,
+        add_hosts=[("example.com", "1.2.3.4"), ("b.example", "5.6.7.8")],
+        dns_servers=["127.0.0.1"],
+    )
+    assert "--add-host=example.com:1.2.3.4" in argv
+    assert "--add-host=b.example:5.6.7.8" in argv
+    assert "--dns=127.0.0.1" in argv
 
 
 def test_sandbox_unique_container_names() -> None:
