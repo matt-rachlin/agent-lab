@@ -8,41 +8,49 @@ model_list:
     litellm_params:
       model: ollama_chat/qwen3:14b-q4_K_M
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: qwen3-8b-q5
     litellm_params:
       model: ollama_chat/qwen3:8b-q5_K_M
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: llama3.1-8b-q4
     litellm_params:
       model: ollama_chat/llama3.1:8b-instruct-q4_K_M
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: phi-4-q4
     litellm_params:
       model: ollama_chat/phi-4:14b-q4_K_M
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: gemma3-12b-q4
     litellm_params:
       model: ollama_chat/gemma3:12b-it-q4_K_M
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: qwen3-8b
     litellm_params:
       model: ollama_chat/qwen3:8b
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: phi4
     litellm_params:
       model: ollama_chat/phi4:latest
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   - model_name: qwen2.5-coder-7b-q8
     litellm_params:
       model: ollama_chat/qwen2.5-coder:7b-instruct-q8_0
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
 
   # ---- Ollama Cloud models (proxied transparently by local daemon) ----
   - model_name: gpt-oss-20b-cloud
@@ -77,6 +85,7 @@ model_list:
     litellm_params:
       model: ollama_chat/kimi-k2-thinking
       api_base: http://host.containers.internal:11434
+      keep_alive: 5m
       max_tokens: 16384
       timeout: 900
 
