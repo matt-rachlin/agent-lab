@@ -471,8 +471,8 @@ def run_sweep(
             priority=priority,  # type: ignore[arg-type]
             tags=[tag],
         )
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001
+        console.log(f"[yellow]notify failed: {exc}")
 
     return summary
 
