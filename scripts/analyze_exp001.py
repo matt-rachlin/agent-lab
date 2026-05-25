@@ -7,8 +7,6 @@ ready to paste into F-003.
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -152,11 +150,9 @@ def main() -> None:
     )
     h1_delta = p1_frontier - best_local
     f_pertask = per_task_means(cells, FRONTIER, "math-reasoning")
-    l_pertask_all = [
-        v for L in LOCAL_MODELS for v in per_task_means(cells, L, "math-reasoning")
-    ]
+    l_pertask_all = [v for L in LOCAL_MODELS for v in per_task_means(cells, L, "math-reasoning")]
     _, h1_p = welch_t(f_pertask, l_pertask_all)
-    out.append(f"## H1 — Reasoning gap on math\n")
+    out.append("## H1 — Reasoning gap on math\n")
     out.append(f"- {FRONTIER} mean pass@1 on math-reasoning: **{p1_frontier:.3f}**")
     out.append(f"- best local model mean pass@1 on math-reasoning: **{best_local:.3f}**")
     out.append(f"- delta: **{h1_delta:+.3f}** (rule: ≥ +0.15)")
@@ -170,7 +166,7 @@ def main() -> None:
         default=float("nan"),
     )
     h2_delta = p1_frontier_k - best_local_k
-    out.append(f"## H2 — Knowledge near-parity\n")
+    out.append("## H2 — Knowledge near-parity\n")
     out.append(f"- {FRONTIER} mean pass@1 on knowledge-recall: **{p1_frontier_k:.3f}**")
     out.append(f"- best local model mean pass@1 on knowledge-recall: **{best_local_k:.3f}**")
     out.append(f"- delta: **{h2_delta:+.3f}** (rule: ≤ +0.10)")
@@ -185,18 +181,22 @@ def main() -> None:
     llama_pertask = per_task_means(cells, "llama3.1-8b-q4", "format-following")
     _, p_v_gemma = welch_t(qwen_pertask, gemma_pertask)
     _, p_v_llama = welch_t(qwen_pertask, llama_pertask)
-    out.append(f"## H3 — Reasoning-mode advantage on format-following\n")
+    out.append("## H3 — Reasoning-mode advantage on format-following\n")
     out.append(f"- qwen3-14b-q4 mean pass@1: **{p1_qwen_f:.3f}**")
-    out.append(f"- gemma3-12b-q4 mean pass@1: **{p1_gemma_f:.3f}** (delta vs qwen3 = {p1_qwen_f - p1_gemma_f:+.3f}, p={p_v_gemma:.4f})")
-    out.append(f"- llama3.1-8b-q4 mean pass@1: **{p1_llama_f:.3f}** (delta vs qwen3 = {p1_qwen_f - p1_llama_f:+.3f}, p={p_v_llama:.4f})")
+    out.append(
+        f"- gemma3-12b-q4 mean pass@1: **{p1_gemma_f:.3f}** (delta vs qwen3 = {p1_qwen_f - p1_gemma_f:+.3f}, p={p_v_gemma:.4f})"
+    )
+    out.append(
+        f"- llama3.1-8b-q4 mean pass@1: **{p1_llama_f:.3f}** (delta vs qwen3 = {p1_qwen_f - p1_llama_f:+.3f}, p={p_v_llama:.4f})"
+    )
     h3_min_delta = min(p1_qwen_f - p1_gemma_f, p1_qwen_f - p1_llama_f)
     out.append(verdict("H3", h3_min_delta, "≥", 0.20) + "\n")
 
     # ----- H4: reliability ratio -----
     rr = {m: reliability_ratio(cells, m) for m in ALL_MODELS}
-    out.append(f"## H4 — Reliability cliff\n")
-    out.append(f"| model | reliability ratio (mean p^8 / mean p@1) |")
-    out.append(f"|---|---|")
+    out.append("## H4 — Reliability cliff\n")
+    out.append("| model | reliability ratio (mean p^8 / mean p@1) |")
+    out.append("|---|---|")
     for m in ALL_MODELS:
         out.append(f"| {m} | {rr[m]:.3f} |")
     rr_frontier = rr[FRONTIER]
@@ -206,17 +206,19 @@ def main() -> None:
     h4_part_a = rr_frontier >= 0.75
     h4_part_b = min_local_rr <= 0.50
     h4_ok = h4_part_a and h4_part_b
-    out.append(f"**H4**: {'CONFIRMED' if h4_ok else 'REFUTED'} (frontier {'≥0.75 ✓' if h4_part_a else '<0.75 ✗'}, some local {'≤0.50 ✓' if h4_part_b else '>0.50 ✗'})\n")
+    out.append(
+        f"**H4**: {'CONFIRMED' if h4_ok else 'REFUTED'} (frontier {'≥0.75 ✓' if h4_part_a else '<0.75 ✗'}, some local {'≤0.50 ✓' if h4_part_b else '>0.50 ✗'})\n"
+    )
 
     # ----- Cell counts -----
     n_by_model = {m: sum(1 for c in cells if c.model == m) for m in ALL_MODELS}
     n_total = sum(n_by_model.values())
-    out.append(f"## Sample sizes (must be 24 cells/model for full coverage)\n")
-    out.append(f"| model | cells |")
-    out.append(f"|---|---|")
+    out.append("## Sample sizes (must be 24 cells/model for full coverage)\n")
+    out.append("| model | cells |")
+    out.append("|---|---|")
     for m, n in n_by_model.items():
         out.append(f"| {m} | {n}/24 |")
-    out.append(f"\nTotal cells evaluated: **{n_total}** (target 144 = 6 models × 24 tasks)\n")
+    out.append(f"\nTotal cells evaluated: **{n_total}** (target 144 = 6 models x 24 tasks)\n")
 
     report = "\n".join(out)
     out_path = Path("/data/lab/code/docs/findings/F-003-EXP-001-verdicts.tmp.md")

@@ -28,9 +28,7 @@ def main() -> None:
     register_all()
     judge_callable = make_judge(model="gpt-oss-20b-cloud", position_swap=False, timeout=120)
     console.log("[bold]applying cheap judge (gpt-oss-20b-cloud) to EXP-001 done runs[/bold]")
-    reports = apply_to_experiment(
-        SLUG, evaluator_names=["llm_judge_quality"], judge=judge_callable
-    )
+    reports = apply_to_experiment(SLUG, evaluator_names=["llm_judge_quality"], judge=judge_callable)
     for r in reports:
         console.log(f"  {r}")
     console.log(f"[bold green]judge slice done in {time.time() - t0:.0f}s[/bold green]")
