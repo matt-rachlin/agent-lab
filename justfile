@@ -42,6 +42,20 @@ services-logs:
 services-status:
     podman ps --filter "label=app=lab"
 
+# --- agent sandbox (Phase 6b) ---
+
+# Build the per-cell agent sandbox image (Fedora minimal + python3.13 + uv +
+# ripgrep, runs as uid 10001 in /workspace). Writes the image digest to
+# conf/sandbox-image.sha so experiment_runs can record the hash it executed
+# against.
+sandbox-build:
+    uv run lab agent sandbox build
+
+# Smoke-test the sandbox under gVisor; prints "ok" or fails loudly.
+sandbox-smoke:
+    podman run --rm --runtime=runsc --security-opt label=disable --runtime-flag=ignore-cgroups \
+        --network=none lab-agent-sandbox:0.1 python3 -c 'print("ok")'
+
 # --- backup ---
 
 # Nightly snapshot: 3 PG dumps + 2 MinIO bucket mirrors + git bundle, to /mnt/backup/lab

@@ -535,10 +535,54 @@ def agent_tools_list() -> None:
 
 
 @agent_sandbox_app.command("build")
-def agent_sandbox_build() -> None:
-    """Build the agent sandbox image (placeholder)."""
-    console.print("6b — not yet implemented")
-    raise typer.Exit(code=2)
+def agent_sandbox_build(
+    image: str = typer.Option("lab-agent-sandbox:0.1", "--image", help="Image tag to build"),
+    containerfile: Path = typer.Option(
+        Path("containers/Containerfile.agent-sandbox"),
+        "--containerfile",
+        help="Containerfile path (relative to repo root)",
+    ),
+    context: Path = typer.Option(Path("."), "--context", help="Build context directory"),
+    digest_out: Path = typer.Option(
+        Path("conf/sandbox-image.sha"),
+        "--digest-out",
+        help="Where to write the resulting image digest",
+    ),
+) -> None:
+    """Build the agent sandbox image and record its digest.
+
+    Calls `podman build` and writes the resulting image ID to
+    `conf/sandbox-image.sha` so `experiment_runs.sandbox_image_hash` can be
+    populated from the same source of truth.
+    """
+    import subprocess
+
+    build_cmd = [
+        "podman",
+        "build",
+        "-t",
+        image,
+        "-f",
+        str(containerfile),
+        str(context),
+    ]
+    console.print(f"[dim]$ {' '.join(build_cmd)}[/]")
+    try:
+        subprocess.run(build_cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        console.print(f"[red]podman build failed (exit {exc.returncode})[/]")
+        raise typer.Exit(code=exc.returncode) from exc
+    inspect = subprocess.run(
+        ["podman", "image", "inspect", image, "--format", "{{.Id}}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    digest = inspect.stdout.strip()
+    digest_out.parent.mkdir(parents=True, exist_ok=True)
+    digest_out.write_text(digest + "\n", encoding="utf-8")
+    console.print(f"[green]built[/] {image} -> [bold]{digest}[/]")
+    console.print(f"[dim]digest written to {digest_out}[/]")
 
 
 @app.command("notify")

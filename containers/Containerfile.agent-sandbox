@@ -1,0 +1,44 @@
+# lab-agent-sandbox — base image for per-cell agent execution under gVisor.
+#
+# Runs as a non-root user (agent / uid 10001) with /workspace as cwd.
+# Designed to be invoked from `lab.agent.sandbox.Sandbox` with
+# `--runtime=runsc --security-opt label=disable --runtime-flag=ignore-cgroups`.
+#
+# Keep this image small: gVisor cold-start cost scales with image complexity,
+# and each cell creates a fresh container.
+
+FROM registry.fedoraproject.org/fedora-minimal:43
+
+# Core agent userland: python3.13, uv (for tool-server installs), ripgrep
+# (fs_grep), curl/bash/coreutils (shell_exec), ca-certs (http_fetch).
+# Note: coreutils + curl + bash + ca-certificates + shadow-utils are already in
+# fedora-minimal:43; only ask for the extras explicitly.
+RUN microdnf install -y \
+        python3.13 \
+        python3-pip \
+        ripgrep \
+        tar \
+        gzip \
+    && microdnf clean all \
+    && rm -rf /var/cache/dnf /var/cache/yum /var/log/dnf*
+
+# Symlink python3 -> python3.13 for tool-call ergonomics.
+RUN ln -sf /usr/bin/python3.13 /usr/local/bin/python3 \
+    && ln -sf /usr/bin/python3.13 /usr/local/bin/python
+
+# Install uv via the standalone installer (faster than pip's resolver, used by
+# python_eval / pyproject-style tool snippets).
+RUN curl -fsSL https://astral.sh/uv/install.sh \
+        | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh
+
+# Non-root execution user. uid/gid 10001 keeps us well clear of host users.
+RUN groupadd -g 10001 agent \
+    && useradd -m -u 10001 -g 10001 -s /bin/bash agent \
+    && mkdir -p /workspace \
+    && chown agent:agent /workspace
+
+USER agent
+WORKDIR /workspace
+
+# Default to a friendly shell; Sandbox.exec overrides with explicit cmd.
+CMD ["/bin/bash"]
