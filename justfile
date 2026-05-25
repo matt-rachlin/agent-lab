@@ -42,11 +42,24 @@ services-logs:
 services-status:
     podman ps --filter "label=app=lab"
 
+# --- backup ---
+
+# Nightly snapshot: 3 PG dumps + 2 MinIO bucket mirrors + git bundle, to /mnt/backup/lab
+backup:
+    bash scripts/backup.sh
+
+# What's in the backup tree?
+backup-status:
+    @echo "=== latest 5 daily snapshots ==="
+    @ls -lat /mnt/backup/lab/daily/ 2>/dev/null | head -6
+    @echo "=== total backup size ==="
+    @du -sh /mnt/backup/lab 2>/dev/null || echo "(no backups yet)"
+
 # --- model management ---
 
 # Pull a curated initial set of local Ollama models
 models-pull:
-    @for m in qwen3:14b-q4_K_M qwen3:8b-q5_K_M llama3.1:8b-instruct-q4_K_M phi-4:14b-q4_K_M gemma3:12b-it-q4_K_M; do \
+    @for m in qwen3:14b-q4_K_M qwen3:8b llama3.1:8b-instruct-q4_K_M phi4:latest gemma3:12b-it-q4_K_M; do \
         echo "pulling $m"; ollama pull "$m" || true; \
     done
 

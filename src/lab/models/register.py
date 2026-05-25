@@ -141,9 +141,13 @@ def _parse_local(entry: dict[str, Any]) -> dict[str, Any] | None:
 
 
 _FRIENDLY = {
-    "qwen3": {"14b-q4_k_m": "qwen3-14b-q4", "8b-q5_k_m": "qwen3-8b-q5"},
+    "qwen3": {
+        "14b-q4_k_m": "qwen3-14b-q4",
+        "8b": "qwen3-8b",  # bare `qwen3:8b` (no explicit quant suffix in tag)
+        "8b-q5_k_m": "qwen3-8b-q5",
+    },
     "llama3.1": {"8b-instruct-q4_k_m": "llama3.1-8b-q4"},
-    "phi-4": {"14b-q4_k_m": "phi-4-q4"},
+    "phi4": {"latest": "phi4", "14b-q4_k_m": "phi-4-q4"},
     "gemma3": {"12b-it-q4_k_m": "gemma3-12b-q4"},
 }
 
@@ -152,7 +156,8 @@ def _local_litellm_id(name: str, variant: str, quant: str) -> str:
     """Map an Ollama tag to its canonical LiteLLM model_name."""
     name_key = name.lower()
     variant_quant = f"{variant}-{quant}".lower() if quant else variant.lower()
-    return _FRIENDLY.get(name_key, {}).get(variant_quant, f"{name_key}-{variant}-{quant}".lower())
+    fallback = f"{name_key}-{variant}-{quant}".lower().rstrip("-")
+    return _FRIENDLY.get(name_key, {}).get(variant_quant, fallback)
 
 
 UPSERT_SQL = """
