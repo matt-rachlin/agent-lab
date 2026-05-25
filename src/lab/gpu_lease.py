@@ -16,8 +16,8 @@ import os
 import socket
 import time
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 import redis
 
@@ -30,7 +30,7 @@ class LeaseTimeout(RuntimeError):
     """Raised when the GPU lease could not be acquired in the given window."""
 
 
-def _client() -> redis.Redis:
+def _client() -> redis.Redis[str]:
     return redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
 
 
@@ -77,8 +77,11 @@ def gpu_lease(
         yield tag
     finally:
         # Release only if we still own it (don't release another holder's lease)
-        script = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end"
-        r.eval(script, 1, LEASE_KEY, tag)
+        script = (
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then "
+            "return redis.call('DEL', KEYS[1]) else return 0 end"
+        )
+        r.eval(script, 1, LEASE_KEY, tag)  # type: ignore[no-untyped-call]
 
 
 def status() -> tuple[str | None, int]:

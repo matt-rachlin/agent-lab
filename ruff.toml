@@ -11,6 +11,8 @@ ignore = [
     "E501",
     "S101",
     "PLW2901",
+    "S607",   # partial-executable-path is fine for lab tooling that uses PATH (git, nvidia-smi, etc.)
+    "S603",   # subprocess call with shell=False is fine — we never use shell=True
 ]
 
 [lint.per-file-ignores]

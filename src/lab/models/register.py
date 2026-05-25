@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import sys
+from typing import Any
 
 import httpx
 import psycopg
@@ -91,7 +90,7 @@ CLOUD_MODELS = [
 ]
 
 
-def _ollama_local_models() -> list[dict]:
+def _ollama_local_models() -> list[dict[str, Any]]:
     """Query the local Ollama daemon for currently-pulled models."""
     url = get_settings().ollama_local_url.rstrip("/") + "/api/tags"
     try:
@@ -100,10 +99,11 @@ def _ollama_local_models() -> list[dict]:
     except httpx.HTTPError as exc:
         print(f"[register] could not reach local ollama: {exc}", file=sys.stderr)
         return []
-    return r.json().get("models", [])
+    models: list[dict[str, Any]] = r.json().get("models", [])
+    return models
 
 
-def _parse_local(entry: dict) -> dict | None:
+def _parse_local(entry: dict[str, Any]) -> dict[str, Any] | None:
     """Parse one entry from /api/tags into our models row format."""
     tag = entry.get("name", "")  # e.g. "qwen3:14b-q4_K_M"
     if not tag:
@@ -132,7 +132,7 @@ def _parse_local(entry: dict) -> dict | None:
         "source_sha256": digest.replace("sha256:", ""),
         "ollama_tag": tag,
         "vram_gb": vram_gb,
-        "context_max": details.get("parameter_size", None) and None,
+        "context_max": None,  # local models: unknown from /api/tags; set per-model later
         "output_max": None,
         "license": None,
         "capabilities": [],
@@ -183,7 +183,7 @@ ON CONFLICT (litellm_id) DO UPDATE SET
 
 
 def main() -> int:
-    rows: list[dict] = []
+    rows: list[dict[str, Any]] = []
     for raw in _ollama_local_models():
         parsed = _parse_local(raw)
         if parsed:
@@ -200,8 +200,10 @@ def main() -> int:
                 cur.execute(UPSERT_SQL, row)
         conn.commit()
 
-    print(f"registered {len(rows)} models ({len([r for r in rows if r['backend'] == 'ollama-local'])} local, "
-          f"{len([r for r in rows if r['backend'] == 'ollama-cloud'])} cloud)")
+    print(
+        f"registered {len(rows)} models ({len([r for r in rows if r['backend'] == 'ollama-local'])} local, "
+        f"{len([r for r in rows if r['backend'] == 'ollama-cloud'])} cloud)"
+    )
     return 0
 
 

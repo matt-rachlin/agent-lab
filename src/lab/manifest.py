@@ -36,11 +36,13 @@ class Manifest:
     captured_at: datetime
 
 
+# Partial-executable-path warnings (S607) are accepted for lab tooling that
+# intentionally relies on PATH for git/nvidia-smi/uv/nvcc.
+
+
 def _git_state(repo: Path) -> tuple[str, bool]:
     try:
-        sha = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=repo, text=True
-        ).strip()
+        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
         dirty = bool(
             subprocess.check_output(["git", "status", "--porcelain"], cwd=repo, text=True).strip()
         )
@@ -185,7 +187,7 @@ def _persist(sha: str, payload: dict[str, Any], deps_blob: str) -> None:
 
     # MinIO upload — manifest json + deps blob for re-creation
     try:
-        from minio import Minio  # type: ignore[import-untyped]
+        from minio import Minio
 
         client = Minio(
             settings.s3_endpoint.removeprefix("http://").removeprefix("https://"),
@@ -211,7 +213,7 @@ def _persist(sha: str, payload: dict[str, Any], deps_blob: str) -> None:
             length=len(deps_bytes),
             content_type="text/plain",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # MinIO not yet up is OK during bootstrap — postgres row is the source of truth
         print(f"[manifest] minio upload skipped: {exc}", file=sys.stderr)
 
@@ -235,7 +237,8 @@ def main() -> None:
         # Verify it's in the DB
         with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM manifests WHERE manifest_sha = %s", (m.sha,))
-            count = cur.fetchone()[0]
+            row = cur.fetchone()
+            count = row[0] if row else 0
             assert count == 1, f"expected 1 row, got {count}"
             print("postgres: row found OK")
 
