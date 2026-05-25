@@ -42,7 +42,9 @@ def test_load_sweep_from_yaml(tmp_path: Path) -> None:
 def test_extra_forbids_unknown_fields() -> None:
     raw = yaml.safe_load(SWEEP_YAML)
     raw["surprise"] = "rejected"
-    with pytest.raises(Exception):  # noqa: B017 — pydantic ValidationError
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         SweepConfig.model_validate(raw)
 
 

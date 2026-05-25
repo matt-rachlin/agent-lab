@@ -38,7 +38,9 @@ def test_load_yaml_with_dict_root(tmp_path: Path) -> None:
 
 
 def test_extra_forbid() -> None:
-    with pytest.raises(Exception):  # noqa: B017
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         Task.model_validate(
             {
                 "suite": "x",
