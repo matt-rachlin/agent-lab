@@ -15,7 +15,7 @@ That mechanism is a configuration confound. The experiment did not separate:
 
 EXP-001b isolates the two axes on the same task set so we can attribute the H3 failure correctly.
 
-## Hypotheses (pre-registered)
+## Hypothesis
 
 Comparisons are against the existing EXP-001 baseline: qwen3-14b-q4, reasoning=on (default), `max_tokens=1024`, no system prompt. That baseline's stats on PBS-v0.1 are pre-known and are not allowed to change.
 
@@ -90,7 +90,7 @@ Per `protocols/reliability-sweep.md`:
 - Welch's t-test on per-task means for any reported delta
 - empty-rate per config
 
-## Success criteria
+## Success / failure criteria
 
 Applied after the sweep + evals are done, no peeking:
 
