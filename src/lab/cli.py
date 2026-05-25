@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime as _datetime
 from pathlib import Path
 
 import typer
@@ -326,6 +327,52 @@ def manifest_capture(
     extra_dict = json.loads(extra) if extra else None
     m = capture_manifest(extra=extra_dict)
     console.print(f"[green]manifest[/] sha={m.sha}")
+
+
+docs_app = typer.Typer(help="Documentation helpers")
+app.add_typer(docs_app, name="docs")
+
+
+@docs_app.command("recent")
+def docs_recent(
+    n: int = typer.Option(10, "--n", "-n", help="Number of recent files to list"),
+    root: Path = typer.Option(Path("/data/lab/code/docs"), "--root", help="Docs root directory"),
+) -> None:
+    """List the N most recently modified docs (excluding _templates/)."""
+    files: list[tuple[float, Path]] = []
+    for p in root.rglob("*.md"):
+        if "_templates" in p.parts:
+            continue
+        if p.name.startswith("_") or p.name == "index.md":
+            continue
+        files.append((p.stat().st_mtime, p))
+    files.sort(reverse=True)
+    table = Table("Modified", "Path")
+    for mtime, p in files[:n]:
+        when = _datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+        rel = str(p).replace("/data/lab/code/", "")
+        table.add_row(when, rel)
+    console.print(table)
+
+
+@docs_app.command("serve")
+def docs_serve(
+    port: int = typer.Option(8001, "--port", help="Local port for `mkdocs serve`"),
+) -> None:
+    """Local-only MkDocs Material dev server (no publishing target — by design)."""
+    import subprocess
+
+    console.print(f"[green]serving docs at[/] http://localhost:{port}")
+    subprocess.call(["uv", "run", "mkdocs", "serve", "--dev-addr", f"127.0.0.1:{port}"])
+
+
+@docs_app.command("build")
+def docs_build() -> None:
+    """Build the docs site to ./site (local-only, not published)."""
+    import subprocess
+
+    subprocess.call(["uv", "run", "mkdocs", "build", "--strict"])
+    console.print("[green]built[/] /data/lab/code/site")
 
 
 @app.command("today")

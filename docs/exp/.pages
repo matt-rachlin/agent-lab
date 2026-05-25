@@ -1,0 +1,6 @@
+title: Experiments
+sort_type: natural
+order_by: filename
+nav:
+  - index.md
+  - ...

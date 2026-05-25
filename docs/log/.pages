@@ -1,0 +1,7 @@
+title: Log
+sort_type: natural
+order: desc
+order_by: filename
+nav:
+  - index.md
+  - ...

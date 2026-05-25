@@ -1,0 +1,13 @@
+nav:
+  - index.md
+  - Log: log
+  - Experiments: exp
+  - Findings: findings
+  - ADRs: adr
+  - SOPs: sops
+  - Protocols: protocols
+  - Post-mortems: postmortems
+  - References: references
+  - Datasets: datasets
+  - Models: models
+  - _templates
