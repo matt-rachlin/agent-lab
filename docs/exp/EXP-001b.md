@@ -64,10 +64,10 @@ configs:
     max_tokens: 1024
     scaffold: single_turn
     extra:
-      system_prompt: "/no_think"
+      think: false
 ```
 
-The `system_prompt` field is consumed by the sweep runner (added 2026-05-25). The `/no_think` token is qwen3's documented mode-flip directive — placing it in the system prompt switches the model to single-channel output.
+The `think: false` field is forwarded by the sweep runner directly into the request body (added 2026-05-25 — `extra.*` keys flow through except locally-consumed `system_prompt`). Smoke-tested 2026-05-25 against the LiteLLM proxy: enabling `think: false` drops qwen3's completion-token count from ~340 to ~6 on a short fmt task, confirming the thinking channel is fully suppressed. The naive `/no_think` prompt token (system or user message) does NOT actually disable qwen3 thinking on Ollama — only the API-level parameter does.
 
 `config_hash` will differ between the two new configs (and from the EXP-001 baseline) because either `max_tokens` or `extra.system_prompt` differs. `run_id` will therefore differ too, so resume + idempotency stay clean.
 

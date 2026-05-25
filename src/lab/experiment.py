@@ -30,7 +30,9 @@ REQUIRED_SECTIONS = (
 )
 
 # Slug must match this pattern, drawn from the H1 or filename.
-SLUG_RE = re.compile(r"^[A-Z][A-Z0-9_-]{2,63}$")
+# First char uppercase; subsequent chars may be upper/lowercase letters, digits, _ or -.
+# Lowercase tail enables suffix variants like EXP-001b, EXP-002c.
+SLUG_RE = re.compile(r"^[A-Z][A-Za-z0-9_-]{2,63}$")
 
 
 @dataclass(frozen=True)
@@ -80,7 +82,7 @@ def _slug_from_text(h1: str | None, fallback: str) -> str:
     # Filename fallback: strip leading digits/underscore prefix and .md
     stem = Path(fallback).stem
     # Match SLUG-NNN pattern (letters + dashes + digits, not greedy-trailing-dash)
-    m = re.match(r"^([A-Z][A-Z0-9_]*-\d+)", stem)
+    m = re.match(r"^([A-Z][A-Z0-9_]*-\d+[a-z]?)", stem)
     if m:
         return m.group(1)
     m2 = re.match(r"^([A-Z][A-Z0-9_]+)", stem)

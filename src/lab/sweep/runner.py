@@ -215,6 +215,13 @@ def _call_litellm(
     }
     if config.max_tokens is not None:
         body["max_tokens"] = config.max_tokens
+    # Forward extras to the backend (e.g. Ollama `think: false`), except
+    # locally-consumed keys.
+    if config.extra:
+        for k, v in config.extra.items():
+            if k == "system_prompt":
+                continue
+            body[k] = v
     headers = {"Authorization": f"Bearer {litellm_key}", "Content-Type": "application/json"}
     t0 = time.monotonic()
     resp = httpx.post(url, json=body, headers=headers, timeout=timeout)
