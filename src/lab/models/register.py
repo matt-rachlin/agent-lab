@@ -103,6 +103,44 @@ def _ollama_local_models() -> list[dict[str, Any]]:
     return models
 
 
+_QUANT_PREFIXES = ("q2_", "q3_", "q4_", "q5_", "q6_", "q8_", "fp16", "fp8", "iq")
+# Ollama "modality" or "edition" markers that should not be treated as quant.
+_NON_QUANT_TOKENS = {"instruct", "it", "chat", "base", "thinking", "cloud", "vl"}
+
+
+def _split_variant_quant(variant_quant: str) -> tuple[str, str, bool]:
+    """Split a tag suffix into (variant, quant, is_cloud).
+
+    Heuristics:
+      - tokens are dash-separated
+      - first token is always the size/variant (e.g. "8b", "14b", "120b", "latest")
+      - a trailing "cloud" token marks an Ollama Cloud model and is stripped
+      - quant is everything matching `_QUANT_PREFIXES` joined back with "-"
+      - non-quant tokens (instruct/it/chat/...) are dropped from the quant
+    """
+    if not variant_quant:
+        return "", "", False
+    tokens = variant_quant.split("-")
+    is_cloud = False
+    if tokens and tokens[-1].lower() == "cloud":
+        is_cloud = True
+        tokens = tokens[:-1]
+    if not tokens:
+        return "", "", is_cloud
+    variant = tokens[0]
+    quant_tokens: list[str] = []
+    for tok in tokens[1:]:
+        if not tok:
+            continue
+        if tok.lower() in _NON_QUANT_TOKENS:
+            continue
+        if tok.lower().startswith(_QUANT_PREFIXES):
+            quant_tokens.append(tok)
+        # else: drop unknown trailing token rather than smuggling it into quant
+    quant = "-".join(quant_tokens)
+    return variant, quant, is_cloud
+
+
 def _parse_local(entry: dict[str, Any]) -> dict[str, Any] | None:
     """Parse one entry from /api/tags into our models row format."""
     tag = entry.get("name", "")  # e.g. "qwen3:14b-q4_K_M"
@@ -118,17 +156,19 @@ def _parse_local(entry: dict[str, Any]) -> dict[str, Any] | None:
     if not model_name:
         publisher, model_name = "ollama", publisher
 
-    # Heuristically split "14b-q4_K_M" → variant=14b quant=Q4_K_M
-    variant, _, quant = variant_quant.partition("-")
-    quant_norm = quant.upper().replace("INSTRUCT-", "") if quant else "fp16"
+    variant, quant, is_cloud = _split_variant_quant(variant_quant)
+    quant_norm = quant.upper() if quant else ("cloud" if is_cloud else "fp16")
+    backend = "ollama-cloud" if is_cloud else "ollama-local"
 
     return {
         "publisher": publisher,
         "name": model_name,
         "variant": variant or None,
         "quant": quant_norm or None,
-        "backend": "ollama-local",
-        "litellm_id": _local_litellm_id(model_name, variant, quant),
+        "backend": backend,
+        "litellm_id": _local_litellm_id(
+            model_name, variant, quant, is_cloud=is_cloud, raw_suffix=variant_quant
+        ),
         "source_sha256": digest.replace("sha256:", ""),
         "ollama_tag": tag,
         "vram_gb": vram_gb,
@@ -152,12 +192,38 @@ _FRIENDLY = {
 }
 
 
-def _local_litellm_id(name: str, variant: str, quant: str) -> str:
-    """Map an Ollama tag to its canonical LiteLLM model_name."""
+def _local_litellm_id(
+    name: str,
+    variant: str,
+    quant: str,
+    *,
+    is_cloud: bool = False,
+    raw_suffix: str = "",
+) -> str:
+    """Map an Ollama tag to its canonical LiteLLM model_name.
+
+    Lookup precedence: hand-curated `_FRIENDLY` map (keyed on either the cleaned
+    or the raw `variant-quant` suffix) → deterministic fallback. The fallback
+    is `<name>-<variant>[-<quant>][-cloud]`, lowercased and with no stray
+    trailing dashes.
+    """
     name_key = name.lower()
-    variant_quant = f"{variant}-{quant}".lower() if quant else variant.lower()
-    fallback = f"{name_key}-{variant}-{quant}".lower().rstrip("-")
-    return _FRIENDLY.get(name_key, {}).get(variant_quant, fallback)
+    variant_l = variant.lower()
+    quant_l = quant.lower()
+    cleaned = f"{variant_l}-{quant_l}" if quant_l else variant_l
+    friendly = _FRIENDLY.get(name_key, {})
+    if raw_suffix and raw_suffix.lower() in friendly:
+        return friendly[raw_suffix.lower()]
+    if cleaned in friendly:
+        return friendly[cleaned]
+    parts = [name_key]
+    if variant_l:
+        parts.append(variant_l)
+    if quant_l:
+        parts.append(quant_l)
+    if is_cloud:
+        parts.append("cloud")
+    return "-".join(p for p in parts if p)
 
 
 UPSERT_SQL = """
@@ -187,7 +253,12 @@ ON CONFLICT (litellm_id) DO UPDATE SET
 """
 
 
-def main() -> int:
+def sync_models(*, include_cloud: bool = True) -> dict[str, int]:
+    """UPSERT the `models` table from the current `ollama list` output.
+
+    Does NOT pull any model bytes — purely a metadata refresh. Returns a
+    summary dict with `local`, `cloud`, and `total` counts.
+    """
     rows: list[dict[str, Any]] = []
     for raw in _ollama_local_models():
         parsed = _parse_local(raw)
@@ -195,9 +266,10 @@ def main() -> int:
             for k in ("source_sha256",):
                 parsed.setdefault(k, None)
             rows.append(parsed)
-    for cloud in CLOUD_MODELS:
-        row = {"source_sha256": None, **cloud}
-        rows.append(row)
+    if include_cloud:
+        for cloud in CLOUD_MODELS:
+            row = {"source_sha256": None, **cloud}
+            rows.append(row)
 
     with psycopg.connect(get_settings().pg_dsn) as conn:
         with conn.cursor() as cur:
@@ -205,9 +277,17 @@ def main() -> int:
                 cur.execute(UPSERT_SQL, row)
         conn.commit()
 
+    return {
+        "total": len(rows),
+        "local": len([r for r in rows if r["backend"] == "ollama-local"]),
+        "cloud": len([r for r in rows if r["backend"] == "ollama-cloud"]),
+    }
+
+
+def main() -> int:
+    summary = sync_models()
     print(
-        f"registered {len(rows)} models ({len([r for r in rows if r['backend'] == 'ollama-local'])} local, "
-        f"{len([r for r in rows if r['backend'] == 'ollama-cloud'])} cloud)"
+        f"registered {summary['total']} models ({summary['local']} local, {summary['cloud']} cloud)"
     )
     return 0
 

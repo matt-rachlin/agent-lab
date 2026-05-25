@@ -14,6 +14,7 @@ def register_all() -> None:
         not_empty,
         regex_match,
         tokens_under,
+        useful_latency,
     )
 
 

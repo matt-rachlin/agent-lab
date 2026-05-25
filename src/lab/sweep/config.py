@@ -55,6 +55,14 @@ class RunConfig(BaseModel):
     extra: dict[str, Any] = Field(default_factory=dict)
 
 
+class ModelDefaults(BaseModel):
+    """Per-model defaults applied to every cell using that litellm_id."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    system_prompt: str | None = None
+
+
 class SweepConfig(BaseModel):
     """Top-level sweep specification (loaded from YAML)."""
 
@@ -66,6 +74,9 @@ class SweepConfig(BaseModel):
     prompts: list[PromptRef] | None = None
     configs: list[RunConfig]
     seeds: list[int]
+
+    # Precedence (highest → lowest): task.system > model_defaults[model].system_prompt > config.extra.system_prompt
+    model_defaults: dict[str, ModelDefaults] = Field(default_factory=dict)
 
     judges: list[str] | None = None  # litellm_ids to use as judges in Phase 2+ (ignored Phase 1)
     max_concurrency: int = 1  # local sweeps: 1 (single GPU); cloud: up to 3 (Pro tier)

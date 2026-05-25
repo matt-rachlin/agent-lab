@@ -29,7 +29,7 @@ from lab.quota import alert_if_high as quota_alert
 from lab.quota import usage_window as quota_window
 from lab.spend import backfill as spend_backfill
 from lab.sweep.config import load_sweep
-from lab.sweep.runner import run_sweep
+from lab.sweep.runner import cancel_sweep, get_sweep_status, run_sweep
 from lab.tasks.registry import list_suites, load_tasks, register_tasks
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -59,6 +59,30 @@ def tasks_list() -> None:
     for suite, count in list_suites():
         table.add_row(suite, str(count))
     console.print(table)
+
+
+# ---------------------------------------------------------------------------
+# models
+# ---------------------------------------------------------------------------
+
+models_app = typer.Typer(help="Model library management")
+app.add_typer(models_app, name="models")
+
+
+@models_app.command("sync")
+def models_sync(
+    no_cloud: bool = typer.Option(
+        False, "--no-cloud", help="Skip the curated cloud catalog; only sync local Ollama tags."
+    ),
+) -> None:
+    """Refresh `lab.models` from `ollama list` (no pulls)."""
+    from lab.models.register import sync_models
+
+    summary = sync_models(include_cloud=not no_cloud)
+    console.print(
+        f"[green]synced[/] {summary['total']} model(s) "
+        f"({summary['local']} local, {summary['cloud']} cloud)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +123,51 @@ def sweep_run(
     console.print(f"[bold green]summary[/]: {summary}")
     if summary.get("errors", 0) > 0:
         raise typer.Exit(code=1)
+
+
+@sweep_app.command("status")
+def sweep_status() -> None:
+    """Show in-flight sweeps: active experiment_runs, GPU lease, running PIDs."""
+    s = get_sweep_status()
+    if s.sweep_pids:
+        pid_table = Table("Slug", "PID")
+        for slug, pid in s.sweep_pids:
+            pid_table.add_row(slug, str(pid))
+        console.print(pid_table)
+    else:
+        console.print("[dim]no sweep pidfiles[/]")
+    holder = s.gpu_lease_holder or "[dim](free)[/]"
+    console.print(f"[bold]gpu lease[/]: {holder} (ttl {s.gpu_lease_ttl}s)")
+    if s.in_progress:
+        table = Table("Run", "Slug", "Model", "Seed", "Started")
+        for row in s.in_progress:
+            table.add_row(
+                str(row["run_id"])[:12],
+                str(row["experiment_slug"]),
+                str(row["model"]),
+                str(row["seed"]),
+                str(row["started_at"]),
+            )
+        console.print(table)
+    else:
+        console.print("[dim]no runs in_progress[/]")
+
+
+@sweep_app.command("cancel")
+def sweep_cancel(
+    slug: str = typer.Argument(..., help="Experiment slug whose sweep to cancel"),
+    release_lease: bool = typer.Option(
+        True, "--release-lease/--no-release-lease", help="Also force-release the GPU lease."
+    ),
+) -> None:
+    """Signal the running sweep (SIGTERM) and release the GPU lease."""
+    result = cancel_sweep(slug, release_lease=release_lease)
+    if result["signaled"] is None:
+        console.print(f"[yellow]no active sweep pid found for[/] {slug}")
+    else:
+        console.print(f"[green]signaled[/] pid {result['signaled']} for {slug}")
+    if result["released_lease"]:
+        console.print("[green]released[/] GPU lease")
 
 
 # ---------------------------------------------------------------------------

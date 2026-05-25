@@ -96,7 +96,10 @@ types:
     uv run mypy src
 
 test:
-    uv run pytest tests/ -q
+    uv run pytest tests/unit -q
+
+test-integration:
+    uv run pytest tests/integration -q -m integration
 
 test-int:
     uv run pytest tests/ -q -m integration

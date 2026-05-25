@@ -221,24 +221,21 @@ def _evaluator_db_id(entry: RegisteredEvaluator) -> int:
         return int(row[0])
 
 
-def _runs_for_experiment(experiment_slug: str) -> tuple[list[RunRow], dict[int, TaskRow]]:
-    """Fetch all done runs + their tasks for an experiment."""
-    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT r.run_id, r.experiment_id, r.model_id, m.litellm_id,
-                   r.task_id, r.seed, r.status,
-                   r.tokens_in, r.tokens_out, r.latency_ms, r.cost_usd, r.trace_path
-            FROM experiment_runs r
-            JOIN models m       ON m.model_id      = r.model_id
-            JOIN experiments e  ON e.experiment_id = r.experiment_id
-            WHERE e.slug = %s AND r.status = 'done'
-            ORDER BY r.started_at
-            """,
-            (experiment_slug,),
-        )
-        run_rows = cur.fetchall()
-        task_ids = sorted({int(r[4]) for r in run_rows})
+_RUN_SELECT_SQL = """
+SELECT r.run_id, r.experiment_id, r.model_id, m.litellm_id,
+       r.task_id, r.seed, r.status,
+       r.tokens_in, r.tokens_out, r.latency_ms, r.cost_usd, r.trace_path
+FROM experiment_runs r
+JOIN models m ON m.model_id = r.model_id
+"""
+
+
+def _rows_to_runs_and_tasks(
+    run_rows: list[tuple[Any, ...]],
+    cur: psycopg.Cursor[Any],
+) -> tuple[list[RunRow], dict[int, TaskRow]]:
+    task_ids = sorted({int(r[4]) for r in run_rows})
+    if task_ids:
         cur.execute(
             "SELECT task_id, suite, slug, category, difficulty, payload "
             "FROM tasks WHERE task_id = ANY(%s)",
@@ -255,6 +252,8 @@ def _runs_for_experiment(experiment_slug: str) -> tuple[list[RunRow], dict[int, 
             )
             for t in cur.fetchall()
         }
+    else:
+        tasks = {}
 
     runs: list[RunRow] = []
     for r in run_rows:
@@ -276,6 +275,29 @@ def _runs_for_experiment(experiment_slug: str) -> tuple[list[RunRow], dict[int, 
             )
         )
     return runs, tasks
+
+
+def _runs_for_experiment(experiment_slug: str) -> tuple[list[RunRow], dict[int, TaskRow]]:
+    """Fetch all done runs + their tasks for an experiment."""
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            _RUN_SELECT_SQL + " JOIN experiments e ON e.experiment_id = r.experiment_id"
+            " WHERE e.slug = %s AND r.status = 'done' ORDER BY r.started_at",
+            (experiment_slug,),
+        )
+        run_rows = list(cur.fetchall())
+        return _rows_to_runs_and_tasks(run_rows, cur)
+
+
+def _runs_for_run_ids(run_ids: list[str]) -> tuple[list[RunRow], dict[int, TaskRow]]:
+    """Fetch the named runs + their tasks (status filter NOT applied)."""
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            _RUN_SELECT_SQL + " WHERE r.run_id = ANY(%s) ORDER BY r.started_at",
+            (list(run_ids),),
+        )
+        run_rows = list(cur.fetchall())
+        return _rows_to_runs_and_tasks(run_rows, cur)
 
 
 def _fetch_response_text(trace_path: str) -> str | None:
@@ -358,17 +380,7 @@ class ApplyReport:
     n_failed: int
 
 
-def apply_to_experiment(
-    experiment_slug: str,
-    *,
-    evaluator_names: list[str] | None = None,
-    judge: Judge | None = None,
-    skip_response_fetch: bool = False,
-) -> list[ApplyReport]:
-    """Apply selected (or all registered) evaluators to every done run of an experiment.
-
-    Returns one ApplyReport per evaluator.
-    """
+def _resolve_evaluators(evaluator_names: list[str] | None) -> list[RegisteredEvaluator]:
     registry = get_registry()
     if evaluator_names:
         unknown = sorted(set(evaluator_names) - set(registry))
@@ -379,11 +391,17 @@ def apply_to_experiment(
         entries = list(registry.values())
     if not entries:
         raise RuntimeError("no evaluators registered; run `load_evaluators_from(...)` first")
+    return entries
 
-    runs, tasks = _runs_for_experiment(experiment_slug)
-    if not runs:
-        raise RuntimeError(f"no done runs found for experiment {experiment_slug!r}")
 
+def _apply_evaluators(
+    runs: list[RunRow],
+    tasks: dict[int, TaskRow],
+    entries: list[RegisteredEvaluator],
+    *,
+    judge: Judge | None,
+    skip_response_fetch: bool,
+) -> list[ApplyReport]:
     # Fetch response_text once per run, share across evaluators
     if not skip_response_fetch:
         for i, run in enumerate(runs):
@@ -436,6 +454,52 @@ def apply_to_experiment(
             )
         )
     return reports
+
+
+def apply_to_experiment(
+    experiment_slug: str,
+    *,
+    evaluator_names: list[str] | None = None,
+    judge: Judge | None = None,
+    skip_response_fetch: bool = False,
+) -> list[ApplyReport]:
+    """Apply selected (or all registered) evaluators to every done run of an experiment.
+
+    Returns one ApplyReport per evaluator.
+    """
+    entries = _resolve_evaluators(evaluator_names)
+    runs, tasks = _runs_for_experiment(experiment_slug)
+    if not runs:
+        raise RuntimeError(f"no done runs found for experiment {experiment_slug!r}")
+    return _apply_evaluators(
+        runs, tasks, entries, judge=judge, skip_response_fetch=skip_response_fetch
+    )
+
+
+def apply_to_runs(
+    run_ids: list[str],
+    *,
+    evaluator_names: list[str] | None = None,
+    judge: Judge | None = None,
+    skip_response_fetch: bool = False,
+) -> list[ApplyReport]:
+    """Apply registered evaluators to a specific list of run_ids.
+
+    Parallel to `apply_to_experiment`, with the same UPSERT semantics into
+    `eval_results`. Needed by the judge oracle-slice script (where the
+    interesting set is a hand-picked subset spanning multiple experiments).
+    """
+    if not run_ids:
+        raise ValueError("apply_to_runs: empty run_ids")
+    entries = _resolve_evaluators(evaluator_names)
+    runs, tasks = _runs_for_run_ids(run_ids)
+    if not runs:
+        raise RuntimeError(
+            f"no runs found for run_ids={run_ids[:3]}{'…' if len(run_ids) > 3 else ''}"
+        )
+    return _apply_evaluators(
+        runs, tasks, entries, judge=judge, skip_response_fetch=skip_response_fetch
+    )
 
 
 def main() -> int:

@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
+import signal
 import sys
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BytesIO
+from pathlib import Path
+from types import FrameType
 from typing import Any
 
 import httpx
@@ -24,13 +29,98 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from lab.gpu_lease import gpu_lease
+from lab.gpu_lease import force_release, gpu_lease
+from lab.gpu_lease import status as gpu_lease_status
 from lab.manifest import capture as capture_manifest
 from lab.settings import get_settings
 from lab.sweep.config import RunConfig, SweepConfig, config_hash, run_id
 from lab.tasks.registry import get_tasks
 
 console = Console()
+
+
+# ----------------------------------------------------------------------------
+# PID-file convention for inter-process status/cancel
+# ----------------------------------------------------------------------------
+
+PIDFILE_DIR = Path("/data/lab/services/sweep-pids")
+
+
+def _pidfile_for(slug: str) -> Path:
+    return PIDFILE_DIR / f"{slug}.pid"
+
+
+def _write_pidfile(slug: str) -> Path | None:
+    """Write our PID into the slug's pidfile. Returns the path, or None on failure."""
+    try:
+        PIDFILE_DIR.mkdir(parents=True, exist_ok=True)
+        path = _pidfile_for(slug)
+        path.write_text(f"{os.getpid()}\n", encoding="utf-8")
+        return path
+    except OSError as exc:
+        console.log(f"[yellow]could not write sweep pidfile: {exc}")
+        return None
+
+
+def _clear_pidfile(slug: str) -> None:
+    with contextlib.suppress(OSError):
+        _pidfile_for(slug).unlink(missing_ok=True)
+
+
+def read_pidfile(slug: str) -> int | None:
+    """Return the PID recorded for an active sweep, or None if none/stale."""
+    path = _pidfile_for(slug)
+    if not path.exists():
+        return None
+    try:
+        pid = int(path.read_text().strip())
+    except (OSError, ValueError):
+        return None
+    # Stale-check: signal 0 raises if the process doesn't exist
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return None
+    except PermissionError:
+        return pid  # exists, just not ours
+    return pid
+
+
+# ----------------------------------------------------------------------------
+# Signal handling: SIGTERM/SIGINT → release lease, exit cleanly. Idempotent.
+# ----------------------------------------------------------------------------
+
+
+_shutdown_requested = False
+
+
+def _install_signal_handlers(slug: str) -> None:
+    """Trap SIGTERM and SIGINT: release the GPU lease and exit cleanly.
+
+    Idempotent — running twice is a no-op. Safe to call from non-main thread
+    contexts (we only call signal.signal here, which Python guards).
+    """
+
+    def _handler(signum: int, _frame: FrameType | None) -> None:
+        global _shutdown_requested  # noqa: PLW0603 — module-level flag, by design
+        if _shutdown_requested:
+            return
+        _shutdown_requested = True
+        sig_name = signal.Signals(signum).name
+        console.log(f"[yellow]received {sig_name}; releasing GPU lease and exiting")
+        try:
+            holder, _ttl = gpu_lease_status()
+            if holder:
+                force_release()
+        except Exception as exc:
+            console.log(f"[red]lease release failed: {exc}")
+        _clear_pidfile(slug)
+        sys.exit(0)
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        # Skip silently if we're not on the main thread
+        with contextlib.suppress(ValueError, OSError):
+            signal.signal(sig, _handler)
 
 
 @dataclass(frozen=True)
@@ -177,15 +267,19 @@ def expand_matrix(
 
 
 def _build_messages(
-    task_payload: dict[str, Any], config_system: str | None = None
+    task_payload: dict[str, Any],
+    config_system: str | None = None,
+    model_default_system: str | None = None,
 ) -> list[dict[str, str]]:
     """Build the chat-completion message list.
 
-    Precedence for the system message: task-level `system` field wins if set;
-    otherwise the sweep-config `system_prompt` (from RunConfig.extra) is used.
+    Precedence for the system message (highest → lowest):
+        1. task-level `system` field (from the Task schema)
+        2. sweep `model_defaults[<litellm_id>].system_prompt`
+        3. RunConfig.extra `system_prompt`
     """
     messages: list[dict[str, str]] = []
-    system = task_payload.get("system") or config_system
+    system = task_payload.get("system") or model_default_system or config_system
     if system:
         messages.append({"role": "system", "content": str(system)})
     messages.append({"role": "user", "content": str(task_payload["input"])})
@@ -304,7 +398,13 @@ def _insert_run(
         )
 
 
-def execute_cell(cell: Cell, *, litellm_key: str, timeout: int) -> CellResult:
+def execute_cell(
+    cell: Cell,
+    *,
+    litellm_key: str,
+    timeout: int,
+    model_default_system: str | None = None,
+) -> CellResult:
     """Execute one matrix cell: capture manifest, call model, persist trace + row."""
     settings = get_settings()
     manifest = capture_manifest(
@@ -322,7 +422,11 @@ def execute_cell(cell: Cell, *, litellm_key: str, timeout: int) -> CellResult:
     config_system = cell.config.extra.get("system_prompt") if cell.config.extra else None
     if config_system is None:
         config_system = getattr(cell.config, "system_prompt", None)
-    messages = _build_messages(cell.task_payload, config_system=config_system)
+    messages = _build_messages(
+        cell.task_payload,
+        config_system=config_system,
+        model_default_system=model_default_system,
+    )
     result: CellResult
 
     try:
@@ -415,6 +519,9 @@ def run_sweep(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """Execute the full sweep. Returns a summary dict."""
+    # Preflight: refuse to start if proxy config has Ollama models without keep_alive
+    if not dry_run:
+        preflight_litellm_keep_alive_or_raise()
     experiment_id = _ensure_experiment(spec)
     models = _models_lookup(spec.models)
     missing = sorted(set(spec.models) - set(models))
@@ -433,33 +540,48 @@ def run_sweep(
         console.print("[yellow]dry-run: not executing")
         return {"total": len(cells), "done": len(done), "todo": len(todo), "executed": 0}
 
+    _install_signal_handlers(spec.experiment.slug)
+    _write_pidfile(spec.experiment.slug)
+
     # Group by model to minimize swap cost (outer = model)
     todo_sorted = sorted(
         todo, key=lambda c: (c.model_litellm_id, c.config.name, c.task_slug, c.seed)
     )
 
     summary = {"total": len(cells), "done_before": len(done), "executed": 0, "errors": 0}
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        TextColumn("•"),
-        TimeElapsedColumn(),
-        TextColumn("•"),
-        TimeRemainingColumn(),
-        console=console,
-    ) as progress:
-        bar = progress.add_task("sweeping", total=len(todo_sorted))
-        for cell in todo_sorted:
-            result = execute_cell(cell, litellm_key=litellm_key, timeout=spec.request_timeout_sec)
-            summary["executed"] += 1
-            if result.status == "error":
-                summary["errors"] += 1
-                progress.console.log(
-                    f"[red]ERROR[/] {cell.model_litellm_id} {cell.task_slug} seed={cell.seed}: {result.error}"
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TextColumn("•"),
+            TimeElapsedColumn(),
+            TextColumn("•"),
+            TimeRemainingColumn(),
+            console=console,
+        ) as progress:
+            bar = progress.add_task("sweeping", total=len(todo_sorted))
+            for cell in todo_sorted:
+                model_default_system = None
+                md = spec.model_defaults.get(cell.model_litellm_id)
+                if md is not None:
+                    model_default_system = md.system_prompt
+                result = execute_cell(
+                    cell,
+                    litellm_key=litellm_key,
+                    timeout=spec.request_timeout_sec,
+                    model_default_system=model_default_system,
                 )
-            progress.update(bar, advance=1)
+                summary["executed"] += 1
+                if result.status == "error":
+                    summary["errors"] += 1
+                    progress.console.log(
+                        f"[red]ERROR[/] {cell.model_litellm_id} {cell.task_slug} seed={cell.seed}: {result.error}"
+                    )
+                progress.update(bar, advance=1)
+    finally:
+        _clear_pidfile(spec.experiment.slug)
 
     # Mark experiment running/completed
     if experiment_id is not None:
@@ -492,6 +614,108 @@ def run_sweep(
         console.log(f"[yellow]notify failed: {exc}")
 
     return summary
+
+
+# ----------------------------------------------------------------------------
+# status / cancel (second-terminal monitoring)
+# ----------------------------------------------------------------------------
+
+
+@dataclass
+class SweepStatus:
+    """Snapshot of in-flight sweep state for status reporting."""
+
+    in_progress: list[dict[str, Any]]  # one row per active experiment_run
+    gpu_lease_holder: str | None
+    gpu_lease_ttl: int
+    sweep_pids: list[tuple[str, int]]  # (slug, pid)
+
+
+def get_sweep_status() -> SweepStatus:
+    """Snapshot in-flight sweeps from the DB + GPU lease + pidfile dir."""
+    rows: list[dict[str, Any]] = []
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT r.run_id, e.slug, m.litellm_id, r.task_id, r.seed, r.started_at
+            FROM experiment_runs r
+            JOIN experiments e ON e.experiment_id = r.experiment_id
+            JOIN models m ON m.model_id = r.model_id
+            WHERE r.status IN ('running', 'in_progress')
+            ORDER BY r.started_at DESC
+            LIMIT 50
+            """
+        )
+        for row in cur.fetchall():
+            rows.append(
+                {
+                    "run_id": row[0],
+                    "experiment_slug": row[1],
+                    "model": row[2],
+                    "task_id": int(row[3]),
+                    "seed": int(row[4]),
+                    "started_at": row[5],
+                }
+            )
+    holder, ttl = gpu_lease_status()
+    pids: list[tuple[str, int]] = []
+    if PIDFILE_DIR.exists():
+        for f in sorted(PIDFILE_DIR.glob("*.pid")):
+            slug = f.stem
+            pid = read_pidfile(slug)
+            if pid is not None:
+                pids.append((slug, pid))
+    return SweepStatus(
+        in_progress=rows,
+        gpu_lease_holder=holder,
+        gpu_lease_ttl=ttl,
+        sweep_pids=pids,
+    )
+
+
+def cancel_sweep(slug: str, *, release_lease: bool = True) -> dict[str, Any]:
+    """Cancel an in-flight sweep by slug. Signals the runner PID with SIGTERM.
+
+    Returns {"signaled": pid|None, "released_lease": bool}.
+    """
+    pid = read_pidfile(slug)
+    signaled: int | None = None
+    if pid is not None:
+        try:
+            os.kill(pid, signal.SIGTERM)
+            signaled = pid
+        except (ProcessLookupError, PermissionError) as exc:
+            console.log(f"[yellow]could not signal pid {pid}: {exc}")
+    released = False
+    if release_lease:
+        # Brief grace period for the signal handler; then force-release as a backstop.
+        time.sleep(0.5)
+        try:
+            holder, _ttl = gpu_lease_status()
+            if holder:
+                released = force_release()
+        except Exception as exc:
+            console.log(f"[yellow]lease release failed: {exc}")
+    _clear_pidfile(slug)
+    return {"signaled": signaled, "released_lease": released}
+
+
+# ----------------------------------------------------------------------------
+# Preflight: refuse to start if LiteLLM proxy is missing keep_alive on locals
+# ----------------------------------------------------------------------------
+
+
+def preflight_litellm_keep_alive_or_raise(
+    config_path: Path | None = None,
+) -> None:
+    """Read the LiteLLM proxy config; raise if any local Ollama model lacks `keep_alive`.
+
+    Surfaced by EXP-001 postmortem: a missing `keep_alive` caused VRAM thrash
+    when the proxy unloaded a model between cells of the same sweep.
+    """
+    from lab.sweep.preflight import check_litellm_keep_alive
+
+    check_litellm_keep_alive(config_path)
 
 
 def main() -> int:
