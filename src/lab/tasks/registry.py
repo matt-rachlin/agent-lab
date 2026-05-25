@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 import psycopg
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from lab.settings import get_settings
 
@@ -51,9 +51,29 @@ class Task(BaseModel):
     system: str | None = None
     tools: list[dict[str, Any]] | None = None
 
+    # Agent loop knobs (Phase 6). Defaults preserve single-turn no-tool behavior.
+    max_turns: int = 1
+    tool_budget: int = 0
+    success_predicate: dict[str, Any] | None = None
+    sandbox: dict[str, Any] | None = None
+
     # Either gold_answer (for exact_match etc) or rubric (for richer scoring)
     gold_answer: str | None = None
     rubric: TaskRubric | None = None
+
+    @field_validator("max_turns")
+    @classmethod
+    def _validate_max_turns(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("max_turns must be >= 1")
+        return v
+
+    @field_validator("tool_budget")
+    @classmethod
+    def _validate_tool_budget(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("tool_budget must be >= 0")
+        return v
 
 
 def load_tasks(path: Path) -> list[Task]:
@@ -108,6 +128,10 @@ def register_tasks(tasks: Iterable[Task]) -> int:
                 "input": task.input,
                 "system": task.system,
                 "tools": task.tools,
+                "max_turns": task.max_turns,
+                "tool_budget": task.tool_budget,
+                "success_predicate": task.success_predicate,
+                "sandbox": task.sandbox,
                 "gold_answer": task.gold_answer,
                 "rubric": task.rubric.model_dump(by_alias=True) if task.rubric else None,
                 "description": task.description,

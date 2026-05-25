@@ -503,6 +503,44 @@ def docs_build() -> None:
     console.print("[green]built[/] /data/lab/code/site")
 
 
+# ---------------------------------------------------------------------------
+# agent — Phase 6 agent harness (stubs; bodies in 6b/6c/6d)
+# ---------------------------------------------------------------------------
+
+agent_app = typer.Typer(help="Agent harness (Phase 6 — stubs)")
+app.add_typer(agent_app, name="agent")
+
+agent_tools_app = typer.Typer(help="Agent tool servers")
+agent_app.add_typer(agent_tools_app, name="tools")
+
+agent_sandbox_app = typer.Typer(help="Agent sandbox image")
+agent_app.add_typer(agent_sandbox_app, name="sandbox")
+
+
+@agent_app.command("run")
+def agent_run(
+    task: str = typer.Option(..., "--task", help="Task slug to run"),
+    model: str = typer.Option(..., "--model", help="LiteLLM model id"),
+) -> None:
+    """Run a single agent cell (placeholder)."""
+    console.print("6d — not yet implemented")
+    raise typer.Exit(code=2)
+
+
+@agent_tools_app.command("list")
+def agent_tools_list() -> None:
+    """List registered agent tools (placeholder)."""
+    console.print("6c — not yet implemented")
+    raise typer.Exit(code=2)
+
+
+@agent_sandbox_app.command("build")
+def agent_sandbox_build() -> None:
+    """Build the agent sandbox image (placeholder)."""
+    console.print("6b — not yet implemented")
+    raise typer.Exit(code=2)
+
+
 @app.command("notify")
 def notify_command(
     message: str = typer.Argument(..., help="Notification body"),
