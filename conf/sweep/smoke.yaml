@@ -1,0 +1,34 @@
+# Smoke sweep — 3 local models × 2 configs × 5 tasks × 2 seeds = 60 runs.
+# Purpose: end-to-end validation of the Phase 1 plumbing. NOT a serious eval.
+
+experiment:
+  slug: SWEEP-SMOKE-001
+  title: "Smoke: Phase-1 end-to-end pipeline validation"
+  hypothesis: "Sweep plumbing executes 60 runs across local models with traces persisted."
+  plan_path: docs/exp/SWEEP-SMOKE-001.md
+
+tasks:
+  suite: smoke
+  # slugs omitted → all 5 tasks in the smoke suite
+
+models:
+  - qwen3-14b-q4
+  - llama3.1-8b-q4
+  - gemma3-12b-q4
+
+configs:
+  - name: greedy
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 200
+    scaffold: single_turn
+  - name: sampled
+    temperature: 0.7
+    top_p: 0.9
+    max_tokens: 200
+    scaffold: single_turn
+
+seeds: [1, 2]
+
+max_concurrency: 1
+request_timeout_sec: 300

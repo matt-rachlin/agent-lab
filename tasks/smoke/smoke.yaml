@@ -1,0 +1,50 @@
+# Smoke suite — five tiny tasks for end-to-end pipeline verification.
+# Used to validate the lab plumbing, NOT a serious evaluation.
+
+suite: smoke
+category: smoke
+
+tasks:
+  - slug: arith-01
+    difficulty: easy
+    input: "What is 17 * 23? Reply with just the number, no words."
+    gold_answer: "391"
+    rubric:
+      type: exact_match
+      case_sensitive: false
+
+  - slug: arith-02
+    difficulty: easy
+    input: "What is 1000 - 379? Reply with just the number."
+    gold_answer: "621"
+    rubric:
+      type: exact_match
+      case_sensitive: false
+
+  - slug: capitals-01
+    difficulty: easy
+    input: "What is the capital of Australia? One word only."
+    gold_answer: "Canberra"
+    rubric:
+      type: regex
+      pattern: "(?i)\\bcanberra\\b"
+
+  - slug: json-01
+    difficulty: medium
+    input: |
+      Return a JSON object with keys "first" and "second" whose values are
+      the first and second prime numbers, as integers. No prose, just JSON.
+    rubric:
+      type: regex
+      pattern: '"first"\s*:\s*2.*"second"\s*:\s*3'
+
+  - slug: reasoning-01
+    difficulty: medium
+    input: |
+      Alice has 3 apples. She gives Bob 1 apple, then Bob gives Carol
+      half his apples (rounded down). How many apples does Carol have?
+      Reply with just the number.
+    gold_answer: "0"
+    rubric:
+      type: regex
+      pattern: '\b0\b'
