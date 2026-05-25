@@ -456,6 +456,24 @@ def run_sweep(
                 """,
                 (experiment_id,),
             )
+
+    # Best-effort notification on sweep completion
+    try:
+        from lab.notify import notify as _notify
+
+        n_exec = summary.get("executed", 0)
+        n_err = summary.get("errors", 0)
+        priority = "high" if n_err else "default"
+        tag = "x" if n_err else "white_check_mark"
+        _notify(
+            f"{spec.experiment.slug}: {n_exec} runs ({n_err} errors)",
+            title="lab sweep done",
+            priority=priority,  # type: ignore[arg-type]
+            tags=[tag],
+        )
+    except Exception:
+        pass
+
     return summary
 
 

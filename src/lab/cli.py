@@ -24,6 +24,10 @@ from lab.experiment import (
 from lab.finding import list_findings, new_finding
 from lab.finding import sync as sync_findings
 from lab.manifest import capture as capture_manifest
+from lab.notify import get_ntfy_url, notify
+from lab.quota import alert_if_high as quota_alert
+from lab.quota import usage_window as quota_window
+from lab.spend import backfill as spend_backfill
 from lab.sweep.config import load_sweep
 from lab.sweep.runner import run_sweep
 from lab.tasks.registry import list_suites, load_tasks, register_tasks
@@ -255,6 +259,61 @@ def finding_list() -> None:
 
 
 # ---------------------------------------------------------------------------
+# quota — Ollama Cloud usage estimate
+# ---------------------------------------------------------------------------
+
+quota_app = typer.Typer(help="Ollama Cloud quota tracker (rough estimate)")
+app.add_typer(quota_app, name="quota")
+
+
+@quota_app.command("status")
+def quota_status(
+    tier: str = typer.Option("pro", "--tier", help="free | pro | max"),
+    window_hours: int = typer.Option(
+        168, "--window", help="Rolling window hours (default 168 = 7d)"
+    ),
+) -> None:
+    """Show estimated cloud usage over a rolling window."""
+    u = quota_window(tier=tier, window_hours=window_hours)  # type: ignore[arg-type]
+    table = Table("Field", "Value")
+    table.add_row("tier", u.tier)
+    table.add_row("window_hours", str(u.window_hours))
+    table.add_row("runs", str(u.runs))
+    table.add_row("tokens_in", f"{u.tokens_in:,}")
+    table.add_row("tokens_out", f"{u.tokens_out:,}")
+    table.add_row("weighted_units", str(u.weighted_units))
+    table.add_row("budget", str(u.budget))
+    color = "red" if u.pct_consumed >= 95 else "yellow" if u.pct_consumed >= 80 else "green"
+    table.add_row("pct_consumed", f"[{color}]{u.pct_consumed:.1f}%[/]")
+    console.print(table)
+
+
+@quota_app.command("backfill-cost")
+def quota_backfill_cost(
+    limit: int = typer.Option(1000, "--limit", help="Max runs to update in one pass"),
+) -> None:
+    """Backfill experiment_runs.cost_usd from the LiteLLM proxy spend ledger."""
+    report = spend_backfill(limit=limit)
+    table = Table("Field", "Value")
+    table.add_row("runs_examined", str(report.runs_examined))
+    table.add_row("spends_found", str(report.spends_found))
+    table.add_row("runs_updated", str(report.runs_updated))
+    table.add_row("total_cost_usd", f"${report.total_cost_usd:.6f}")
+    console.print(table)
+
+
+@quota_app.command("check")
+def quota_check(
+    tier: str = typer.Option("pro", "--tier", help="free | pro | max"),
+    threshold: float = typer.Option(80.0, "--threshold"),
+    window_hours: int = typer.Option(168, "--window"),
+) -> None:
+    """Compute usage and send an ntfy alert if above threshold. For cron use."""
+    u = quota_alert(threshold_pct=threshold, tier=tier, window_hours=window_hours)  # type: ignore[arg-type]
+    console.print(f"{u.pct_consumed:.1f}% of budget (threshold {threshold:.0f}%)")
+
+
+# ---------------------------------------------------------------------------
 # eval
 # ---------------------------------------------------------------------------
 
@@ -373,6 +432,28 @@ def docs_build() -> None:
 
     subprocess.call(["uv", "run", "mkdocs", "build", "--strict"])
     console.print("[green]built[/] /data/lab/code/site")
+
+
+@app.command("notify")
+def notify_command(
+    message: str = typer.Argument(..., help="Notification body"),
+    title: str = typer.Option("lab", "--title", "-T", help="Notification title"),
+    priority: str = typer.Option("default", "--priority", "-p", help="min|low|default|high|max"),
+    tags: list[str] = typer.Option([], "--tag", help="ntfy tag (repeatable)"),
+) -> None:
+    """Send a notification (ntfy.sh + best-effort notify-send)."""
+    url = get_ntfy_url()
+    if url:
+        console.print(f"[dim]ntfy → {url}[/]")
+    ok = notify(
+        message,
+        title=title,
+        priority=priority,  # type: ignore[arg-type]
+        tags=tags or None,
+    )
+    if not ok:
+        console.print("[yellow]no notification channel reachable[/]")
+        raise typer.Exit(code=1)
 
 
 @app.command("today")
