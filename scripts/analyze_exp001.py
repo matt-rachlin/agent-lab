@@ -66,13 +66,14 @@ def fetch_cells(con: duckdb.DuckDBPyConnection) -> list[CellAgg]:
     e AS (
         SELECT
             e.run_id,
-            -- prefer exact_match; fall back to regex_match
             COALESCE(
-                MAX(CASE WHEN e.evaluator_name='exact_match'   THEN e.score END),
-                MAX(CASE WHEN e.evaluator_name='regex_match'   THEN e.score END),
-                MAX(CASE WHEN e.evaluator_name='not_empty'     THEN e.score END)
+                MAX(CASE WHEN ev.name='exact_match' THEN e.score END),
+                MAX(CASE WHEN ev.name='regex_match' THEN e.score END),
+                MAX(CASE WHEN ev.name='not_empty'   THEN e.score END)
             ) AS score
         FROM postgres_scan('{PG}', 'public', 'eval_results') e
+        JOIN postgres_scan('{PG}', 'public', 'evaluators') ev
+          ON ev.evaluator_id = e.evaluator_id
         GROUP BY 1
     ),
     joined AS (
