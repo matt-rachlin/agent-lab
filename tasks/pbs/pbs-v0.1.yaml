@@ -1,0 +1,220 @@
+# Personal Benchmark Suite v0.1.
+#
+# 24 tasks across 3 categories (math-reasoning, format-following, knowledge-recall).
+# Designed to be:
+#   - cheap to grade (deterministic rubrics where possible)
+#   - completable in <30s by 12 GB-class models
+#   - non-trivial (not in vanilla training data verbatim)
+#   - spanning easy / medium / hard
+#
+# v0.1 is text-in / text-out only. Tool-use and desktop categories defer to v0.2+.
+
+suite: PBS-v0.1
+
+tasks:
+
+  # =========================================================================
+  # math-reasoning — multi-step arithmetic / logic
+  # =========================================================================
+
+  - slug: math-001
+    category: math-reasoning
+    difficulty: easy
+    input: "Compute (47 * 8) - (12 * 19) and reply with just the number."
+    gold_answer: "148"
+    rubric: { type: exact_match }
+
+  - slug: math-002
+    category: math-reasoning
+    difficulty: easy
+    input: "A train leaves at 13:45 and arrives 2 hours 37 minutes later. What time does it arrive? Reply HH:MM 24-hour."
+    gold_answer: "16:22"
+    rubric: { type: exact_match }
+
+  - slug: math-003
+    category: math-reasoning
+    difficulty: medium
+    input: "If 5 painters paint 5 rooms in 5 days, how many days do 12 painters take to paint 12 rooms? Reply with just the number."
+    gold_answer: "5"
+    rubric: { type: regex, pattern: '(?<![0-9])5(?![0-9])' }
+
+  - slug: math-004
+    category: math-reasoning
+    difficulty: medium
+    input: "I roll three fair six-sided dice. What is the probability that exactly two of them show the same value (and the third is different)? Reply as a fraction in lowest terms (e.g. p/q)."
+    gold_answer: "5/12"
+    rubric: { type: regex, pattern: '5\s*/\s*12' }
+
+  - slug: math-005
+    category: math-reasoning
+    difficulty: medium
+    input: "Find the smallest positive integer n such that n^2 + n is divisible by 60. Reply with just n."
+    gold_answer: "15"
+    rubric: { type: regex, pattern: '(?<![0-9])15(?![0-9])' }
+
+  - slug: math-006
+    category: math-reasoning
+    difficulty: hard
+    input: "Alice and Bob each pick a random integer uniformly from {1,2,...,100}. What is the probability that Alice's number divides Bob's number (with neither being 0)? Reply as a decimal to 3 places."
+    gold_answer: "0.052"
+    rubric: { type: regex, pattern: '0\.05[12]' }
+
+  - slug: math-007
+    category: math-reasoning
+    difficulty: hard
+    input: "How many integers from 1 to 1000 (inclusive) contain the digit '7' an odd number of times? Reply with just the integer."
+    gold_answer: "243"
+    rubric: { type: regex, pattern: '(?<![0-9])243(?![0-9])' }
+
+  - slug: math-008
+    category: math-reasoning
+    difficulty: hard
+    input: "A regular hexagon has area 6*sqrt(3). What is the length of one side? Reply as a decimal to 2 places."
+    gold_answer: "2.00"
+    rubric: { type: regex, pattern: '2\.0+\b|\b2\b' }
+
+  # =========================================================================
+  # format-following — output respects a stated format constraint
+  # =========================================================================
+
+  - slug: fmt-001
+    category: format-following
+    difficulty: easy
+    input: "List exactly 3 colors, comma-separated, all lowercase, no other text."
+    rubric:
+      type: regex
+      pattern: '^[a-z]+,\s*[a-z]+,\s*[a-z]+\s*$'
+
+  - slug: fmt-002
+    category: format-following
+    difficulty: easy
+    input: |
+      Return JSON: {"city": <a city>, "country": <its country>, "population_millions": <integer>}.
+      Only the JSON, nothing else.
+    rubric:
+      type: regex
+      pattern: '"city"\s*:\s*".+".*"country"\s*:\s*".+".*"population_millions"\s*:\s*[0-9]+'
+
+  - slug: fmt-003
+    category: format-following
+    difficulty: medium
+    input: |
+      Output a YAML list of exactly 5 items, each one a Python keyword (e.g. `if`, `for`).
+      Each line must start with "- ". No prose, no fences, no extra blank lines.
+    rubric:
+      type: regex
+      pattern: '^- [a-z]+\n- [a-z]+\n- [a-z]+\n- [a-z]+\n- [a-z]+\s*$'
+
+  - slug: fmt-004
+    category: format-following
+    difficulty: medium
+    input: |
+      Reply with the SHA-256 hex digest of the empty string. No other text.
+    gold_answer: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    rubric: { type: exact_match }
+
+  - slug: fmt-005
+    category: format-following
+    difficulty: medium
+    input: |
+      Output a JSON array of the first 6 prime numbers, in order, as integers.
+      No prose, no fences.
+    rubric:
+      type: regex
+      pattern: '^\s*\[\s*2\s*,\s*3\s*,\s*5\s*,\s*7\s*,\s*11\s*,\s*13\s*\]\s*$'
+
+  - slug: fmt-006
+    category: format-following
+    difficulty: hard
+    input: |
+      Return JSON: {"haiku": "line1 / line2 / line3"}.
+      The haiku must follow 5-7-5 syllable counts; lines joined by " / ".
+      Just the JSON.
+    rubric:
+      type: regex
+      pattern: '"haiku"\s*:\s*"[^"]+/\s*[^"]+/\s*[^"]+"'
+
+  - slug: fmt-007
+    category: format-following
+    difficulty: hard
+    input: |
+      Reply with EXACTLY 100 characters total (including spaces and any punctuation).
+      The content should describe what the Python `zip` builtin does.
+      No fences, no extra text.
+    rubric:
+      type: regex
+      # 80-120 chars to allow some slack while still penalising wildly-wrong lengths
+      pattern: '^.{80,120}$'
+
+  - slug: fmt-008
+    category: format-following
+    difficulty: hard
+    input: |
+      Output a Markdown table with exactly 3 columns (name | year | language) and 4 rows
+      describing famous programming languages and the year they were created.
+      No prose around the table.
+    rubric:
+      type: regex
+      pattern: '\|[^|]+\|[^|]+\|[^|]+\|\n\|[-: ]+\|[-: ]+\|[-: ]+\|\n(\|[^|]+\|[^|]+\|[^|]+\|\n){4}'
+
+  # =========================================================================
+  # knowledge-recall — factual questions with verifiable answers
+  # =========================================================================
+
+  - slug: know-001
+    category: knowledge-recall
+    difficulty: easy
+    input: "What is the chemical symbol for tungsten? One letter or two, no other text."
+    gold_answer: "W"
+    rubric: { type: exact_match, case_sensitive: true }
+
+  - slug: know-002
+    category: knowledge-recall
+    difficulty: easy
+    input: "Who wrote the novel 'The Brothers Karamazov'? Reply with just the author's surname."
+    gold_answer: "Dostoevsky"
+    rubric: { type: regex, pattern: '(?i)dostoy?evsk(?:y|ii?)' }
+
+  - slug: know-003
+    category: knowledge-recall
+    difficulty: medium
+    input: "Which planet in our solar system has the most known moons as of 2024? One word."
+    rubric:
+      type: regex
+      # accept Saturn or Jupiter — count flipped recently and answers differ by source
+      pattern: '(?i)\b(saturn|jupiter)\b'
+
+  - slug: know-004
+    category: knowledge-recall
+    difficulty: medium
+    input: "What year did the Treaty of Westphalia end the Thirty Years' War? Reply with just the 4-digit year."
+    gold_answer: "1648"
+    rubric: { type: regex, pattern: '(?<![0-9])1648(?![0-9])' }
+
+  - slug: know-005
+    category: knowledge-recall
+    difficulty: medium
+    input: "Name the function `numpy.linalg` provides for solving a linear system Ax=b. Reply with just the function name (no `numpy.linalg.` prefix)."
+    gold_answer: "solve"
+    rubric: { type: regex, pattern: '(?i)\bsolve\b' }
+
+  - slug: know-006
+    category: knowledge-recall
+    difficulty: hard
+    input: "What is the time complexity of the median-of-medians selection algorithm in the worst case? Reply in big-O notation only, like O(...). No prose."
+    gold_answer: "O(n)"
+    rubric: { type: regex, pattern: 'O\(\s*n\s*\)' }
+
+  - slug: know-007
+    category: knowledge-recall
+    difficulty: hard
+    input: "Which Linux system call atomically writes to a file descriptor at a given offset without changing the descriptor's seek position? Reply with just the syscall name."
+    gold_answer: "pwrite"
+    rubric: { type: regex, pattern: '(?i)\bpwrite(?:64)?\b' }
+
+  - slug: know-008
+    category: knowledge-recall
+    difficulty: hard
+    input: "In the Raft consensus algorithm, what is the role name of a node that has been elected to coordinate log replication? One word."
+    gold_answer: "leader"
+    rubric: { type: regex, pattern: '(?i)\bleader\b' }

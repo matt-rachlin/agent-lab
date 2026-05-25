@@ -10,6 +10,8 @@ from rich.console import Console
 from rich.table import Table
 
 from lab.analyze.report import make_report
+from lab.eval import apply_to_experiment, get_registry, load_evaluators_from
+from lab.eval.builtin import register_all as register_builtin_evaluators
 from lab.manifest import capture as capture_manifest
 from lab.sweep.config import load_sweep
 from lab.sweep.runner import run_sweep
@@ -93,6 +95,66 @@ def analyze_report(
         console.print(f"wrote {len(md):,} bytes to [bold]{out}[/]")
     else:
         sys.stdout.write(md)
+
+
+# ---------------------------------------------------------------------------
+# eval
+# ---------------------------------------------------------------------------
+
+eval_app = typer.Typer(help="Evaluator framework")
+app.add_typer(eval_app, name="eval")
+
+
+@eval_app.command("list")
+def eval_list(
+    extra: Path | None = typer.Option(None, "--from", help="Also load user evaluators from PATH"),
+) -> None:
+    """List registered evaluators (built-ins + optional user dir)."""
+    register_builtin_evaluators()
+    if extra:
+        new = load_evaluators_from(extra)
+        console.print(f"loaded {len(new)} user evaluator(s) from {extra}")
+    table = Table("Name", "Version", "Category", "Threshold", "Description")
+    for entry in sorted(get_registry().values(), key=lambda e: e.name):
+        table.add_row(
+            entry.name, entry.version, entry.category, str(entry.threshold), entry.description
+        )
+    console.print(table)
+
+
+@eval_app.command("apply")
+def eval_apply(
+    experiment: str = typer.Argument(..., help="Experiment slug"),
+    only: list[str] = typer.Option(
+        [], "--only", help="Restrict to named evaluators (repeatable)"
+    ),
+    extra: Path | None = typer.Option(None, "--from", help="Also load user evaluators from PATH"),
+    judge_model: str = typer.Option(
+        "gpt-oss-20b-cloud", "--judge", help="LiteLLM model_name for LLM-judge evaluators"
+    ),
+    no_judge: bool = typer.Option(False, "--no-judge", help="Disable judge (llm_judge evals skip)"),
+) -> None:
+    """Apply registered evaluators to every done run in an experiment."""
+    from lab.eval.judge import make_judge
+
+    register_builtin_evaluators()
+    if extra:
+        loaded = load_evaluators_from(extra)
+        console.print(f"loaded {len(loaded)} user evaluator(s) from {extra}")
+    names = list(only) if only else None
+    judge = None if no_judge else make_judge(model=judge_model)
+    reports = apply_to_experiment(experiment, evaluator_names=names, judge=judge)
+    table = Table("Evaluator", "Runs", "Scored", "Skipped", "Passed", "Failed")
+    for r in reports:
+        table.add_row(
+            r.evaluator,
+            str(r.n_runs),
+            str(r.n_scored),
+            str(r.n_skipped),
+            f"[green]{r.n_passed}[/]",
+            f"[red]{r.n_failed}[/]" if r.n_failed else "0",
+        )
+    console.print(table)
 
 
 # ---------------------------------------------------------------------------

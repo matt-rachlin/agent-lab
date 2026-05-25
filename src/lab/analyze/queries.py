@@ -75,3 +75,54 @@ def summary_by_model_config(experiment_slug: str) -> list[dict[str, object]]:
         """
     )
     return fetchall_as_dicts(rel)
+
+
+def summary_eval_by_model(experiment_slug: str) -> list[dict[str, object]]:
+    """Per-(model, evaluator) pass-rate summary."""
+    con = open_db()
+    rel = con.sql(
+        f"""
+        SELECT
+            m.litellm_id                                            AS model,
+            ev.name                                                 AS evaluator,
+            ev.version                                              AS eval_version,
+            COUNT(*)                                                AS n,
+            SUM(CASE WHEN er.passed THEN 1 ELSE 0 END)              AS passed,
+            ROUND(100.0 * AVG(CASE WHEN er.passed THEN 1.0 ELSE 0.0 END), 1) AS pass_rate_pct,
+            ROUND(AVG(er.score)::DOUBLE, 3)                         AS score_mean,
+            ROUND(MEDIAN(er.score)::DOUBLE, 3)                      AS score_p50
+        FROM lab.public.eval_results er
+        JOIN lab.public.experiment_runs r ON r.run_id = er.run_id
+        JOIN lab.public.evaluators ev     ON ev.evaluator_id = er.evaluator_id
+        JOIN lab.public.models m          ON m.model_id = r.model_id
+        JOIN lab.public.experiments e     ON e.experiment_id = r.experiment_id
+        WHERE e.slug = '{experiment_slug}'
+        GROUP BY m.litellm_id, ev.name, ev.version
+        ORDER BY ev.name, m.litellm_id
+        """
+    )
+    return fetchall_as_dicts(rel)
+
+
+def per_cell_results(experiment_slug: str, evaluator_name: str) -> list[dict[str, object]]:
+    """One row per (model, task, seed) for a single evaluator — feeds pass^k and CIs."""
+    con = open_db()
+    rel = con.sql(
+        f"""
+        SELECT
+            m.litellm_id   AS model,
+            t.slug         AS task,
+            r.seed         AS seed,
+            er.score       AS score,
+            er.passed      AS passed
+        FROM lab.public.eval_results er
+        JOIN lab.public.experiment_runs r ON r.run_id = er.run_id
+        JOIN lab.public.evaluators ev     ON ev.evaluator_id = er.evaluator_id
+        JOIN lab.public.models m          ON m.model_id = r.model_id
+        JOIN lab.public.tasks t           ON t.task_id  = r.task_id
+        JOIN lab.public.experiments e     ON e.experiment_id = r.experiment_id
+        WHERE e.slug = '{experiment_slug}'
+          AND ev.name = '{evaluator_name}'
+        """
+    )
+    return fetchall_as_dicts(rel)
