@@ -191,8 +191,26 @@ def test_db_query_predicate_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     assert s.value == 1.0
 
 
-def test_unknown_predicate_type() -> None:
+def test_unknown_predicate_type_returns_noanswer() -> None:
+    """Unknown predicate types (e.g. `retrieval_recall` on a non-RAG scorer)
+    should NOANSWER, not score 0.0 — see F-005 EXP-002 follow-up.
+    """
     state = _state(success_predicate={"type": "magic_8_ball"})
     s = _run(end_state(), state)
-    assert s.value == 0.0
-    assert "unknown" in (s.explanation or "")
+    assert s.value == NOANSWER
+    assert "not applicable" in (s.explanation or "")
+
+
+def test_retrieval_recall_predicate_returns_noanswer() -> None:
+    """The concrete case from F-005: `end_state` saw `retrieval_recall`
+    (a RAG-only predicate type) and was scoring 0.0. After the fix it
+    should NOANSWER so the scorer's mean isn't polluted on RAG tasks.
+    """
+    state = _state(
+        success_predicate={
+            "type": "retrieval_recall",
+            "expected_chunks": ["chunk-1", "chunk-2"],
+        }
+    )
+    s = _run(end_state(), state)
+    assert s.value == NOANSWER

@@ -42,6 +42,46 @@ console = Console()
 
 PIDFILE_DIR = Path("/data/lab/services/sweep-pids")
 
+# Sandbox image hash file. Recorded by `lab agent sandbox build`; read by
+# the in-sweep drift guard (see `ImageHashDriftError`).
+_SANDBOX_IMAGE_HASH_PATH = Path("conf/sandbox-image.sha")
+
+
+class ImageHashDriftError(RuntimeError):
+    """Raised when the sandbox image hash changes mid-sweep.
+
+    F-005 EXP-002 follow-up: during EXP-002 the sweep saw three distinct
+    `sandbox_image_hash` values for cells nominally descended from the same
+    Containerfile commit. Root cause: a background `podman image prune`
+    reaped layers between cells, triggering Containerfile rebuilds the next
+    time the sweep pulled the image. The launch-time preflight catches
+    mismatches against the registered experiment but NOT within-sweep
+    drift — this guard closes the gap.
+
+    The error message intentionally names both hashes so the operator can
+    diff Containerfile and figure out which rebuild produced the second
+    image. The sweep aborts cleanly (no further cells run) but already-
+    executed cells stay in the DB tagged with whichever hash they ran
+    against — F-005 analysis can still attribute results.
+    """
+
+
+def _read_sandbox_image_hash() -> str | None:
+    """Return the recorded sandbox image hash, or None if absent.
+
+    Written by `lab agent sandbox build`. Returns None if the file is
+    missing or empty — the drift guard treats `None` as "no hash known"
+    and silently skips the check (so non-agent sweeps don't blow up).
+    """
+
+    if not _SANDBOX_IMAGE_HASH_PATH.exists():
+        return None
+    try:
+        text = _SANDBOX_IMAGE_HASH_PATH.read_text().strip()
+    except OSError:
+        return None
+    return text or None
+
 
 def _pidfile_for(slug: str) -> Path:
     return PIDFILE_DIR / f"{slug}.pid"
@@ -764,7 +804,20 @@ def run_sweep(
         todo, key=lambda c: (c.model_litellm_id, c.config.name, c.task_slug, c.seed)
     )
 
-    summary = {"total": len(cells), "done_before": len(done), "executed": 0, "errors": 0}
+    # Cache the sandbox image hash at sweep start. The drift guard re-reads
+    # `conf/sandbox-image.sha` before each cell and aborts if the value
+    # changes. `None` at start (no agent cells / non-agent sweep) disables
+    # the check entirely; `None` mid-sweep means the file vanished, which
+    # is also drift.
+    starting_image_hash: str | None = _read_sandbox_image_hash()
+    summary: dict[str, Any] = {
+        "total": len(cells),
+        "done_before": len(done),
+        "executed": 0,
+        "errors": 0,
+        "starting_image_hash": starting_image_hash,
+        "image_hash_drift": None,
+    }
     try:
         with Progress(
             SpinnerColumn(),
@@ -779,6 +832,38 @@ def run_sweep(
         ) as progress:
             bar = progress.add_task("sweeping", total=len(todo_sorted))
             for cell in todo_sorted:
+                # Image-hash drift guard. If we know a starting hash, refuse
+                # to dispatch a cell whose image hash disagrees. We re-read
+                # the file each iteration so an out-of-band rebuild (e.g.
+                # `podman image prune` reaping layers + a rebuild on the
+                # next pull) trips the guard the same way a manual change
+                # would. Sweep aborts cleanly; the already-executed cells
+                # remain in the DB tagged with their actual hash, so F-005-
+                # style attribution still works.
+                if starting_image_hash is not None:
+                    current_image_hash = _read_sandbox_image_hash()
+                    if current_image_hash != starting_image_hash:
+                        summary["image_hash_drift"] = {
+                            "starting": starting_image_hash,
+                            "current": current_image_hash,
+                            "at_cell": cell.run_id,
+                            "executed": summary["executed"],
+                        }
+                        progress.console.log(
+                            f"[red]image_hash_drift[/]: "
+                            f"starting={starting_image_hash[:12]}, "
+                            f"current={(current_image_hash or 'MISSING')[:12]}, "
+                            f"at_cell={cell.run_id}; "
+                            f"aborting sweep after {summary['executed']} cells"
+                        )
+                        raise ImageHashDriftError(
+                            "sandbox image hash drifted mid-sweep: "
+                            f"starting={starting_image_hash}, "
+                            f"current={current_image_hash}, "
+                            f"at_cell={cell.run_id}, "
+                            f"executed={summary['executed']}/{len(todo_sorted)}"
+                        )
+
                 model_default_system = None
                 model_default_extra: dict[str, Any] | None = None
                 md = spec.model_defaults.get(cell.model_litellm_id)

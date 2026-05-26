@@ -85,7 +85,7 @@ def run_eval(
     from lab.rag.index import TABLE_NAME
 
     db = lancedb.connect(str(kb_dir / "index"))
-    if TABLE_NAME not in db.table_names():
+    if TABLE_NAME not in db.list_tables():
         raise RuntimeError("no index — run build first")
     rows = db.open_table(TABLE_NAME).to_arrow().to_pylist()
     if not rows:

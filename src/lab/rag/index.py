@@ -50,7 +50,7 @@ def _schema(dims: int) -> pa.Schema:
 
 def open_table(kb_dir: Path, dims: int) -> Any:
     db = lancedb.connect(str(kb_dir / "index"))
-    if TABLE_NAME in db.table_names():
+    if TABLE_NAME in db.list_tables():
         return db.open_table(TABLE_NAME)
     return db.create_table(TABLE_NAME, schema=_schema(dims))
 
@@ -62,7 +62,7 @@ def write_rows(kb_dir: Path, rows: list[dict[str, Any]], dims: int) -> None:
 
 def replace_table(kb_dir: Path, rows: list[dict[str, Any]], dims: int) -> None:
     db = lancedb.connect(str(kb_dir / "index"))
-    if TABLE_NAME in db.table_names():
+    if TABLE_NAME in db.list_tables():
         db.drop_table(TABLE_NAME)
     tbl = db.create_table(TABLE_NAME, schema=_schema(dims))
     if rows:
@@ -137,7 +137,7 @@ def hybrid_query(
     if not (kb_dir / "index").exists():
         return []
     db = lancedb.connect(str(kb_dir / "index"))
-    if TABLE_NAME not in db.table_names():
+    if TABLE_NAME not in db.list_tables():
         return []
     tbl = db.open_table(TABLE_NAME)
     if tbl.count_rows() == 0:
@@ -217,7 +217,7 @@ def count_rows(kb_dir: Path) -> int:
     if not (kb_dir / "index").exists():
         return 0
     db = lancedb.connect(str(kb_dir / "index"))
-    if TABLE_NAME not in db.table_names():
+    if TABLE_NAME not in db.list_tables():
         return 0
     rows: int = db.open_table(TABLE_NAME).count_rows()
     return rows

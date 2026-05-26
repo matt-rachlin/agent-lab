@@ -241,7 +241,15 @@ def end_state(predicate: dict[str, Any] | None = None) -> Scorer:
         if ptype == "db_query":
             value, explanation = _eval_db_predicate(active)
             return Score(value=value, explanation=explanation)
-        return Score(value=0.0, explanation=f"unknown predicate type {ptype!r}")
+        # Unknown predicate type — return NOANSWER (not 0.0) so a scorer
+        # mismatch (e.g. `end_state` paired with a RAG `retrieval_recall`
+        # predicate) reads as "not applicable" rather than a false fail.
+        # F-005 EXP-002 follow-up: `end_state` was scoring 0.0 on every
+        # `retrieval_recall` task, polluting the end_state mean.
+        return Score(
+            value=NOANSWER,
+            explanation=f"end_state not applicable to predicate type {ptype!r}",
+        )
 
     return score
 

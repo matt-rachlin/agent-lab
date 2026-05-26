@@ -16,6 +16,18 @@ fetch whose hostname is in the allow-list is served from
 Used by the PBS-Agent v0.1 http-domain tasks so they're reproducible and
 don't require live external services. Returns 200 on hit, 404 on miss; never
 makes a network call when this var is set.
+
+**Image-rebuild invariant (added 6h-e after F-005)**: the sandbox image
+embeds a frozen copy of this module via `COPY src/lab/agent/...` in
+``containers/Containerfile.agent-sandbox``. If you change *anything* in
+this file — including fixture-mode semantics — you must rebuild the image
+(``just sandbox-build``) before the change takes effect inside the
+sandbox. EXP-002 was bitten by this: the sweep ran with three distinct
+image hashes (mid-sweep drift caused by ``podman image prune`` reaping
+layers between cells); at least one image predated the fixture-mode code
+and so the http tasks hit live ``example.org`` instead. The image-hash
+drift guard in ``src/lab/sweep/runner.py`` now aborts the sweep on
+mid-flight hash change; this docstring is the human-facing reminder.
 """
 
 from __future__ import annotations

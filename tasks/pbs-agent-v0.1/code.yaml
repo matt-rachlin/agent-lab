@@ -84,12 +84,24 @@ tasks:
     description: |
       Locate a buggy Python file via fs_grep, read it, then fix it by
       overwriting. Exercises grep + read + write + shell.
+
+      Task-author trap (F-005 EXP-002): the success_predicate must NOT be
+      a substring that already appears anywhere in the seed file — comments
+      count. The previous iteration of this task pre-seeded a comment
+      mentioning the target word; the `workspace_file_contains` check
+      passed at sandbox-init time and every model — even ones that issued
+      zero tool calls — scored 1.0. The fix is to require the BUG-FREE-FILE
+      end-state: the buggy literal `print("good")` is gone AND the corrected
+      `print("great")` is present. Both halves are needed; either alone is
+      spoofable by a no-op trajectory. Predicates that can be satisfied by
+      the seed must be flagged as a bug.
     input: |
       A buggy Python script lives somewhere under the 'src/' directory in
-      the workspace. The bug is that it prints 'good' instead of 'great'.
-      Use fs_grep to find which file prints 'good', then use fs_write with
-      mode='overwrite' to replace the file's contents with a corrected
-      version that prints 'great' instead. Verify by running it with
+      the workspace. Currently it prints the word 'good' but it should
+      print 'great'. Use fs_grep to find which file calls
+      print with the buggy string, then use fs_write with mode='overwrite'
+      to replace the file's contents with a corrected version that calls
+      print with 'great' instead. Verify by running it with
       shell_exec ('python3 <path>'). Reply with the captured stdout.
     system: |
       You are a debugging assistant with filesystem and shell access. Use
@@ -102,15 +114,28 @@ tasks:
     max_turns: 6
     tool_budget: 8
     sandbox:
+      # Seed file uses the literal token "buggy-output" in the comment so
+      # neither "good" nor "great" appears anywhere except inside the
+      # `print("good")` call. The predicate's positive half (`print("great")`)
+      # can ONLY arrive via fs_write; the negative half (`print("good")` gone)
+      # can ONLY happen if the file was rewritten. Either change in isolation
+      # is impossible because the predicate AND's them via two scorers.
       workspace_files:
         "src/cli/main.py": |
-          # buggy: prints 'good' but should print 'great'
+          # buggy-output literal needs to change from g_o_o_d to g_r_e_a_t
           print("good")
         "src/utils/other.py": "# unrelated\nprint('hello')\n"
+    # Two-part predicate: the corrected literal MUST appear AND the buggy
+    # literal MUST NOT remain. We use `workspace_file_contains` with the
+    # exact `print("great")` token (not just "great") so the comment can't
+    # spoof it; the negative half is provided by `tool_correctness` on
+    # fs_write (the only way to flip the print statement). Future PBS-Agent
+    # versions should add a `workspace_file_does_not_contain` predicate to
+    # make the negative half explicit at the scorer level.
     success_predicate:
       type: workspace_file_contains
       path: src/cli/main.py
-      substring: "great"
+      substring: "print(\"great\")"
     rubric:
       type: tool_call
       target_tool: fs_grep
