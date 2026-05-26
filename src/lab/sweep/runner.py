@@ -600,6 +600,20 @@ def _execute_agent_cell(
     from lab.tasks.registry import Task as LabTask
 
     payload = cell.task_payload
+
+    # EXP-003b: allow the sweep config to ablate kb_query out of the tools
+    # list. The config carries `extra.tool_filter: exclude_kb_query`; we
+    # apply it BEFORE LabTask construction so the rest of the harness
+    # (kb_mount detection, adapter scorer selection) sees the filtered tools.
+    raw_tools = payload.get("tools")
+    cfg_extra = cell.config.extra or {}
+    tool_filter = cfg_extra.get("tool_filter")
+    if tool_filter == "exclude_kb_query" and raw_tools:
+        raw_tools = [
+            t for t in raw_tools
+            if not (isinstance(t, dict) and t.get("name") == "kb_query")
+        ]
+
     lab_task = LabTask.model_validate(
         {
             "suite": payload.get("suite", "agent"),
@@ -607,7 +621,7 @@ def _execute_agent_cell(
             "category": payload.get("category"),
             "input": payload["input"],
             "system": payload.get("system"),
-            "tools": payload.get("tools"),
+            "tools": raw_tools,
             "max_turns": payload.get("max_turns", 1),
             "tool_budget": payload.get("tool_budget", 0),
             "success_predicate": payload.get("success_predicate"),
@@ -681,6 +695,9 @@ def _execute_agent_cell(
             # system_prompt is consumed locally and not forwarded as a
             # backend knob; drop it before plumbing to the solver.
             merged_extra.pop("system_prompt", None)
+            # tool_filter is a sweep-level ablation knob (EXP-003b), already
+            # applied above to lab_task.tools; not a backend knob.
+            merged_extra.pop("tool_filter", None)
 
             inspect_task = lab_task_to_inspect(
                 lab_task,

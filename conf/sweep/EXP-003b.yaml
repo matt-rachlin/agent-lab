@@ -1,0 +1,50 @@
+# EXP-003b — RAG-augmented agent on pbs-agent-rag-v0.1
+# Plan: docs/exp/EXP-003b.md
+# 6 tasks × 5 models × 2 configs × 4 seeds = 240 cells
+# Estimated wall: ~45-90 min (gVisor + Ollama Cloud + KB hits)
+
+experiment:
+  slug: EXP-003b
+  title: "RAG-augmented agent — does kb_query change task success?"
+  hypothesis: "Four pre-registered hypotheses on local-vs-cloud gain from kb_query on PBS-Agent-RAG v0.1"
+  plan_path: docs/exp/EXP-003b.md
+
+tasks:
+  suite: pbs-agent-rag-v0.1
+  # No slug filter — pick up all 6 PBS-Agent-RAG v0.1 tasks
+
+models:
+  - qwen3-14b-q4
+  - llama3.1-8b-q4
+  - gpt-oss-20b-cloud
+  - glm-5.1-cloud
+  - gpt-oss-120b-cloud
+
+configs:
+  - name: with-kb
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+    # Default tools — kb_query stays in the list (task declares it).
+  - name: without-kb
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+    extra:
+      # _execute_agent_cell strips kb_query from lab_task.tools when this
+      # is set. tool_filter is dropped from the merged-extras before they
+      # reach LiteLLM, so it never becomes a backend knob.
+      tool_filter: exclude_kb_query
+
+# qwen3 reasoning off — same amendment as EXP-002.
+model_defaults:
+  qwen3-14b-q4:
+    extra:
+      think: false
+
+seeds: [1, 2, 3, 4]
+
+max_concurrency: 1
+request_timeout_sec: 600
