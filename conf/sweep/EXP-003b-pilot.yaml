@@ -1,0 +1,43 @@
+# EXP-003b PILOT — temporary pilot config used only for the 6h-f pilot pass.
+# Plan: docs/exp/EXP-003b.md §Pre-flight pilot (REQUIRED).
+#
+# 6 tasks x 5 models x 1 condition (with-kb) x 1 seed = 30 cells
+# Estimated wall: 15-20 min.
+#
+# This is NOT pre-registered separately; it shares EXP-003b's slug so
+# the runs land in the same experiment_runs bucket. After the pilot
+# checks out, EXP-003b.yaml runs the full 240-cell sweep with --resume
+# so these 30 cells are skipped.
+
+experiment:
+  slug: EXP-003b
+  title: "RAG-augmented agent -- pilot pass"
+  hypothesis: "Pre-flight sanity: kb_query mount + scorers + judge"
+  plan_path: docs/exp/EXP-003b.md
+
+tasks:
+  suite: pbs-agent-rag-v0.1
+
+models:
+  - qwen3-14b-q4
+  - llama3.1-8b-q4
+  - gpt-oss-20b-cloud
+  - glm-5.1-cloud
+  - gpt-oss-120b-cloud
+
+configs:
+  - name: with-kb
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+
+model_defaults:
+  qwen3-14b-q4:
+    extra:
+      think: false
+
+seeds: [1]
+
+max_concurrency: 1
+request_timeout_sec: 600
