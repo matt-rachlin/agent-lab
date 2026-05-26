@@ -44,3 +44,27 @@ tasks:
       target_tool: fs_write
       expected_args:
         path: answer.txt
+
+  - slug: kb-query-smoke
+    difficulty: easy
+    description: |
+      Wiring smoke for the kb_query MCP tool. The bash KB is still
+      `enrichment_pending` (0 indexed rows), so the tool short-circuits to
+      the empty-KB path. The point is to verify the agent harness mounts the
+      KB root, spawns the tool, and gets back a clean empty result — the
+      indexing itself is 6h-d's problem.
+    input: |
+      Use the kb_query tool with kb_name="bash" and
+      question="how do I redirect stderr to stdout" to search the bash
+      knowledge base. Then return the value of the "kb_status" field from
+      the result (it will be "empty" because the KB is not yet indexed).
+    system: "You are an assistant with tool access. Always use tools when asked."
+    tools:
+      - name: kb_query
+    max_turns: 3
+    tool_budget: 2
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash

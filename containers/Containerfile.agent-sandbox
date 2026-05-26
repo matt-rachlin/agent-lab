@@ -37,18 +37,35 @@ RUN curl -fsSL https://astral.sh/uv/install.sh \
 # pinned above. Bootstrap pip into 3.13 via `ensurepip` and install from
 # there, so `python -m lab.agent.tools.*` and the deps resolve against the
 # same interpreter.
+#
+# `pydantic-settings`, `ruamel.yaml`, `ollama`, `lancedb`, `pyarrow`,
+# `rank-bm25`, and `tenacity` are pulled in for the kb_query tool — which
+# loads lab.rag + lab.settings to query a host-mounted KB. They're heavy,
+# but the alternative (host-side retrieval bridged in) breaks the per-call
+# sandboxed pattern the rest of the tool surface uses.
 RUN python3.13 -m ensurepip --upgrade \
     && python3.13 -m pip install --no-cache-dir \
         "mcp>=1.27" \
         "httpx>=0.27" \
         "pydantic>=2.9" \
+        "pydantic-settings>=2.5" \
+        "ruamel.yaml>=0.18" \
+        "ollama>=0.4" \
+        "lancedb>=0.13" \
+        "pyarrow>=17" \
+        "rank-bm25>=0.2.2" \
+        "tenacity>=8.5" \
     && rm -rf /root/.cache
 
-# Copy the lab.agent subpackage into a system path so `python3 -m
-# lab.agent.tools.fs_read` resolves without us having to install the whole
-# `lab` distribution. We mirror just `lab.agent` — nothing else from src/lab
-# is safe to include here (it'd drag in psycopg, boto3, etc).
+# Copy the lab subpackages the in-sandbox tools need:
+#   * `lab.agent`    — every tool server lives here
+#   * `lab.rag`      — vendored kb-builder modules used by kb_query
+#   * `lab.settings` — resolves `LAB_KB_ROOT` and other paths
+# Nothing else from src/lab is safe to include here (it'd drag in psycopg,
+# boto3, mlflow, etc); the host-side `lab.cli` keeps that surface.
 COPY src/lab/agent /usr/lib/python3.13/site-packages/lab/agent
+COPY src/lab/rag /usr/lib/python3.13/site-packages/lab/rag
+COPY src/lab/settings.py /usr/lib/python3.13/site-packages/lab/settings.py
 RUN install -m 0644 /dev/null /usr/lib/python3.13/site-packages/lab/__init__.py \
     && find /usr/lib/python3.13/site-packages/lab -name __pycache__ -exec rm -rf {} + \
     && find /usr/lib/python3.13/site-packages/lab -type d -exec chmod 0755 {} + \

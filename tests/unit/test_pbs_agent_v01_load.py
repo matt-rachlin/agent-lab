@@ -77,13 +77,31 @@ def test_every_referenced_tool_exists() -> None:
 
 
 def test_every_tool_is_touched_by_some_task() -> None:
+    """Every tool the PBS-Agent v0.1 suite was built around must be exercised.
+
+    The pinned set is the 6f-era tool surface. Tools added later (e.g.
+    `kb_query` in 6h) don't need to be present in this suite — they live in
+    their own task fixtures. Keep the assertion scoped to the suite's
+    contemporaneous tool set so adding new tools doesn't retroactively
+    invalidate the suite.
+    """
+    pbs_agent_v01_tools = {
+        "fs_read",
+        "fs_write",
+        "fs_grep",
+        "shell_exec",
+        "http_fetch",
+        "python_eval",
+    }
+    # Sanity-check the registry still contains the v0.1 surface.
+    assert pbs_agent_v01_tools <= set(TOOL_SERVERS)
     touched: set[str] = set()
     for task in _all_tasks():
         for spec in task.tools or []:
             n = spec.get("name")
             if n:
                 touched.add(n)
-    missing = set(TOOL_SERVERS) - touched
+    missing = pbs_agent_v01_tools - touched
     assert not missing, f"tools never touched by any task: {sorted(missing)}"
 
 

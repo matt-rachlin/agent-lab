@@ -158,3 +158,41 @@ def test_sandbox_unique_container_names() -> None:
     b = Sandbox()
     assert a.container_name != b.container_name
     assert a.container_name.startswith("lab-sandbox-")
+
+
+def test_build_run_argv_kb_mount_added_when_set() -> None:
+    """kb_query needs read-only access to the host KB root inside the sandbox."""
+    from pathlib import Path
+
+    argv = _build_run_argv(
+        image="img",
+        name="n",
+        runtime="runsc",
+        network="none",
+        mem_limit="1g",
+        cpu_limit=2.0,
+        env=None,
+        kb_root_mount=Path("/home/m/db/kb"),
+    )
+    assert "-v=/home/m/db/kb:/kb:ro" in argv
+
+
+def test_build_run_argv_no_kb_mount_by_default() -> None:
+    argv = _build_run_argv(
+        image="img",
+        name="n",
+        runtime="runsc",
+        network="none",
+        mem_limit="1g",
+        cpu_limit=2.0,
+        env=None,
+    )
+    assert not any(arg.startswith("-v=") for arg in argv)
+
+
+def test_sandbox_accepts_kb_root_mount_as_path() -> None:
+    from pathlib import Path
+
+    sb = Sandbox(kb_root_mount=Path("/some/kb"))
+    assert sb.kb_root_mount == Path("/some/kb")
+    assert sb.kb_mount_target == "/kb"

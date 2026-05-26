@@ -590,6 +590,14 @@ def agent_run(
         k: v.encode("utf-8") if isinstance(v, str) else v for k, v in workspace_files_raw.items()
     }
 
+    from lab.agent.tools import task_needs_kb_mount
+    from lab.settings import get_settings as _get_settings_kb
+
+    kb_root_mount: Path | None = None
+    if task_needs_kb_mount(lab_task.tools):
+        kb_root_mount = _get_settings_kb().kb_root
+        env.setdefault("LAB_KB_ROOT", "/kb")
+
     run_id_ = f"adhoc-{lab_task.slug}-{_uuid.uuid4().hex[:8]}"
     console.print(
         f"[bold]agent run[/]: task={lab_task.slug} model={model} "
@@ -602,7 +610,12 @@ def agent_run(
     parent_dir = tempfile.mkdtemp(prefix="lab-inspect-parent-")
     log_dir = str(Path(parent_dir) / "inspect")
     try:
-        with Sandbox(network=network, env=env, workspace_files=workspace_files) as sandbox:
+        with Sandbox(
+            network=network,
+            env=env,
+            workspace_files=workspace_files,
+            kb_root_mount=kb_root_mount,
+        ) as sandbox:
             inspect_task = lab_task_to_inspect(
                 lab_task,
                 model=model,
@@ -736,18 +749,34 @@ def agent_tools_test(
         "shell_exec": {"command": "echo ok"},
         "http_fetch": {"url": "https://example.com/"},
         "python_eval": {"code": "print(2+2)"},
+        "kb_query": {"kb_name": "bash", "question": "how do I redirect stderr to stdout", "k": 3},
     }
     args = smoke_args[name]
     network: str | list[str] = "none"
     env: dict[str, str] = {}
     workspace_files: dict[str, bytes] = {}
+    kb_root_mount: Path | None = None
     if name == "http_fetch":
         network = ["example.com"]
         env = {"LAB_HTTP_ALLOWLIST": "example.com"}
     elif name in {"fs_read", "fs_grep"}:
         # Stage a file so the read/grep have something to look at.
         workspace_files = {"smoke.txt": b"hello smoke\n"}
-    with Sandbox(network=network, env=env, workspace_files=workspace_files) as sb:
+    elif name == "kb_query":
+        # Mount the lab KB root read-only. The smoke test runs against the
+        # `bash` KB, which is `enrichment_pending` with 0 indexed chunks, so
+        # `kb_query` short-circuits to the empty-KB path before touching
+        # Ollama — no network needed.
+        from lab.settings import get_settings as _get_settings_kb
+
+        kb_root_mount = _get_settings_kb().kb_root
+        env["LAB_KB_ROOT"] = "/kb"
+    with Sandbox(
+        network=network,
+        env=env,
+        workspace_files=workspace_files,
+        kb_root_mount=kb_root_mount,
+    ) as sb:
         try:
             result = _invoke_tool_via_sandbox_sync(sb, TOOL_SERVERS[name], name, args)
         except Exception as exc:

@@ -587,6 +587,15 @@ def _execute_agent_cell(
         for k, v in (workspace_files_raw or {}).items()
     }
 
+    from lab.agent.tools import task_needs_kb_mount as _task_needs_kb_mount
+
+    kb_root_mount: Path | None = None
+    if _task_needs_kb_mount(lab_task.tools):
+        from lab.settings import get_settings as _get_settings_kb
+
+        kb_root_mount = _get_settings_kb().kb_root
+        env.setdefault("LAB_KB_ROOT", "/kb")
+
     result: CellResult
     sweep_ctx = SweepContext(
         run_id=cell.run_id,
@@ -610,6 +619,7 @@ def _execute_agent_cell(
             env=env,
             workspace_files=workspace_files,
             time_limit_sec=timeout,
+            kb_root_mount=kb_root_mount,
         ) as sandbox:
             # Merge per-model `extra` over config.extra (per-model wins).
             merged_extra: dict[str, Any] = {}

@@ -95,6 +95,11 @@ class _PodmanArgs:
     env: dict[str, str] = field(default_factory=dict)
     add_hosts: list[tuple[str, str]] = field(default_factory=list)
     dns_servers: list[str] = field(default_factory=list)
+    # Read-only bind mount of the host KB root to a fixed path inside the
+    # container (default `/kb`). When None, no KB mount is added — keeps the
+    # default sandbox surface unchanged.
+    kb_root_mount: Path | None = None
+    kb_mount_target: str = "/kb"
 
     def to_argv(self) -> list[str]:
         argv = [
@@ -125,6 +130,11 @@ class _PodmanArgs:
             argv += [f"--add-host={host}:{ip}"]
         for dns in self.dns_servers:
             argv += [f"--dns={dns}"]
+        if self.kb_root_mount is not None:
+            # `:ro` makes the mount read-only; `Z` would relabel for SELinux
+            # but conflicts with `label=disable` we already pass, so we leave
+            # SELinux relabelling alone (gVisor doesn't care).
+            argv += [f"-v={self.kb_root_mount}:{self.kb_mount_target}:ro"]
         for k, v in sorted(self.env.items()):
             argv += ["--env", f"{k}={v}"]
         argv += [
@@ -149,6 +159,8 @@ def _build_run_argv(
     env: dict[str, str] | None,
     add_hosts: list[tuple[str, str]] | None = None,
     dns_servers: list[str] | None = None,
+    kb_root_mount: Path | None = None,
+    kb_mount_target: str = "/kb",
 ) -> list[str]:
     """Pure helper exposed for unit tests; mirrors `_PodmanArgs.to_argv`."""
 
@@ -162,6 +174,8 @@ def _build_run_argv(
         env=env or {},
         add_hosts=list(add_hosts or []),
         dns_servers=list(dns_servers or []),
+        kb_root_mount=kb_root_mount,
+        kb_mount_target=kb_mount_target,
     ).to_argv()
 
 
@@ -205,6 +219,8 @@ class Sandbox:
         time_limit_sec: int = 120,
         workspace_files: dict[str, bytes] | None = None,
         env: dict[str, str] | None = None,
+        kb_root_mount: Path | None = None,
+        kb_mount_target: str = "/kb",
     ) -> None:
         # Allow-list of (host, ip) pairs to bake into the container's
         # `/etc/hosts`; empty in non-allow-list modes.
@@ -234,6 +250,10 @@ class Sandbox:
         self.time_limit_sec = time_limit_sec
         self.workspace_files = workspace_files or {}
         self.env = env or {}
+        self.kb_root_mount: Path | None = (
+            Path(kb_root_mount) if kb_root_mount is not None else None
+        )
+        self.kb_mount_target = kb_mount_target
         # Container name: short + unique + recognisable in `podman ps`.
         self.container_name = f"lab-sandbox-{uuid.uuid4().hex[:12]}"
         self._started = False
@@ -271,6 +291,8 @@ class Sandbox:
             env=self.env,
             add_hosts=add_hosts,
             dns_servers=dns_servers,
+            kb_root_mount=self.kb_root_mount,
+            kb_mount_target=self.kb_mount_target,
         )
         try:
             proc = subprocess.run(
