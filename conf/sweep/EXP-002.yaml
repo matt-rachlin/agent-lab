@@ -1,0 +1,44 @@
+# EXP-002 — The 12 GB Agent v0.2 — first tool-use characterization
+# Plan: docs/exp/EXP-002.md
+# 12 tasks × 5 models × 1 config × 8 seeds = 480 cells
+# Estimated wall time: ~3-4 hr (gVisor + 2-day cloud quota window)
+
+experiment:
+  slug: EXP-002
+  title: "The 12 GB Agent v0.2 — first tool-use characterization"
+  hypothesis: "Four pre-registered hypotheses on local vs Ollama-Cloud tool-use behaviour on PBS-Agent v0.1 (tool-call accuracy, multi-turn reliability cliff, cost-vs-latency scaling)"
+  plan_path: docs/exp/EXP-002.md
+
+tasks:
+  suite: pbs-agent-v0.1
+  # No slugs filter — pick up all 12 PBS-Agent v0.1 tasks
+
+# Models in declared order. Outer-loop-by-model handled by the sweep runner;
+# we keep locals first so the GPU lease warms once per model.
+models:
+  - qwen3-14b-q4
+  - llama3.1-8b-q4
+  - gpt-oss-20b-cloud
+  - glm-5.1-cloud
+  - gpt-oss-120b-cloud
+
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+    # Runner dispatches to the agent path automatically when
+    # task.max_turns > 1, which is true for all 12 PBS-Agent v0.1 tasks.
+
+# No per-model system_prompt overrides. EXP-001b established that
+# /no_think in the system prompt does NOT actually disable qwen3
+# reasoning (only API-level think:false does), and we deliberately
+# leave reasoning ON for qwen3 in EXP-002 — agentic tasks need it more
+# than single-turn fmt tasks did. See docs/exp/EXP-002.md "Confounders".
+# model_defaults: {}
+
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]
+
+max_concurrency: 1
+request_timeout_sec: 600
