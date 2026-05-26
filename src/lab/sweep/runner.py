@@ -631,6 +631,10 @@ def _execute_agent_cell(
             )
             import tempfile
 
+            # The Inspect EvalLog is lazy-loaded from the .eval file on disk;
+            # we must keep the log_dir alive until we have finished reading
+            # samples / metadata out of it. Persistence and metric-extraction
+            # therefore happen INSIDE the TemporaryDirectory `with` block.
             with tempfile.TemporaryDirectory(prefix="lab-inspect-") as log_dir:
                 if _is_local_backend(cell.model_backend):
                     with gpu_lease(
@@ -642,6 +646,8 @@ def _execute_agent_cell(
                             display="none",
                             log_samples=True,
                             log_dir=log_dir,
+                            log_format="json",
+                            log_realtime=False,
                         )
                 else:
                     logs = inspect_eval(
@@ -649,31 +655,34 @@ def _execute_agent_cell(
                         display="none",
                         log_samples=True,
                         log_dir=log_dir,
+                        log_format="json",
+                        log_realtime=False,
                     )
-        log = logs[0] if logs else None
-        if log is None:
-            raise RuntimeError("inspect_ai.eval returned no logs")
-        trace_uri = write_run_from_inspect_log(log, sweep_ctx)
-        # Read back the aggregated metrics we just upserted so the in-memory
-        # CellResult matches what's in the DB.
-        samples = getattr(log, "samples", None) or []
-        sample = samples[0] if samples else None
-        lab_agent: dict[str, Any] = {}
-        if sample is not None:
-            metadata = sample.metadata or {}
-            lab_agent = metadata.get("lab_agent") or {}
-        latency_ms = int(lab_agent.get("total_latency_ms") or 0)
-        usage = getattr(sample, "model_usage", None) if sample is not None else None
-        if usage is not None and hasattr(usage, "model_dump"):
-            usage = usage.model_dump()
-        tokens_in: int | None = None
-        tokens_out: int | None = None
-        for v in (usage or {}).values():
-            if isinstance(v, dict):
-                if v.get("input_tokens") is not None:
-                    tokens_in = (tokens_in or 0) + int(v["input_tokens"])
-                if v.get("output_tokens") is not None:
-                    tokens_out = (tokens_out or 0) + int(v["output_tokens"])
+                log = logs[0] if logs else None
+                if log is None:
+                    raise RuntimeError("inspect_ai.eval returned no logs")
+                trace_uri = write_run_from_inspect_log(log, sweep_ctx)
+                # Read back the aggregated metrics we just upserted so the
+                # in-memory CellResult matches what's in the DB.
+                samples = getattr(log, "samples", None) or []
+                sample = samples[0] if samples else None
+                lab_agent: dict[str, Any] = {}
+                if sample is not None:
+                    metadata = sample.metadata or {}
+                    lab_agent = metadata.get("lab_agent") or {}
+                # Extract usage/latency while the .eval file is still on disk.
+                latency_ms = int(lab_agent.get("total_latency_ms") or 0)
+                usage = getattr(sample, "model_usage", None) if sample is not None else None
+                if usage is not None and hasattr(usage, "model_dump"):
+                    usage = usage.model_dump()
+                tokens_in: int | None = None
+                tokens_out: int | None = None
+                for v in (usage or {}).values():
+                    if isinstance(v, dict):
+                        if v.get("input_tokens") is not None:
+                            tokens_in = (tokens_in or 0) + int(v["input_tokens"])
+                        if v.get("output_tokens") is not None:
+                            tokens_out = (tokens_out or 0) + int(v["output_tokens"])
         result = CellResult(
             run_id=cell.run_id,
             status="error" if lab_agent.get("error") else "done",
