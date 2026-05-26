@@ -1082,5 +1082,24 @@ def kb_eval(
     console.print(summary)
 
 
+@kb_app.command("cache-stats")
+def kb_cache_stats() -> None:
+    """Print Phase 8 RAG cache hit/miss counters (process-local snapshot).
+
+    Counters live in-process; this command spins up a :class:`RagCache` so the
+    Valkey connection is exercised and the snapshot reflects whatever the
+    current process has accumulated. For long-running services use the
+    Prometheus exporter instead.
+    """
+    from lab.rag.cache import RagCache
+
+    cache = RagCache()
+    snap = cache.stats_snapshot()
+    table = Table("counter", "value")
+    for k, v in sorted(snap.items()):
+        table.add_row(k, str(v))
+    console.print(table)
+
+
 if __name__ == "__main__":
     app()

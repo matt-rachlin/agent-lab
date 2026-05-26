@@ -144,6 +144,12 @@ class Manifest(BaseModel):
     created_at: str = Field(default_factory=utcnow_iso)
     last_refreshed_at: str | None = None
     status: BuildStatus = "intake"
+    #: Optional cache-invalidation token (Phase 8). When a KB rebuilds and
+    #: bumps this value, the RAG cache namespace flips and old keys become
+    #: unreachable. Old manifests without this field still load — see
+    #: :func:`lab.rag.cache.kb_version_token` for the fallback (content
+    #: hash of the manifest body).
+    kb_version: str | None = None
 
     build: BuildSpec = Field(default_factory=BuildSpec)
     models: Models = Field(default_factory=Models)

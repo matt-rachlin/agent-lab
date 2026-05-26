@@ -130,6 +130,22 @@ def _bm25_scan(rows: list[dict[str, Any]], query_text: str, k: int) -> list[tupl
     return scores[:k]
 
 
+def _resolve_cache_key(kb_dir: Path, *, top_k: int) -> tuple[str, int] | None:
+    """Return ``(kb_version, top_k)`` if the KB manifest is readable, else None.
+
+    Failure to load the manifest is non-fatal — we just bypass the rerank
+    cache for this call.
+    """
+    try:
+        from lab.rag.cache import kb_version_token
+        from lab.rag.manifest import load_manifest
+
+        manifest = load_manifest(kb_dir / "manifest.yaml")
+        return (kb_version_token(manifest), int(top_k))
+    except Exception:
+        return None
+
+
 def _rrf_fuse(
     dense_ranking: list[str],
     sparse_ranking: list[str],
@@ -382,7 +398,11 @@ def hybrid_query(
                 for c in deduped[:k]
             ]
         else:
-            reranked = reranker.rerank(query_text, deduped, top_n=k)
+            # Resolve kb_version from the manifest for cache namespacing.
+            cache_key = _resolve_cache_key(kb_dir, top_k=k)
+            reranked = reranker.rerank(
+                query_text, deduped, top_n=k, cache_key=cache_key
+            )
             hits = [
                 _row_to_hit(
                     c["chunk_id"],

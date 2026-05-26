@@ -50,8 +50,14 @@ def embed_texts(
     model: str = DEFAULT_EMBED_MODEL,
     batch_size: int = DEFAULT_BATCH,
     progress: Callable[[int, int], None] | None = None,
+    use_cache: bool = True,
 ) -> EmbedResult:
     """Embed a list of texts via Ollama. Auto-fallback to the 4B model if loading fails.
+
+    When ``len(texts) == 1`` and ``use_cache=True``, consult the Valkey-backed
+    query-embedding cache before issuing the Ollama call. Multi-text batches
+    (index-build path) bypass the cache — the corpus side is high-cardinality
+    and rarely cache-friendly, while the query side is hot.
 
     Honours the standard ``OLLAMA_HOST`` env var (default
     ``http://localhost:11434``). The kb_query MCP tool runs inside the agent
@@ -61,9 +67,17 @@ def embed_texts(
     var set) we keep the prior behaviour.
     """
     import os
+
+    # Tier-1 cache lookup: single-text queries only.
+    if use_cache and len(texts) == 1:
+        cached = _cache_lookup_embedding(texts[0], model)
+        if cached is not None:
+            dims = len(cached)
+            return EmbedResult(model=model, dimensions=dims, vectors=[cached])
+
     client = Client(host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"))
     chosen = model
-    dims: int | None = DEFAULT_EMBED_DIMS if model == DEFAULT_EMBED_MODEL else None
+    dims_opt: int | None = DEFAULT_EMBED_DIMS if model == DEFAULT_EMBED_MODEL else None
 
     out: list[list[float]] = []
     i = 0
@@ -75,20 +89,45 @@ def embed_texts(
             if chosen == DEFAULT_EMBED_MODEL:
                 # fall back
                 chosen = FALLBACK_EMBED_MODEL
-                dims = FALLBACK_EMBED_DIMS
+                dims_opt = FALLBACK_EMBED_DIMS
                 vecs = _embed_one_batch(client, chosen, batch)
             else:
                 raise RuntimeError(f"embedding failed irrecoverably: {e}") from e
-        if dims is None and vecs:
-            dims = len(vecs[0])
+        if dims_opt is None and vecs:
+            dims_opt = len(vecs[0])
         out.extend(vecs)
         i += batch_size
         if progress:
             progress(min(i, len(texts)), len(texts))
 
-    if dims is None:
-        dims = 0
-    return EmbedResult(model=chosen, dimensions=dims, vectors=out)
+    if dims_opt is None:
+        dims_opt = 0
+
+    # Populate the tier-1 cache on the single-query miss path.
+    if use_cache and len(texts) == 1 and out:
+        _cache_store_embedding(texts[0], chosen, out[0])
+
+    return EmbedResult(model=chosen, dimensions=dims_opt, vectors=out)
+
+
+def _cache_lookup_embedding(query: str, model: str) -> list[float] | None:
+    try:
+        from lab.rag.cache import RagCache
+
+        cache = RagCache()
+        return cache.get_embedding(query, model)
+    except Exception:
+        return None
+
+
+def _cache_store_embedding(query: str, model: str, vec: list[float]) -> None:
+    try:
+        from lab.rag.cache import RagCache
+
+        cache = RagCache()
+        cache.put_embedding(query, model, vec)
+    except Exception:
+        return
 
 
 def build_bm25(corpus_texts: list[str]) -> tuple[BM25Okapi, list[list[str]]]:
