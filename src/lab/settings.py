@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     )
 
     home: Path = Field(default=Path("/data/lab"), description="Lab artifacts root")
+    kb_root: Path = Field(
+        default=Path("~/db/kb").expanduser(),
+        description="Knowledge-base root directory (lab.rag).",
+    )
     pg_dsn: str = Field(default="postgresql://m@/lab")
     redis_url: str = Field(default="redis://localhost:6379/0")
 

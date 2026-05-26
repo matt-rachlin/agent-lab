@@ -526,9 +526,7 @@ def agent_run(
         "--suite",
         help="Task suite to load from (e.g. pbs-agent-v0.1, smoke)",
     ),
-    max_turns: int | None = typer.Option(
-        None, "--max-turns", help="Override the task's max_turns"
-    ),
+    max_turns: int | None = typer.Option(None, "--max-turns", help="Override the task's max_turns"),
     tool_budget: int | None = typer.Option(
         None, "--tool-budget", help="Override the task's tool_budget"
     ),
@@ -589,8 +587,7 @@ def agent_run(
     env = dict(sandbox_cfg.get("env", {}))
     workspace_files_raw = sandbox_cfg.get("workspace_files") or {}
     workspace_files = {
-        k: v.encode("utf-8") if isinstance(v, str) else v
-        for k, v in workspace_files_raw.items()
+        k: v.encode("utf-8") if isinstance(v, str) else v for k, v in workspace_files_raw.items()
     }
 
     run_id_ = f"adhoc-{lab_task.slug}-{_uuid.uuid4().hex[:8]}"
@@ -605,9 +602,7 @@ def agent_run(
     parent_dir = tempfile.mkdtemp(prefix="lab-inspect-parent-")
     log_dir = str(Path(parent_dir) / "inspect")
     try:
-        with Sandbox(
-            network=network, env=env, workspace_files=workspace_files
-        ) as sandbox:
+        with Sandbox(network=network, env=env, workspace_files=workspace_files) as sandbox:
             inspect_task = lab_task_to_inspect(
                 lab_task,
                 model=model,
@@ -651,9 +646,7 @@ def agent_run(
             cur.execute("SELECT manifest_sha FROM manifests ORDER BY captured_at DESC LIMIT 1")
             manr = cur.fetchone()
         if mrow is None:
-            console.print(
-                f"[yellow]no models row for litellm_id={model!r} — skipping persist"
-            )
+            console.print(f"[yellow]no models row for litellm_id={model!r} — skipping persist")
         else:
             ctx = SweepContext(
                 run_id=run_id_,
@@ -674,9 +667,7 @@ def agent_run(
             try:
                 trace_uri = write_run_from_inspect_log(log, ctx)
             except Exception as exc:
-                console.print(
-                    f"[yellow]logwriter failed: {exc} — continuing with summary only"
-                )
+                console.print(f"[yellow]logwriter failed: {exc} — continuing with summary only")
 
     summary = Table(title=f"agent run — {lab_task.slug}")
     summary.add_column("metric")
@@ -869,6 +860,182 @@ def version() -> None:
         console.print(pkg_version("lab"))
     except PackageNotFoundError:
         console.print("0.0.1+local")
+
+
+# ---------------------------------------------------------------------------
+# kb — vendored kb-builder (Phase 6h-a). Query/inspect; building stays out of
+# 6h-a scope (the bash KB is built externally and consumed read-only here).
+# ---------------------------------------------------------------------------
+
+kb_app = typer.Typer(help="RAG knowledge bases (lab.rag)")
+app.add_typer(kb_app, name="kb")
+
+
+def _kb_root_path() -> Path:
+    from lab.settings import get_settings
+
+    return Path(get_settings().kb_root).expanduser()
+
+
+def _kb_dir(name: str) -> Path:
+    return _kb_root_path() / name
+
+
+@kb_app.command("list")
+def kb_list() -> None:
+    """List KBs under LAB_KB_ROOT (reads each manifest.yaml)."""
+    from lab.rag.manifest import load_manifest
+
+    root = _kb_root_path()
+    if not root.exists():
+        console.print(f"[yellow]no KB root at[/] {root}")
+        return
+    rows: list[tuple[str, str, str, int]] = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        mf = child / "manifest.yaml"
+        if not mf.exists():
+            continue
+        try:
+            m = load_manifest(mf)
+        except Exception as e:
+            rows.append((child.name, f"[red]load-failed[/] {e}", "-", 0))
+            continue
+        rows.append((m.name, m.status, m.models.embedding.name, len(m.sources)))
+    table = Table("Name", "Status", "Embed model", "Sources")
+    for name, status, model, n_sources in rows:
+        table.add_row(name, status, model, str(n_sources))
+    console.print(table)
+
+
+@kb_app.command("show")
+def kb_show(name: str = typer.Argument(..., help="KB name")) -> None:
+    """Print a manifest summary for KB <name>."""
+    from lab.rag.index import count_rows, index_bytes
+    from lab.rag.manifest import load_manifest
+
+    kb_dir = _kb_dir(name)
+    mf = kb_dir / "manifest.yaml"
+    if not mf.exists():
+        console.print(f"[red]no manifest at[/] {mf}")
+        raise typer.Exit(code=2)
+    m = load_manifest(mf)
+    n_rows = count_rows(kb_dir)
+    idx_bytes = index_bytes(kb_dir)
+    table = Table("Field", "Value")
+    table.add_row("name", m.name)
+    table.add_row("status", m.status)
+    table.add_row("description", (m.description or "").strip()[:200])
+    table.add_row("kb_format_version", str(m.kb_format_version))
+    table.add_row("chunk_format_version", str(m.chunk_format_version))
+    table.add_row("created_at", m.created_at)
+    table.add_row("last_refreshed_at", m.last_refreshed_at or "-")
+    table.add_row("embedding.model", m.models.embedding.name)
+    table.add_row("embedding.dims", str(m.models.embedding.dimensions))
+    table.add_row("chunker", f"{m.models.chunker.name} v{m.models.chunker.version}")
+    table.add_row("sources", str(len(m.sources)))
+    table.add_row("stats.chunks", str(m.stats.chunk_count))
+    table.add_row("stats.embedded_tokens", str(m.stats.embedded_token_count))
+    table.add_row("index rows", str(n_rows))
+    table.add_row("index bytes", str(idx_bytes))
+    table.add_row("eval.retrieval@1", f"{m.eval.retrieval_at_1:.3f}")
+    table.add_row("eval.retrieval@5", f"{m.eval.retrieval_at_5:.3f}")
+    console.print(table)
+
+
+@kb_app.command("query")
+def kb_query(
+    name: str = typer.Argument(..., help="KB name"),
+    question: str = typer.Argument(..., help="Free-text query"),
+    k: int = typer.Option(5, "--k", help="Top-k hits"),
+    alpha: float = typer.Option(
+        0.5, "--alpha", help="Dense weight (1.0=pure dense, 0.0=pure sparse)"
+    ),
+    authority: str = typer.Option(
+        "", "--authority", help="Optional authority filter (e.g. official, manpage)"
+    ),
+) -> None:
+    """Hybrid dense+sparse query against KB <name>."""
+    from lab.rag.index import count_rows, hybrid_query
+
+    kb_dir = _kb_dir(name)
+    if not (kb_dir / "manifest.yaml").exists():
+        console.print(f"[red]no KB at[/] {kb_dir}")
+        raise typer.Exit(code=2)
+    if count_rows(kb_dir) == 0:
+        console.print(
+            f"[yellow]KB {name!r} has no indexed chunks yet[/] "
+            f"(status likely enrichment_pending/embedding_pending). "
+            f"Skipping query — no Ollama call made."
+        )
+        return
+    hits = hybrid_query(
+        kb_dir,
+        question,
+        k=k,
+        alpha=alpha,
+        filter_authority=authority or None,
+    )
+    if not hits:
+        console.print("[yellow]no hits[/]")
+        return
+    table = Table("#", "Score", "Dense", "Sparse", "Section", "Title", "Source")
+    for i, h in enumerate(hits, 1):
+        section = " / ".join(h.section_path) if h.section_path else "-"
+        table.add_row(
+            str(i),
+            f"{h.score:.3f}",
+            f"{h.dense_score:.3f}",
+            f"{h.sparse_score:.3f}",
+            section[:60],
+            (h.title or "-")[:40],
+            (h.source_url or "-")[:50],
+        )
+    console.print(table)
+
+
+@kb_app.command("eval")
+def kb_eval(
+    name: str = typer.Argument(..., help="KB name"),
+    n: int = typer.Option(30, "--n", help="Number of synthetic queries"),
+    k: int = typer.Option(5, "--k", help="Top-k for hit@k"),
+    model: str | None = typer.Option(None, "--model", help="Eval model (default qwen3:14b-q4_K_M)"),
+) -> None:
+    """Run the synthetic-query retrieval eval. Gated on the shared GPU lease.
+
+    Refuses to run if `lab:gpu:lease:0` is held (e.g. by an active sweep). Wait
+    for the sweep to finish, then retry.
+    """
+    import redis
+
+    from lab.rag.eval_retrieval import DEFAULT_EVAL_MODEL, run_eval
+    from lab.settings import get_settings
+
+    settings = get_settings()
+    try:
+        client = redis.from_url(settings.redis_url)
+        lease_holder = client.get("lab:gpu:lease:0")
+    except Exception as e:
+        console.print(
+            f"[yellow]could not reach Valkey[/] ({e}); refusing to run eval to avoid "
+            f"clashing with a sweep we can't see. Re-run when Valkey is reachable."
+        )
+        raise typer.Exit(code=2) from None
+    if lease_holder:
+        holder = lease_holder.decode() if isinstance(lease_holder, bytes) else str(lease_holder)
+        console.print(
+            f"[red]GPU lease held[/] by {holder!r} — refusing to run eval. "
+            f"Wait for the running sweep to finish, then retry."
+        )
+        raise typer.Exit(code=2)
+
+    kb_dir = _kb_dir(name)
+    if not (kb_dir / "manifest.yaml").exists():
+        console.print(f"[red]no KB at[/] {kb_dir}")
+        raise typer.Exit(code=2)
+    summary = run_eval(kb_dir, n=n, k=k, model=model or DEFAULT_EVAL_MODEL)
+    console.print(summary)
 
 
 if __name__ == "__main__":

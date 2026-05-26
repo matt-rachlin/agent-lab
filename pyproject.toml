@@ -38,6 +38,19 @@ dependencies = [
     "tenacity>=9.0.0",
     "inspect-ai>=0.3.226",
     "mcp>=1.27.1",
+    # RAG (vendored from kb-builder; Phase 6h-a)
+    "lancedb>=0.18.0",
+    "pyarrow>=18.1.0",
+    "trafilatura>=2.0.0",
+    "selectolax>=0.3.27",
+    "markdown-it-py>=3.0.0",
+    "mdit-py-plugins>=0.4.2",
+    "pymupdf>=1.25.1",
+    "rank-bm25>=0.2.2",
+    "tiktoken>=0.8.0",
+    "python-ulid>=3.0.0",
+    "platformdirs>=4.3.6",
+    "ruamel.yaml>=0.18.0",
 ]
 
 [project.optional-dependencies]
