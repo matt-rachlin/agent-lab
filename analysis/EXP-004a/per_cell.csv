@@ -1,0 +1,5 @@
+cell,fusion,alpha,top_k_stage1,rerank,final_k,n_queries,recall_at_5,mrr10,ndcg_at_10,gold_in_stage1_pool_frac,errors,wall_sec
+C0_alpha_baseline,alpha,0.75,5,0,5,50,0.8000,0.6767,0.7075,0.8000,0,0.0
+C1_rrf_baseline,rrf,,5,0,5,50,0.7800,0.6123,0.6545,0.7800,0,0.0
+C2_alpha_rerank,alpha,0.75,50,1,5,50,0.8400,0.6703,0.7123,0.9400,0,35.5
+C3_rrf_rerank,rrf,,50,1,5,50,0.8400,0.6647,0.7079,0.9400,0,38.7

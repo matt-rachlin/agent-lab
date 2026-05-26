@@ -1,0 +1,9 @@
+{
+  "rerank_call_count": 100,
+  "rerank_error_count": 0,
+  "rerank_error_rate": 0.0,
+  "latency_ms_p50": 735.4080039949622,
+  "latency_ms_p95": 1313.2348469953286,
+  "latency_ms_mean": 741.8511268292787,
+  "latency_ms_max": 2478.013549000025
+}

@@ -1,27 +1,17 @@
-"""EXP-003a: bash KB retrieval-quality sweep -- alpha x k.
+"""Retrieval-quality sweep runner.
 
-Reads conf/sweep/EXP-003a.yaml directly (not via lab.sweep.config -- that
-schema is for agent sweeps; this is a pure-retrieval sweep).
+Supports two config shapes:
 
-Pipeline:
-  1. Generate / load cached synthetic queries (~50) via the lab.rag
-     eval_retrieval module style (sample chunks, ask qwen3:14b-q4_K_M
-     to write a realistic question). Cached at queries.jsonl.
-  2. Embed each query ONCE (qwen3-embedding:8b-q8_0) -- embeddings reused
-     across all 20 cells, so the sweep cost is ~50 embeddings + 1000
-     sparse + LanceDB lookups (not 1000 embeddings).
-  3. Pilot: alpha=0.5/k=5 and alpha=0.0/k=5 x 5 queries. Sanity-check
-     CSV shape + scorer numerics before committing 20 cells x 50 queries.
-  4. Full sweep: 5 alpha x 4 k = 20 cells. For each cell + query: rank
-     of origin chunk in the result (via hybrid_query at k=max(10,k)),
-     compute recall@k_target, MRR@10, nDCG@10.
-  5. Write raw.csv, SUMMARY.md, best_configs.csv, verdicts.md.
+* **EXP-003a shape (alpha x k matrix)**: top-level keys ``matrix.alpha``
+  and ``matrix.k``. Runs the legacy 5x4 = 20 cell sweep.
+* **EXP-004a shape (per-cell configs)**: top-level key ``cells:`` with
+  per-cell `fusion / alpha / top_k_stage1 / rerank / final_k`. Used for
+  rerank validation -- each cell can independently enable the host-side
+  reranker (URL from the config's ``rerank.url``).
 
-Hypotheses (pre-registered in docs/exp/EXP-003a.md):
-  H1: argmax_alpha mean(recall@5) in {0.25, 0.5, 0.75}  (hybrid beats endpoints)
-  H2: mean(recall@10) - mean(recall@5) >= 0.10  (top-k matters)
-  H3: at best k per endpoint, BM25 (alpha=0.0) beats dense (alpha=1.0)
-      on at least one of {recall@5, MRR@10}.
+The script detects the shape by the presence of ``cells:`` and dispatches.
+Both shapes share the cached synthetic-query path (the EXP-004a runner
+reuses EXP-003a's ``queries.jsonl`` verbatim per pre-reg).
 """
 
 from __future__ import annotations
@@ -29,6 +19,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 import statistics
 import sys
 import time
@@ -649,12 +640,603 @@ def write_verdicts_md(verdicts: dict[str, Any], path: Path) -> None:
 
 
 # ----------------------------------------------------------------------
+# EXP-004a — per-cell rerank validation sweep
+# ----------------------------------------------------------------------
+
+
+def _stage1_only(
+    tbl: Any,
+    all_rows: list[dict[str, Any]],
+    qvec: list[float],
+    query_text: str,
+    *,
+    fusion: str,
+    alpha: float | None,
+    top_k_stage1: int,
+) -> list[tuple[str, float, float, float, dict[str, Any]]]:
+    """Stage-1 hybrid retrieval — fusion in {"rrf","alpha"}.
+
+    Returns list of (chunk_id, combined_score, dense_score, sparse_score, row),
+    truncated to ``top_k_stage1``, best-first.
+    """
+    import json as _json
+
+    pool = max(top_k_stage1 * 2, 40)
+    dense = tbl.search(qvec).limit(pool).to_list()
+    if not dense:
+        return []
+
+    q_tokens = tokenize_for_bm25(query_text)
+    sparse_scores: list[tuple[int, float]] = []
+    if q_tokens:
+        for idx, row in enumerate(all_rows):
+            sj = row.get("sparse_json") or "{}"
+            try:
+                sp = _json.loads(sj)
+            except Exception:
+                sp = {}
+            s = sum(sp.get(tok, 0.0) for tok in q_tokens)
+            if s > 0:
+                sparse_scores.append((idx, s))
+    sparse_scores.sort(key=lambda x: x[1], reverse=True)
+    sparse_top = sparse_scores[:pool]
+
+    seen: dict[str, dict[str, Any]] = {}
+    for r in dense:
+        seen[r["chunk_id"]] = r
+    sparse_score_by_id: dict[str, float] = {}
+    for idx, s in sparse_top:
+        r = all_rows[idx]
+        seen.setdefault(r["chunk_id"], r)
+        sparse_score_by_id[r["chunk_id"]] = s
+
+    dense_distances = {r["chunk_id"]: float(r.get("_distance", 1.0)) for r in dense}
+    d_sims_raw = {cid: 1.0 / (1.0 + d) for cid, d in dense_distances.items()}
+    max_dsim = max(d_sims_raw.values()) if d_sims_raw else 1.0
+    d_sims = {cid: v / max_dsim for cid, v in d_sims_raw.items()}
+    max_sparse = max(sparse_score_by_id.values()) if sparse_score_by_id else 1.0
+    s_norms = {cid: v / max_sparse for cid, v in sparse_score_by_id.items()}
+
+    if fusion == "rrf":
+        dense_ranking = [r["chunk_id"] for r in dense]
+        sparse_ranking = [all_rows[idx]["chunk_id"] for idx, _ in sparse_top]
+        # RRF constant k=60 (Cormack et al. 2009) — matches lab.rag default.
+        k_const = 60
+        fused: dict[str, float] = {}
+        for rank, cid in enumerate(dense_ranking, start=1):
+            fused[cid] = fused.get(cid, 0.0) + 1.0 / (k_const + rank)
+        for rank, cid in enumerate(sparse_ranking, start=1):
+            fused[cid] = fused.get(cid, 0.0) + 1.0 / (k_const + rank)
+        scored: list[tuple[str, float, float, float, dict[str, Any]]] = []
+        for cid, row in seen.items():
+            scored.append(
+                (cid, fused.get(cid, 0.0), d_sims.get(cid, 0.0), s_norms.get(cid, 0.0), row)
+            )
+    else:
+        a = 0.5 if alpha is None else float(alpha)
+        scored = []
+        for cid, row in seen.items():
+            d_score = d_sims.get(cid, 0.0)
+            s_score = s_norms.get(cid, 0.0)
+            combined = a * d_score + (1.0 - a) * s_score
+            scored.append((cid, combined, d_score, s_score, row))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:top_k_stage1]
+
+
+def _rerank_via_http(
+    *,
+    url: str,
+    model: str | None,
+    query: str,
+    candidates: list[dict[str, Any]],
+    top_n: int,
+    timeout: float = 30.0,
+) -> tuple[list[dict[str, Any]], float, str | None]:
+    """POST to the rerank service. Returns (hits, latency_ms, err_or_None)."""
+    import httpx as _httpx
+
+    if not candidates or top_n <= 0:
+        return [], 0.0, None
+    base = url.rstrip("/")
+    payload: dict[str, Any] = {
+        "query": query,
+        "candidates": candidates,
+        "top_n": top_n,
+    }
+    if model:
+        payload["model"] = model
+    t0 = time.perf_counter()
+    try:
+        with _httpx.Client(timeout=timeout) as cli:
+            resp = cli.post(f"{base}/rerank", json=payload)
+    except Exception as exc:
+        return [], (time.perf_counter() - t0) * 1000.0, f"transport: {exc}"
+    lat_ms = (time.perf_counter() - t0) * 1000.0
+    if resp.status_code >= 400:
+        return [], lat_ms, f"http {resp.status_code}: {resp.text[:120]}"
+    try:
+        body = resp.json()
+    except Exception as exc:
+        return [], lat_ms, f"json: {exc}"
+    hits = body.get("hits")
+    if not isinstance(hits, list):
+        return [], lat_ms, f"missing hits: {body!r}"
+    return hits, lat_ms, None
+
+
+def _wilcoxon_one_sided_greater(deltas: list[float]) -> float:
+    """Paired Wilcoxon signed-rank, one-sided alternative "treat > control".
+
+    deltas = treat[i] - control[i]. Returns p-value for H1: median(delta) > 0.
+    Implemented via scipy if available; falls back to exact small-sample
+    sign-test if not (recall@5 deltas are -1/0/+1 over 50 paired observations).
+    """
+    try:
+        from scipy.stats import wilcoxon  # type: ignore
+
+        nonzero = [d for d in deltas if d != 0.0]
+        if not nonzero:
+            return 1.0  # no signal at all -> cannot reject
+        res = wilcoxon(nonzero, alternative="greater", zero_method="wilcox")
+        return float(res.pvalue)
+    except Exception:
+        # Fallback: sign test on non-zero pairs (binomial under H0=0.5).
+        nonzero = [d for d in deltas if d != 0.0]
+        if not nonzero:
+            return 1.0
+        n = len(nonzero)
+        k = sum(1 for d in nonzero if d > 0)
+        # P(X >= k | n, p=0.5) one-sided.
+        from math import comb
+
+        p = sum(comb(n, i) for i in range(k, n + 1)) / (2.0**n)
+        return p
+
+
+def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
+    """EXP-004a — run a list of (cell) configurations, with optional rerank."""
+
+    kb_name = cfg["kb"]["name"]
+    kb_dir = KB_ROOT / kb_name
+    cache_path = REPO_ROOT / cfg["queries"]["cache_path"]
+    cells_cfg = cfg["cells"]
+    rerank_cfg = cfg.get("rerank") or {}
+    rerank_url = rerank_cfg.get("url") or os.environ.get("LAB_RAG_RERANKER_URL")
+    rerank_model = rerank_cfg.get("model")
+
+    out_summary = REPO_ROOT / cfg["outputs"]["summary"]
+    out_verdicts = REPO_ROOT / cfg["outputs"]["verdicts"]
+    out_raw = REPO_ROOT / cfg["outputs"]["raw"]
+    out_per_cell = REPO_ROOT / cfg["outputs"]["per_cell"]
+    out_rerank_stats = REPO_ROOT / cfg["outputs"]["rerank_stats"]
+
+    slug = cfg.get("experiment", {}).get("slug", "EXP-004?")
+    console.print(f"[bold]{slug}[/] per-cell sweep on KB={kb_name} ({kb_dir})")
+
+    # Pre-flight: any rerank cell requires the service to be reachable.
+    any_rerank = any(c.get("rerank") for c in cells_cfg)
+    if any_rerank:
+        if not rerank_url:
+            console.print("[red]KILL[/] rerank cells configured but no rerank.url set")
+            return 2
+        import httpx as _httpx
+
+        try:
+            with _httpx.Client(timeout=5.0) as cli:
+                hresp = cli.get(f"{rerank_url.rstrip('/')}/healthz")
+            if hresp.status_code != 200:
+                console.print(
+                    f"[red]KILL[/] rerank service health check returned {hresp.status_code}"
+                )
+                return 2
+            health = hresp.json()
+            console.print(
+                f"[green]rerank service[/] healthy: model={health.get('model')} loaded={health.get('loaded')}"
+            )
+        except Exception as exc:
+            console.print(f"[red]KILL[/] rerank service unreachable at {rerank_url}: {exc}")
+            return 2
+
+    # Load queries (cache only — never regenerate for EXP-004a).
+    if not cache_path.exists():
+        console.print(f"[red]KILL[/] query cache missing at {cache_path}")
+        return 2
+    rows = [json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()]
+    queries = [
+        SyntheticQuery(
+            question=r["question"],
+            origin_chunk_id=r["origin_chunk_id"],
+            origin_doc_path=r["origin_doc_path"],
+            origin_section=list(r.get("origin_section") or []),
+        )
+        for r in rows
+    ]
+    if len(queries) < 25:
+        console.print(f"[red]KILL[/] only {len(queries)} queries loaded (< 25)")
+        return 2
+    console.print(f"[green]queries[/] {len(queries)} loaded from {cache_path}")
+
+    # KB
+    db = lancedb.connect(str(kb_dir / "index"))
+    tbl = db.open_table(TABLE_NAME)
+    all_rows = tbl.to_arrow().to_pylist()
+    console.print(f"[dim]KB table: {len(all_rows)} rows")
+
+    # Embed queries once.
+    t_emb_start = time.time()
+    texts = [q.question for q in queries]
+    res = embed_texts(texts, model=DEFAULT_EMBED_MODEL, batch_size=8)
+    if len(res.vectors) != len(queries):
+        console.print(f"[red]KILL[/] embedding count mismatch {len(res.vectors)} vs {len(queries)}")
+        return 2
+    for q, v in zip(queries, res.vectors, strict=True):
+        q.qvec = v
+    console.print(
+        f"[green]embeddings[/] {len(queries)} done ({time.time() - t_emb_start:.1f}s)"
+    )
+
+    # If any cell uses the host-side reranker, the embedder + reranker fight
+    # for the 12 GB VRAM. The embedding model holds ~8.8 GB; the reranker
+    # needs ~2.5 GB at load. We have all qvecs cached in memory, so unload
+    # the Ollama embedding model NOW (via keep_alive=0). This is the standard
+    # VRAM-coexistence pattern from the Phase 7 plan.
+    if any_rerank:
+        try:
+            import httpx as _httpx
+
+            with _httpx.Client(timeout=10.0) as cli:
+                # POST /api/generate with keep_alive=0 unloads cleanly.
+                cli.post(
+                    "http://localhost:11434/api/generate",
+                    json={
+                        "model": DEFAULT_EMBED_MODEL,
+                        "prompt": "",
+                        "keep_alive": 0,
+                    },
+                )
+            time.sleep(2.0)
+            with _httpx.Client(timeout=5.0) as cli:
+                ps = cli.get("http://localhost:11434/api/ps").json()
+            resident = [m.get("model") for m in ps.get("models", [])]
+            console.print(f"[dim]ollama resident after unload: {resident}")
+        except Exception as exc:
+            console.print(f"[yellow]warn[/] could not unload embedder: {exc}")
+
+    # Pre-compute stage-1 results per (fusion, top_k_stage1) per query to
+    # amortise across rerank-on/rerank-off pairs that share stage-1.
+    stage1_keys: set[tuple[str, float | None, int]] = set()
+    for c in cells_cfg:
+        stage1_keys.add(
+            (
+                c["fusion"],
+                float(c.get("alpha")) if c.get("alpha") is not None else None,
+                int(c["top_k_stage1"]),
+            )
+        )
+
+    stage1_cache: dict[tuple[str, float | None, int], list[list[tuple[str, float, float, float, dict[str, Any]]]]] = {}
+    for key in stage1_keys:
+        fusion, alpha, top_k = key
+        out_list: list[list[tuple[str, float, float, float, dict[str, Any]]]] = []
+        t_s1 = time.time()
+        for q in queries:
+            assert q.qvec is not None
+            try:
+                s1 = _stage1_only(
+                    tbl, all_rows, q.qvec, q.question,
+                    fusion=fusion, alpha=alpha, top_k_stage1=top_k,
+                )
+            except Exception as exc:
+                console.print(f"[red]stage-1 err[/] fusion={fusion} alpha={alpha} k={top_k} q={q.question[:40]}: {exc}")
+                s1 = []
+            out_list.append(s1)
+        stage1_cache[key] = out_list
+        console.print(
+            f"[dim]stage-1 cached[/] fusion={fusion} alpha={alpha} top_k={top_k} "
+            f"({time.time() - t_s1:.1f}s, {len(out_list)} queries)"
+        )
+
+    # Per-cell run.
+    rerank_call_count = 0
+    rerank_err_count = 0
+    rerank_latencies: list[float] = []
+
+    per_cell_rows: list[dict[str, Any]] = []
+    per_query_rows: list[dict[str, Any]] = []
+    cell_recalls_for_h2: dict[str, list[int]] = {}  # cell_name -> per-query 0/1
+
+    for cell in cells_cfg:
+        name = cell["name"]
+        fusion = cell["fusion"]
+        alpha_v = float(cell.get("alpha")) if cell.get("alpha") is not None else None
+        top_k_stage1 = int(cell["top_k_stage1"])
+        do_rerank = bool(cell.get("rerank"))
+        final_k = int(cell["final_k"])
+        key = (fusion, alpha_v, top_k_stage1)
+        stage1_all = stage1_cache[key]
+
+        t_cell = time.time()
+        recall_5: list[int] = []
+        mrr_vals: list[float] = []
+        ndcg_vals: list[float] = []
+        cell_errors = 0
+        gold_in_pool_count = 0
+
+        for qi, (q, stage1) in enumerate(zip(queries, stage1_all, strict=True)):
+            gold = q.origin_chunk_id
+            gold_in_pool = any(c[0] == gold for c in stage1)
+            if gold_in_pool:
+                gold_in_pool_count += 1
+
+            if do_rerank and stage1:
+                # Truncate passage text to bound the cross-encoder's attention
+                # matrix. Some bash KB chunks are multi-page markdown sections
+                # (>10k chars) which OOM the 12 GB GPU when batched. The
+                # reranker only needs enough context to score relevance.
+                # Limit chosen empirically: 1500 chars ≈ 400-500 tokens,
+                # leaves headroom for the query + cross-attention.
+                _MAX_PASSAGE_CHARS = 1500
+                candidates = [
+                    {
+                        "chunk_id": c[0],
+                        "combined": c[1],
+                        "dense_score": c[2],
+                        "sparse_score": c[3],
+                        "text": (c[4].get("text", "") or "")[:_MAX_PASSAGE_CHARS],
+                        "stage1_rank": idx + 1,
+                    }
+                    for idx, c in enumerate(stage1)
+                ]
+                hits, lat_ms, err = _rerank_via_http(
+                    url=rerank_url,
+                    model=rerank_model,
+                    query=q.question,
+                    candidates=candidates,
+                    top_n=final_k,
+                )
+                rerank_call_count += 1
+                rerank_latencies.append(lat_ms)
+                if err:
+                    rerank_err_count += 1
+                    cell_errors += 1
+                    final_ids = []
+                    final_hits = []
+                else:
+                    final_hits = hits
+                    final_ids = [h.get("chunk_id") for h in hits]
+            else:
+                final_hits = []
+                final_ids = [c[0] for c in stage1[:final_k]]
+
+            # Compute rank of gold in final list (1-based; 0 = miss).
+            rank = 0
+            for i, cid in enumerate(final_ids, start=1):
+                if cid == gold:
+                    rank = i
+                    break
+
+            r5 = 1 if (rank > 0 and rank <= 5) else 0
+            recall_5.append(r5)
+            # MRR/nDCG capped at 10 conventionally; our final_k=5 so structurally <=5.
+            m = 1.0 / rank if rank > 0 else 0.0
+            mrr_vals.append(m)
+            d = (1.0 / math.log2(1 + rank)) if rank > 0 else 0.0
+            ndcg_vals.append(d)
+
+            per_query_rows.append(
+                {
+                    "cell": name,
+                    "fusion": fusion,
+                    "alpha": alpha_v if alpha_v is not None else "",
+                    "top_k_stage1": top_k_stage1,
+                    "rerank": int(do_rerank),
+                    "final_k": final_k,
+                    "query_idx": qi,
+                    "question": q.question.replace("\n", " ")[:300],
+                    "origin_chunk_id": gold,
+                    "gold_in_stage1_pool": int(gold_in_pool),
+                    "stage1_size": len(stage1),
+                    "rerank_top_score": (
+                        float(final_hits[0]["rerank_score"])
+                        if final_hits and "rerank_score" in final_hits[0]
+                        else ""
+                    ),
+                    "rerank_bottom_score": (
+                        float(final_hits[-1]["rerank_score"])
+                        if final_hits and "rerank_score" in final_hits[-1]
+                        else ""
+                    ),
+                    "hit_rank": rank,
+                    "recall_at_5": r5,
+                    "mrr10": f"{m:.6f}",
+                    "ndcg_at_10": f"{d:.6f}",
+                }
+            )
+
+        cell_recalls_for_h2[name] = recall_5
+        mean_r5 = statistics.mean(recall_5) if recall_5 else 0.0
+        mean_mrr = statistics.mean(mrr_vals) if mrr_vals else 0.0
+        mean_ndcg = statistics.mean(ndcg_vals) if ndcg_vals else 0.0
+        wall = time.time() - t_cell
+        per_cell_rows.append(
+            {
+                "cell": name,
+                "fusion": fusion,
+                "alpha": alpha_v if alpha_v is not None else "",
+                "top_k_stage1": top_k_stage1,
+                "rerank": int(do_rerank),
+                "final_k": final_k,
+                "n_queries": len(queries),
+                "recall_at_5": f"{mean_r5:.4f}",
+                "mrr10": f"{mean_mrr:.4f}",
+                "ndcg_at_10": f"{mean_ndcg:.4f}",
+                "gold_in_stage1_pool_frac": f"{gold_in_pool_count / len(queries):.4f}",
+                "errors": cell_errors,
+                "wall_sec": f"{wall:.1f}",
+            }
+        )
+        console.print(
+            f"[bold]{name}[/] recall@5={mean_r5:.3f}  mrr10={mean_mrr:.3f}  "
+            f"ndcg={mean_ndcg:.3f}  gold_in_pool={gold_in_pool_count}/{len(queries)}  "
+            f"errors={cell_errors}  wall={wall:.1f}s"
+        )
+
+        # Kill criterion: per-cell rerank error rate > 5% over its 50 calls.
+        if do_rerank and cell_errors > max(1, int(0.05 * len(queries))):
+            console.print(
+                f"[red]KILL[/] cell {name} rerank errors {cell_errors}/{len(queries)} > 5%"
+            )
+            # Continue running other cells but mark.
+
+    # Write outputs.
+    out_raw.parent.mkdir(parents=True, exist_ok=True)
+    with out_raw.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(per_query_rows[0].keys()))
+        w.writeheader()
+        for r in per_query_rows:
+            w.writerow(r)
+    with out_per_cell.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(per_cell_rows[0].keys()))
+        w.writeheader()
+        for r in per_cell_rows:
+            w.writerow(r)
+
+    # Rerank stats.
+    if rerank_latencies:
+        sorted_lat = sorted(rerank_latencies)
+        p50 = sorted_lat[len(sorted_lat) // 2]
+        p95 = sorted_lat[min(len(sorted_lat) - 1, int(0.95 * len(sorted_lat)))]
+    else:
+        p50 = p95 = 0.0
+    stats = {
+        "rerank_call_count": rerank_call_count,
+        "rerank_error_count": rerank_err_count,
+        "rerank_error_rate": (rerank_err_count / rerank_call_count) if rerank_call_count else 0.0,
+        "latency_ms_p50": p50,
+        "latency_ms_p95": p95,
+        "latency_ms_mean": (sum(rerank_latencies) / len(rerank_latencies)) if rerank_latencies else 0.0,
+        "latency_ms_max": max(rerank_latencies) if rerank_latencies else 0.0,
+    }
+    out_rerank_stats.write_text(json.dumps(stats, indent=2) + "\n")
+
+    # Verdicts.
+    per_cell_by_name = {r["cell"]: r for r in per_cell_rows}
+    c0 = float(per_cell_by_name["C0_alpha_baseline"]["recall_at_5"])
+    c1 = float(per_cell_by_name["C1_rrf_baseline"]["recall_at_5"])
+    c2 = float(per_cell_by_name["C2_alpha_rerank"]["recall_at_5"])
+    c3 = float(per_cell_by_name["C3_rrf_rerank"]["recall_at_5"])
+    best_rerank = max(c2, c3)
+    h1_verdict = "CONFIRMED" if best_rerank >= 0.92 else "REFUTED"
+
+    deltas_c2_vs_c0 = [
+        cell_recalls_for_h2["C2_alpha_rerank"][i] - cell_recalls_for_h2["C0_alpha_baseline"][i]
+        for i in range(len(queries))
+    ]
+    deltas_c3_vs_c1 = [
+        cell_recalls_for_h2["C3_rrf_rerank"][i] - cell_recalls_for_h2["C1_rrf_baseline"][i]
+        for i in range(len(queries))
+    ]
+    p_c2 = _wilcoxon_one_sided_greater([float(x) for x in deltas_c2_vs_c0])
+    p_c3 = _wilcoxon_one_sided_greater([float(x) for x in deltas_c3_vs_c1])
+    h2_verdict = "CONFIRMED" if (p_c2 < 0.05 and p_c3 < 0.05) else "REFUTED"
+
+    h3_delta_alpha = c1 - c0
+    h3_delta_rerank_arm = c3 - c2
+
+    # SUMMARY.md
+    lines: list[str] = []
+    lines.append(f"# {slug} — reranker validation — SUMMARY\n")
+    lines.append(f"N queries: {len(queries)}  KB: {kb_name}  Rerank model: {rerank_model}\n")
+    lines.append("\n## Per-cell metrics\n")
+    lines.append("| cell | fusion | alpha | stage-1 top-k | rerank | final-k | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    for r in per_cell_rows:
+        lines.append(
+            f"| {r['cell']} | {r['fusion']} | {r['alpha']} | {r['top_k_stage1']} | "
+            f"{'yes' if r['rerank'] else 'no'} | {r['final_k']} | "
+            f"{r['recall_at_5']} | {r['mrr10']} | {r['ndcg_at_10']} | "
+            f"{r['gold_in_stage1_pool_frac']} | {r['errors']} | {r['wall_sec']} |"
+        )
+    lines.append("\n## Hypothesis verdicts\n")
+    lines.append(f"- H1 (aggressive, ≥0.92 best reranked): **{h1_verdict}**  "
+                 f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank-c0:+.3f}")
+    lines.append(f"- H2 (rerank always improves, paired Wilcoxon both p<0.05): **{h2_verdict}**  "
+                 f"C2 vs C0 p={p_c2:.4f}; C3 vs C1 p={p_c3:.4f}")
+    lines.append(f"- H3 (informational): delta_alpha (C1-C0)={h3_delta_alpha:+.3f}; "
+                 f"delta_rerank_arm (C3-C2)={h3_delta_rerank_arm:+.3f}")
+    lines.append("\n## Rerank-service stats\n")
+    lines.append(f"- calls: {stats['rerank_call_count']}")
+    lines.append(f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)")
+    lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
+    lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
+    lines.append(f"- latency mean: {stats['latency_ms_mean']:.1f} ms")
+    lines.append(f"- latency max: {stats['latency_ms_max']:.1f} ms")
+    out_summary.write_text("\n".join(lines) + "\n")
+
+    # verdicts.md (detailed)
+    vlines: list[str] = []
+    vlines.append(f"# {slug} — verdicts\n")
+    vlines.append(f"Pre-registered in `docs/exp/{slug}.md`.\n")
+    vlines.append("\n## H1 — best reranked cell ≥ 0.92 (i.e. +10pp over C0=0.820)\n")
+    vlines.append(f"**Verdict: {h1_verdict}**\n")
+    vlines.append(f"- C0 (alpha=0.75, no rerank) recall@5: {c0:.3f}")
+    vlines.append(f"- C1 (RRF, no rerank) recall@5: {c1:.3f}")
+    vlines.append(f"- C2 (alpha=0.75 + rerank) recall@5: {c2:.3f}")
+    vlines.append(f"- C3 (RRF + rerank) recall@5: {c3:.3f}")
+    vlines.append(f"- max(C2, C3) = {best_rerank:.3f}; threshold = 0.920")
+    vlines.append(f"- delta over C0: {best_rerank - c0:+.3f}")
+
+    vlines.append("\n## H2 — rerank always improves (paired Wilcoxon, one-sided, both p<0.05)\n")
+    vlines.append(f"**Verdict: {h2_verdict}**\n")
+    n_pos_c2 = sum(1 for d in deltas_c2_vs_c0 if d > 0)
+    n_neg_c2 = sum(1 for d in deltas_c2_vs_c0 if d < 0)
+    n_pos_c3 = sum(1 for d in deltas_c3_vs_c1 if d > 0)
+    n_neg_c3 = sum(1 for d in deltas_c3_vs_c1 if d < 0)
+    vlines.append(f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries)-n_pos_c2-n_neg_c2}; "
+                  f"Wilcoxon one-sided p = {p_c2:.4f}")
+    vlines.append(f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries)-n_pos_c3-n_neg_c3}; "
+                  f"Wilcoxon one-sided p = {p_c3:.4f}")
+
+    vlines.append("\n## H3 — RRF beats alpha-blend as stage-1 (informational)\n")
+    vlines.append(f"- delta_alpha (C1 - C0): {h3_delta_alpha:+.3f}")
+    vlines.append(f"- delta_rerank_arm (C3 - C2): {h3_delta_rerank_arm:+.3f}")
+    if h3_delta_alpha < 0 or h3_delta_rerank_arm < 0:
+        vlines.append("- NOTE: at least one comparison favors alpha-blend; see SUMMARY.md")
+
+    out_verdicts.write_text("\n".join(vlines) + "\n")
+
+    # Final console summary.
+    total_errors = sum(int(r["errors"]) for r in per_cell_rows)
+    console.print(
+        f"\n[bold]DONE[/] cells={len(per_cell_rows)} queries={len(queries)} "
+        f"rerank_calls={rerank_call_count} rerank_errs={rerank_err_count} "
+        f"rerank_p50={p50:.0f}ms total_errors={total_errors}\n"
+        f"  H1: {h1_verdict}  (best reranked recall@5 = {best_rerank:.3f}; threshold 0.920)\n"
+        f"  H2: {h2_verdict}  (p_C2={p_c2:.4f}, p_C3={p_c3:.4f})\n"
+        f"  H3 informational: delta_alpha={h3_delta_alpha:+.3f}, "
+        f"delta_rerank_arm={h3_delta_rerank_arm:+.3f}"
+    )
+
+    # Honor kill criterion overall: > 5% of all rerank calls failing.
+    if rerank_call_count and (rerank_err_count / rerank_call_count) > 0.05:
+        console.print("[red]KILL criterion tripped: rerank error rate > 5% overall[/]")
+        return 3
+
+    return 0
+
+
+# ----------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------
 
 
 def main(config_path: str) -> int:
     cfg = yaml.safe_load(Path(config_path).read_text())
+    # Dispatch on shape: per-cell configs (EXP-004a) vs alpha x k matrix.
+    if isinstance(cfg.get("cells"), list):
+        return run_per_cell_sweep(cfg)
     kb_name = cfg["kb"]["name"]
     kb_dir = KB_ROOT / kb_name
     n_target = int(cfg["queries"]["n_target"])

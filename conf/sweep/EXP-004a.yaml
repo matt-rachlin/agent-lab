@@ -1,0 +1,56 @@
+# EXP-004a — Reranker validation sweep on bash KB (synthetic-only)
+# Plan: docs/exp/EXP-004a.md
+#
+# scripts/retrieval_sweep.py detects this "cells:" shape and dispatches to
+# the per-cell runner (vs the alpha x k matrix shape used by EXP-003a).
+
+experiment:
+  slug: EXP-004a
+  title: "Bash KB reranker validation — rerank on/off x RRF/alpha"
+  hypothesis: "Reranker adds >=10pp recall@5 over stage-1 hybrid on bash KB"
+  plan_path: docs/exp/EXP-004a.md
+
+kb:
+  name: bash
+  embedding_model: qwen3-embedding:8b-q8_0
+
+queries:
+  # Reuse the EXP-003a cache verbatim. Do NOT regenerate.
+  cache_path: analysis/EXP-003a/queries.jsonl
+
+rerank:
+  url: http://127.0.0.1:8401
+  # Must match the server's configured model; the server returns 409 on
+  # mismatch.
+  model: Qwen/Qwen3-Reranker-0.6B
+
+cells:
+  - name: C0_alpha_baseline
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 5
+    rerank: false
+    final_k: 5
+  - name: C1_rrf_baseline
+    fusion: rrf
+    top_k_stage1: 5
+    rerank: false
+    final_k: 5
+  - name: C2_alpha_rerank
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true
+    final_k: 5
+  - name: C3_rrf_rerank
+    fusion: rrf
+    top_k_stage1: 50
+    rerank: true
+    final_k: 5
+
+outputs:
+  summary: analysis/EXP-004a/SUMMARY.md
+  verdicts: analysis/EXP-004a/verdicts.md
+  raw: analysis/EXP-004a/raw.csv
+  per_cell: analysis/EXP-004a/per_cell.csv
+  rerank_stats: analysis/EXP-004a/rerank_stats.json
