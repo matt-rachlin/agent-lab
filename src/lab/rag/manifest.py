@@ -63,11 +63,22 @@ class EnrichmentModel(BaseModel):
     name: str = DEFAULT_ENRICH_MODEL
 
 
+ChunkerMode = Literal["flat", "parent_child"]
+
+
 class ChunkerSpec(BaseModel):
     name: str = "structural-markdown"
     version: int = 1
     target_tokens: int = 512
     overlap_tokens: int = 64
+    #: Phase 9 (v2): chunking strategy. ``"flat"`` is the legacy v1 behaviour;
+    #: ``"parent_child"`` emits (parent, child) pairs. Old manifests without
+    #: this field default to ``"flat"`` so loading stays back-compatible.
+    mode: ChunkerMode = "flat"
+    #: Parent-target token count (PARENT_CHILD only). Ignored for FLAT.
+    parent_target_tokens: int = 768
+    #: Child-target token count (PARENT_CHILD only). Ignored for FLAT.
+    child_target_tokens: int = 192
 
 
 class Models(BaseModel):

@@ -57,6 +57,13 @@ def _schema(dims: int) -> pa.Schema:
             pa.field("tokens", pa.int64()),
             pa.field("chunk_format_version", pa.int32()),
             pa.field("authority", pa.string()),
+            # ---- Phase 9 (v2) parent-child fields. ---------------------
+            # All three are nullable / default-false so a v1 KB migrated by
+            # ``scripts/migrate_kb_schema_v2.py`` reads cleanly and a freshly
+            # built v2 KB populates them per chunk.
+            pa.field("parent_chunk_id", pa.string()),
+            pa.field("child_index", pa.int32()),
+            pa.field("is_parent", pa.bool_()),
         ]
     )
 
@@ -100,6 +107,17 @@ class Hit:
     rerank_score: float | None = None
     #: Rank in the stage-1 candidate set (1-based) — useful for telemetry.
     stage1_rank: int | None = None
+    #: Phase 9: when ``expand_to_parent=True`` and the matched chunk is a
+    #: child, ``text`` is replaced with the parent's text and ``child_offset``
+    #: points at where the child's text starts inside the parent. On v1 KBs
+    #: (FLAT) and on chunks that are already parents, ``child_offset`` stays
+    #: ``None`` and ``text`` is unchanged.
+    child_offset: int | None = None
+    #: Parent chunk id if this hit comes from a parent-child KB and the row
+    #: was a child. None for FLAT KBs and for parent rows.
+    parent_chunk_id: str | None = None
+    #: True when ``text`` is parent text expanded around the matched child.
+    expanded_to_parent: bool = False
 
 
 def _dense_search(tbl: Any, query_vector: list[float], k: int) -> list[dict[str, Any]]:
@@ -252,6 +270,7 @@ def _row_to_hit(
     rerank_score: float | None = None,
     stage1_rank: int | None = None,
 ) -> Hit:
+    parent_id = row.get("parent_chunk_id") or None
     return Hit(
         chunk_id=cid,
         text=row.get("text", "") or "",
@@ -266,7 +285,104 @@ def _row_to_hit(
         authority=row.get("authority", "") or "",
         rerank_score=rerank_score,
         stage1_rank=stage1_rank,
+        parent_chunk_id=parent_id,
     )
+
+
+def _dedupe_by_parent(
+    candidates: list[tuple[str, float, float, float, dict[str, Any]]],
+) -> list[tuple[str, float, float, float, dict[str, Any]]]:
+    """Collapse children sharing the same parent to a single representative.
+
+    Keeps the highest-scoring child in each parent group and rewrites its
+    combined score to ``max(child_scores)``. Rows with no ``parent_chunk_id``
+    pass through unchanged (FLAT KBs and standalone parents).
+
+    Order preserved from the input.
+    """
+    by_parent: dict[str, int] = {}
+    out: list[tuple[str, float, float, float, dict[str, Any]]] = []
+    for cand in candidates:
+        cid, combined, d, s, row = cand
+        pid = row.get("parent_chunk_id") or None
+        if not pid:
+            out.append(cand)
+            continue
+        if pid in by_parent:
+            idx = by_parent[pid]
+            existing = out[idx]
+            if combined > existing[1]:
+                # Keep this child as the representative — better child rank.
+                out[idx] = (cid, combined, d, s, row)
+        else:
+            by_parent[pid] = len(out)
+            out.append(cand)
+    return out
+
+
+def _load_parent_text(tbl: Any, parent_chunk_id: str) -> tuple[str, int] | None:
+    """Fetch a parent row's ``(text, byte_start)`` so we can build
+    ``child_offset`` and replace the child's body with parent text.
+
+    Returns None if the parent isn't in the table (legacy KB, broken link).
+    """
+    try:
+        rows = (
+            tbl.search()
+            .where(f"chunk_id = '{parent_chunk_id}' AND is_parent = true")
+            .limit(1)
+            .to_list()
+        )
+    except Exception:
+        # Some LanceDB versions don't accept SQL-style .where on .search();
+        # fall back to a full-scan filter (KB is small, this stays O(N)).
+        try:
+            rows_all = tbl.to_arrow().to_pylist()
+        except Exception:
+            return None
+        rows = [
+            r
+            for r in rows_all
+            if r.get("chunk_id") == parent_chunk_id and r.get("is_parent")
+        ][:1]
+    if not rows:
+        return None
+    r = rows[0]
+    return (r.get("text", "") or "", int(r.get("byte_start", 0) or 0))
+
+
+def _expand_to_parent_in_hits(tbl: Any, hits: list[Hit]) -> None:
+    """In-place: replace each child hit's ``text`` with parent text and set
+    ``child_offset`` to the byte index of the child inside the parent.
+
+    Falls back to leaving the hit unchanged when the parent can't be looked
+    up. Hits that are already parent rows (``parent_chunk_id is None``) are
+    skipped.
+    """
+    # Cache parent fetches across hits — multiple children may share a parent
+    # even after dedupe (rerank may bring them back in).
+    cache: dict[str, tuple[str, int] | None] = {}
+    for h in hits:
+        pid = h.parent_chunk_id
+        if not pid:
+            continue
+        if pid not in cache:
+            cache[pid] = _load_parent_text(tbl, pid)
+        parent_info = cache[pid]
+        if parent_info is None:
+            continue
+        ptext, _pbyte_start = parent_info
+        # We don't store the child's body-relative byte_start on Hit; pull
+        # it from the row dict via a fresh lookup. Use a defensive
+        # text-search fallback when byte ranges aren't reliable.
+        # The child's text is a substring of the parent's by construction.
+        child_text = h.text
+        offset = ptext.find(child_text) if child_text else 0
+        if offset < 0:
+            offset = 0
+        h.text = ptext
+        h.child_offset = offset
+        h.expanded_to_parent = True
 
 
 def hybrid_query(
@@ -280,6 +396,8 @@ def hybrid_query(
     alpha: float | None = None,
     model: str | None = None,
     filter_authority: str | None = None,
+    expand_to_parent: bool = True,
+    dedupe_by_parent: bool = True,
 ) -> list[Hit]:
     """Hybrid dense + sparse retrieval with optional cross-encoder rerank.
 
@@ -293,6 +411,15 @@ def hybrid_query(
     When ``rerank=False`` or ``LAB_RAG_RERANKER=none`` the reranker is bypassed
     and the top ``k`` come straight from stage-1. Phase 10 hooks (skip
     heuristics + cosine dedupe) live in this same call site.
+
+    Phase 9 parent-child:
+      * ``dedupe_by_parent`` collapses multiple child hits sharing the same
+        parent down to one representative (max-of-children score). On a
+        FLAT v1 KB no rows carry ``parent_chunk_id`` so the call is a no-op.
+      * ``expand_to_parent`` rewrites each child hit's ``text`` with the
+        parent's text and exposes ``child_offset`` on the :class:`Hit` so the
+        model sees a wider context without an extra round-trip. No-op for
+        FLAT KBs and for chunks that are already parents.
 
     Back-compat: callers that pass ``alpha=`` and not ``fusion=`` get the
     legacy alpha-blend (no surprise behaviour change for ablations or older
@@ -339,6 +466,12 @@ def hybrid_query(
     )
     if not stage1:
         return []
+
+    # Phase 9 parent-dedupe: collapse children of the same parent before the
+    # reranker sees them. On FLAT KBs the rows have no parent_chunk_id, so
+    # _dedupe_by_parent is a no-op.
+    if dedupe_by_parent:
+        stage1 = _dedupe_by_parent(stage1)
 
     # Phase 10 hooks: skip + dedupe live in their own module so they're easy
     # to unit-test without spinning up LanceDB.
@@ -426,6 +559,12 @@ def hybrid_query(
             _row_to_hit(cid, combined, d, s, row, rerank_score=None, stage1_rank=rank)
             for rank, (cid, combined, d, s, row) in enumerate(stage1[:k], start=1)
         ]
+
+    # Phase 9 parent expansion: rewrite child hits with parent text. No-op
+    # for FLAT KBs (no child carries a parent_chunk_id) and for hits that
+    # are already parent rows.
+    if expand_to_parent and any(h.parent_chunk_id for h in hits):
+        _expand_to_parent_in_hits(tbl, hits)
     return hits
 
 

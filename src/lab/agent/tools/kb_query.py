@@ -65,6 +65,8 @@ def kb_query(
     authority: str | None = None,
     rerank: bool = True,
     fusion: str = "rrf",
+    expand_to_parent: bool = True,
+    dedupe_by_parent: bool = True,
 ) -> dict[str, Any]:
     """Search a lab knowledge base for relevant passages.
 
@@ -89,14 +91,25 @@ def kb_query(
             disables it process-wide.
         fusion: Stage-1 fusion strategy: ``"rrf"`` (rank-based, default) or
             ``"alpha"`` (legacy alpha-blend; requires ``alpha=...``).
+        expand_to_parent: Phase 9 — for parent-child KBs, replace each
+            child hit's ``text`` with the parent's text so the model sees
+            wider context out of the gate (default True). No-op for FLAT
+            v1 KBs (no chunk carries a parent_chunk_id).
+        dedupe_by_parent: Phase 9 — collapse multiple child hits sharing
+            the same parent into a single representative (max-of-children
+            score). Avoids returning N children of the same section as N
+            distinct results. Default True; no-op for FLAT v1 KBs.
 
     Returns:
         ``{"hits": [{chunk_id, source_url, section_path, text, score,
-        rerank_score, stage1_rank, ...}]}`` on success. ``hits`` is always a
-        list; each element carries an explicit ``truncated`` flag when the
-        returned ``text`` was capped at :data:`MAX_TEXT_CHARS`. On
-        KB-missing/empty/error paths returns the same shape with an empty
-        list plus a ``kb_status`` or ``error`` key — never raises.
+        rerank_score, stage1_rank, ...}]}`` on success. For parent-child
+        KBs, each hit also carries ``parent_chunk_id``, ``child_offset``,
+        and ``expanded_to_parent`` (true when ``text`` is parent body).
+        ``hits`` is always a list; each element carries an explicit
+        ``truncated`` flag when the returned ``text`` was capped at
+        :data:`MAX_TEXT_CHARS`. On KB-missing/empty/error paths returns the
+        same shape with an empty list plus a ``kb_status`` or ``error`` key
+        — never raises.
     """
 
     if not isinstance(kb_name, str) or not _KB_NAME_RE.match(kb_name):
@@ -161,6 +174,8 @@ def kb_query(
             rerank=bool(rerank),
             alpha=alpha_val,
             filter_authority=authority,
+            expand_to_parent=bool(expand_to_parent),
+            dedupe_by_parent=bool(dedupe_by_parent),
         )
     except Exception as exc:
         return {"hits": [], "error": f"hybrid_query failed: {exc}"}
@@ -187,6 +202,10 @@ def kb_query(
                 "stage1_rank": h.stage1_rank,
                 "retrieved_at": h.retrieved_at,
                 "authority": h.authority,
+                # Phase 9 parent-child fields — only meaningful on v2 KBs.
+                "parent_chunk_id": h.parent_chunk_id,
+                "child_offset": h.child_offset,
+                "expanded_to_parent": h.expanded_to_parent,
             }
         )
     return {"hits": out, "kb_status": "ok", "kb_dir": str(kb_dir)}

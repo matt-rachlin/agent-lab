@@ -41,6 +41,10 @@ def test_schema_has_all_columns():
         "tokens",
         "chunk_format_version",
         "authority",
+        # Phase 9 v2 parent-child columns
+        "parent_chunk_id",
+        "child_index",
+        "is_parent",
     }
     assert names == expected
     # vector field is a fixed-size list of float32 with the requested width

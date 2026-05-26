@@ -11,15 +11,38 @@ Rules:
 - Tiny sibling sections under the same parent merge if combined < target.
 - Drops YAML front-matter from input before chunking.
 - Each chunk records section_path and byte offsets back into the source.
+
+Phase 9 (2026-05-26): parent-child chunking. Set ``mode=ChunkMode.PARENT_CHILD``
+on :func:`chunk_document` to emit ``(parent, child)`` pairs. Parents target
+``parent_target_tokens`` (default 768); children target ``child_target_tokens``
+(default 192). Child chunks carry ``parent_id`` + ``child_index``; parent
+chunks set ``is_parent=True``. The default mode is still ``ChunkMode.FLAT``
+(bit-for-bit-compatible with the v1 bash KB).
 """
 
 from __future__ import annotations
 
+import enum
 import re
 from dataclasses import dataclass
 
 import tiktoken
 from ulid import ULID
+
+
+class ChunkMode(enum.StrEnum):
+    """Chunking strategy. ``FLAT`` is the original v1 behaviour; ``PARENT_CHILD``
+    emits (parent, child) pairs for Phase 9 retrieval-by-child / read-by-parent.
+    """
+
+    FLAT = "flat"
+    PARENT_CHILD = "parent_child"
+
+
+#: Phase 9 parent-target token count (mid of 512-1024 band).
+DEFAULT_PARENT_TARGET_TOKENS = 768
+#: Phase 9 child-target token count (mid of 128-256 band).
+DEFAULT_CHILD_TARGET_TOKENS = 192
 
 
 @dataclass
@@ -31,6 +54,10 @@ class Chunk:
     byte_end: int
     text: str
     tokens: int
+    #: Phase 9 parent-child fields. ``None`` / ``False`` for FLAT mode.
+    parent_id: str | None = None
+    child_index: int | None = None
+    is_parent: bool = False
 
 
 _ENC = tiktoken.get_encoding("cl100k_base")
@@ -256,8 +283,31 @@ def chunk_document(
     overlap_tokens: int = 64,
     hard_cap_factor: int = 2,
     min_merge_tokens: int = 80,
+    mode: ChunkMode = ChunkMode.FLAT,
+    parent_target_tokens: int = DEFAULT_PARENT_TARGET_TOKENS,
+    child_target_tokens: int = DEFAULT_CHILD_TARGET_TOKENS,
 ) -> list[Chunk]:
-    """Top-level chunking entry."""
+    """Top-level chunking entry.
+
+    ``mode`` selects the chunking strategy:
+      * ``ChunkMode.FLAT`` (default) — original v1 markdown-structural chunker.
+        ``parent_target_tokens`` / ``child_target_tokens`` are ignored.
+      * ``ChunkMode.PARENT_CHILD`` — emit ``(parent, child)`` pairs where each
+        parent contains 2-4 children. Parents target
+        ``parent_target_tokens``; children target ``child_target_tokens``.
+        ``target_tokens`` / ``overlap_tokens`` still drive the underlying
+        section walk before parent boundaries are formed.
+    """
+    if mode is ChunkMode.PARENT_CHILD:
+        return _chunk_parent_child(
+            doc_path=doc_path,
+            full_text=full_text,
+            parent_target_tokens=parent_target_tokens,
+            child_target_tokens=child_target_tokens,
+            overlap_tokens=overlap_tokens,
+            min_merge_tokens=min_merge_tokens,
+        )
+
     body, base_offset = strip_frontmatter(full_text)
     sections = _split_into_sections(body)
     if not sections:
@@ -320,3 +370,267 @@ def chunk_document(
                 )
 
     return chunks
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — parent-child chunking.
+# ---------------------------------------------------------------------------
+
+# Crude sentence splitter: keeps trailing whitespace so byte ranges stay sane.
+# We split on `.`, `!`, `?`, and newline boundaries followed by whitespace or EOS.
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _sentence_split(text: str) -> list[tuple[int, int, str]]:
+    """Split text into sentence-like pieces.
+
+    Returns a list of ``(rel_start, rel_end, piece_text)``. Pieces are
+    non-empty and together cover the input (no characters lost).
+    """
+    if not text:
+        return []
+    pieces: list[tuple[int, int, str]] = []
+    cur = 0
+    for m in _SENTENCE_RE.finditer(text):
+        end = m.end()
+        piece = text[cur:end]
+        if piece.strip():
+            pieces.append((cur, end, piece))
+        cur = end
+    tail = text[cur:]
+    if tail.strip():
+        pieces.append((cur, len(text), tail))
+    elif pieces:
+        # Glue trailing whitespace onto the last piece so we don't drop bytes.
+        rs, _re, ptxt = pieces[-1]
+        pieces[-1] = (rs, len(text), ptxt + tail)
+    return pieces
+
+
+def _pack_children(
+    sentences: list[tuple[int, int, str]],
+    *,
+    child_target: int,
+    child_hard_cap: int,
+) -> list[tuple[int, int, str]]:
+    """Pack consecutive sentences into child-sized chunks.
+
+    A child fills to ``child_target`` tokens; oversized single sentences pass
+    through whole (better to overshoot than lose a sentence boundary). Soft
+    hard-cap at ``child_hard_cap`` triggers an early flush.
+    """
+    children: list[tuple[int, int, str]] = []
+    if not sentences:
+        return children
+
+    cur_start = sentences[0][0]
+    cur_end = sentences[0][0]
+    cur_text = ""
+    cur_tokens = 0
+
+    def flush() -> None:
+        nonlocal cur_start, cur_end, cur_text, cur_tokens
+        if cur_text:
+            children.append((cur_start, cur_end, cur_text))
+        cur_text = ""
+        cur_tokens = 0
+
+    for rs, re_, ptxt in sentences:
+        ptokens = _count(ptxt)
+        if cur_text and cur_tokens + ptokens > child_hard_cap:
+            flush()
+            cur_start = rs
+        if not cur_text:
+            cur_start = rs
+        cur_end = re_
+        cur_text += ptxt
+        cur_tokens += ptokens
+        if cur_tokens >= child_target:
+            flush()
+
+    flush()
+    return children
+
+
+def _section_to_parents(
+    section: _Section,
+    *,
+    parent_target: int,
+    parent_hard_cap: int,
+) -> list[tuple[int, int, str]]:
+    """Carve a single section into 1+ parent-sized blocks.
+
+    Sections smaller than ``parent_hard_cap`` become exactly one parent.
+    Larger sections are split at sentence boundaries near the parent-target
+    mark — children must never straddle parent boundaries.
+    """
+    text = section.text
+    sec_tokens = _count(text)
+    if sec_tokens <= parent_hard_cap:
+        return [(0, len(text), text)]
+
+    parents: list[tuple[int, int, str]] = []
+    sentences = _sentence_split(text)
+    cur_start = 0
+    cur_end = 0
+    cur_text = ""
+    cur_tokens = 0
+    for rs, re_, ptxt in sentences:
+        ptokens = _count(ptxt)
+        if cur_text and cur_tokens + ptokens > parent_hard_cap:
+            parents.append((cur_start, cur_end, cur_text))
+            cur_text = ""
+            cur_tokens = 0
+        if not cur_text:
+            cur_start = rs
+        cur_end = re_
+        cur_text += ptxt
+        cur_tokens += ptokens
+        if cur_tokens >= parent_target:
+            parents.append((cur_start, cur_end, cur_text))
+            cur_text = ""
+            cur_tokens = 0
+    if cur_text:
+        parents.append((cur_start, cur_end, cur_text))
+    if not parents:
+        parents.append((0, len(text), text))
+    return parents
+
+
+def _chunk_parent_child(
+    *,
+    doc_path: str,
+    full_text: str,
+    parent_target_tokens: int,
+    child_target_tokens: int,
+    overlap_tokens: int,
+    min_merge_tokens: int,
+) -> list[Chunk]:
+    """Emit ``(parent, child, child, ...)`` chunk records.
+
+    Output ordering: each parent appears immediately before its children, so
+    a downstream consumer can walk the list and reconstruct parent-child
+    relationships without random access.
+    """
+    body, base_offset = strip_frontmatter(full_text)
+    sections = _split_into_sections(body)
+    if not sections:
+        return []
+
+    parent_hard_cap = max(parent_target_tokens * 2, parent_target_tokens + 256)
+    child_hard_cap = max(child_target_tokens * 2, child_target_tokens + 64)
+
+    # Step 1 — split each section into parent-sized blocks (preferring
+    # section-aligned parents; fall back to mid-section sentence splits).
+    raw_parents: list[tuple[_Section, int, int, str]] = []  # (section, rs, re, text)
+    for sec in sections:
+        for rs, re_, ptxt in _section_to_parents(
+            sec,
+            parent_target=parent_target_tokens,
+            parent_hard_cap=parent_hard_cap,
+        ):
+            raw_parents.append((sec, rs, re_, ptxt))
+
+    # Step 2 — merge tiny adjacent siblings under the same path to keep the
+    # parent count low. (Only siblings — descendants stay separate.)
+    out_chunks: list[Chunk] = []
+    # We avoid the merging helper's lossy byte math and instead pack on the
+    # fly using a simple lookahead.
+    i = 0
+    packed_parents: list[tuple[list[str], int, int, str]] = []
+    while i < len(raw_parents):
+        sec, rs, re_, ptxt = raw_parents[i]
+        ptokens = _count(ptxt)
+        # Try to merge with the next raw parent if both are tiny and share the
+        # same enclosing parent-path.
+        if (
+            i + 1 < len(raw_parents)
+            and ptokens < min_merge_tokens
+            and raw_parents[i + 1][0].path[:-1] == sec.path[:-1]
+            and ptokens + _count(raw_parents[i + 1][3]) <= parent_target_tokens
+        ):
+            nxt_sec, _nxt_rs, nxt_re, nxt_text = raw_parents[i + 1]
+            # Use the earlier section's path; combined byte range only valid
+            # when both come from the same section.
+            combined_text = ptxt + nxt_text
+            if sec is nxt_sec:
+                packed_parents.append((list(sec.path), rs, nxt_re, combined_text))
+            else:
+                # Sibling-section merge: byte ranges become disjoint, but
+                # callers don't rely on contiguity in parent-child mode, so
+                # record the start of the first and end of the second.
+                packed_parents.append(
+                    (list(sec.path), sec.start + rs, nxt_sec.start + nxt_re, combined_text)
+                )
+            i += 2
+            continue
+        # Translate section-relative (rs, re_) to body-relative.
+        packed_parents.append(
+            (list(sec.path), sec.start + rs, sec.start + re_, ptxt)
+        )
+        i += 1
+
+    # Step 3 — emit parent + children pairs.
+    for path, byte_start_rel, byte_end_rel, ptxt in packed_parents:
+        parent_id = str(ULID())
+        parent_tokens = _count(ptxt)
+        out_chunks.append(
+            Chunk(
+                chunk_id=parent_id,
+                doc_path=doc_path,
+                section_path=path,
+                byte_start=base_offset + byte_start_rel,
+                byte_end=base_offset + byte_end_rel,
+                text=ptxt,
+                tokens=parent_tokens,
+                parent_id=None,
+                child_index=None,
+                is_parent=True,
+            )
+        )
+        sentences = _sentence_split(ptxt)
+        children = _pack_children(
+            sentences,
+            child_target=child_target_tokens,
+            child_hard_cap=child_hard_cap,
+        )
+        # Aim for 2-4 children per parent. If a parent only produced 1
+        # child (very short parent), still emit one child = full parent
+        # text so retrieval has a small embedding-target body.
+        if not children:
+            children = [(0, len(ptxt), ptxt)]
+        for ci, (crs, cre, ctxt) in enumerate(children):
+            out_chunks.append(
+                Chunk(
+                    chunk_id=str(ULID()),
+                    doc_path=doc_path,
+                    section_path=path,
+                    byte_start=base_offset + byte_start_rel + crs,
+                    byte_end=base_offset + byte_start_rel + cre,
+                    text=ctxt,
+                    tokens=_count(ctxt),
+                    parent_id=parent_id,
+                    child_index=ci,
+                    is_parent=False,
+                )
+            )
+
+    # `overlap_tokens` is accepted for API symmetry but parent-child chunks
+    # don't carry inter-chunk overlap (children are bounded by parents,
+    # parents are bounded by sections). Touch the var so linters don't gripe.
+    _ = overlap_tokens
+
+    return out_chunks
+
+
+# Keep the helper exported for tests that want to assert on tiny-merge
+# behaviour without re-running the full pipeline.
+__all__ = [
+    "DEFAULT_CHILD_TARGET_TOKENS",
+    "DEFAULT_PARENT_TARGET_TOKENS",
+    "Chunk",
+    "ChunkMode",
+    "chunk_document",
+    "strip_frontmatter",
+]
+
