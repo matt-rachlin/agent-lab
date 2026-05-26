@@ -17,6 +17,15 @@ FALLBACK_EMBED_MODEL = "qwen3-embedding:4b"
 FALLBACK_EMBED_DIMS = 2560
 DEFAULT_ENRICH_MODEL = "qwen3:8b"
 
+#: Primary cross-encoder reranker (Phase 7). Apache 2.0; ~1.2 GB VRAM.
+DEFAULT_RERANKER_MODEL = "Qwen/Qwen3-Reranker-0.6B"
+#: Mature fallback if the primary fails to load (still Apache 2.0).
+FALLBACK_RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
+#: Env var used to override / disable the reranker (``=none`` for pass-through).
+RERANKER_ENV_VAR = "LAB_RAG_RERANKER"
+#: RRF constant — Cormack et al. 2009 recommend k=60.
+RRF_K = 60
+
 
 def kb_root() -> str:
     """KB root directory (`~/db/kb` by default). Reads from lab settings."""

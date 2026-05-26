@@ -61,12 +61,9 @@ def test_kb_query_clamps_k_to_safe_range(
     def fake_hybrid(
         kb_dir_in: Path,
         question: str,
-        *,
-        k: int,
-        alpha: float,
-        filter_authority: str | None,
+        **kwargs: Any,
     ) -> list[Any]:
-        captured["k"] = k
+        captured["k"] = kwargs.get("k")
         return []
 
     monkeypatch.setattr("lab.rag.index.count_rows", fake_count)
@@ -197,13 +194,12 @@ def test_kb_query_passes_authority_filter_through(
     def fake_hybrid(
         kb_dir_in: Path,
         question: str,
-        *,
-        k: int,
-        alpha: float,
-        filter_authority: str | None,
+        **kwargs: Any,
     ) -> list[Any]:
-        captured["authority"] = filter_authority
-        captured["alpha"] = alpha
+        captured["authority"] = kwargs.get("filter_authority")
+        captured["alpha"] = kwargs.get("alpha")
+        captured["fusion"] = kwargs.get("fusion")
+        captured["rerank"] = kwargs.get("rerank")
         return []
 
     monkeypatch.setattr("lab.rag.index.hybrid_query", fake_hybrid)
@@ -213,6 +209,11 @@ def test_kb_query_passes_authority_filter_through(
     assert out["hits"] == []
     assert captured["authority"] == "official"
     assert captured["alpha"] == pytest.approx(0.3)
+    # Default fusion stays "rrf" — but when alpha is passed, hybrid_query
+    # itself flips to alpha-blend on the inside. The MCP tool surfaces both:
+    # caller passes fusion explicitly to control it.
+    assert captured["fusion"] == "rrf"
+    assert captured["rerank"] is True
 
 
 def test_kb_query_permission_denied_on_manifest_stat(

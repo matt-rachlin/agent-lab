@@ -43,6 +43,14 @@ RUN curl -fsSL https://astral.sh/uv/install.sh \
 # loads lab.rag + lab.settings to query a host-mounted KB. They're heavy,
 # but the alternative (host-side retrieval bridged in) breaks the per-call
 # sandboxed pattern the rest of the tool surface uses.
+#
+# `redis` is needed for the Phase 8 two-tier Valkey cache (embedding +
+# rerank result tiers).
+#
+# `sentence-transformers` powers the Phase 7 cross-encoder reranker. We do
+# NOT pre-pull the reranker weights — the host-mounted HF cache
+# (`/data/lab/services/hf-cache`, see sandbox.py:hf_cache_mount) persists
+# them across cells so cold-start is paid once.
 RUN python3.13 -m ensurepip --upgrade \
     && python3.13 -m pip install --no-cache-dir \
         "mcp>=1.27" \
@@ -55,6 +63,8 @@ RUN python3.13 -m ensurepip --upgrade \
         "pyarrow>=17" \
         "rank-bm25>=0.2.2" \
         "tenacity>=8.5" \
+        "redis>=5.1" \
+        "sentence-transformers>=3.0" \
     && rm -rf /root/.cache
 
 # Copy the lab subpackages the in-sandbox tools need:

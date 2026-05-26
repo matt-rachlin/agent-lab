@@ -61,8 +61,10 @@ def kb_query(
     kb_name: str,
     question: str,
     k: int = 5,
-    alpha: float = 0.5,
+    alpha: float | None = None,
     authority: str | None = None,
+    rerank: bool = True,
+    fusion: str = "rrf",
 ) -> dict[str, Any]:
     """Search a lab knowledge base for relevant passages.
 
@@ -75,18 +77,26 @@ def kb_query(
             half of the hybrid score.
         k: Maximum number of results to return (default 5). Clamped to
             ``[1, 50]``.
-        alpha: Hybrid weight. ``0.0`` = pure BM25 sparse, ``1.0`` = pure
-            dense; default ``0.5`` blends 50/50.
+        alpha: Legacy hybrid weight for alpha-blend fusion. ``0.0`` = pure
+            BM25 sparse, ``1.0`` = pure dense. Pass this only when running
+            an ablation against the legacy fusion strategy; otherwise omit
+            and the default ``fusion="rrf"`` (rank fusion) wins.
         authority: Optional filter on the source's authority tag (e.g.
             ``"official"`` to restrict to authoritative documentation).
+        rerank: Run the stage-2 cross-encoder reranker on the stage-1
+            candidates (default True). Set False to compare retrieval-only
+            quality. Honoured per call; the env var ``LAB_RAG_RERANKER=none``
+            disables it process-wide.
+        fusion: Stage-1 fusion strategy: ``"rrf"`` (rank-based, default) or
+            ``"alpha"`` (legacy alpha-blend; requires ``alpha=...``).
 
     Returns:
-        ``{"hits": [{chunk_id, source_url, section_path, text, score, ...}]}``
-        on success. ``hits`` is always a list; each element carries an
-        explicit ``truncated`` flag when the returned ``text`` was capped at
-        :data:`MAX_TEXT_CHARS`. On KB-missing/empty/error paths returns the
-        same shape with an empty list plus a ``kb_status`` or ``error`` key —
-        never raises.
+        ``{"hits": [{chunk_id, source_url, section_path, text, score,
+        rerank_score, stage1_rank, ...}]}`` on success. ``hits`` is always a
+        list; each element carries an explicit ``truncated`` flag when the
+        returned ``text`` was capped at :data:`MAX_TEXT_CHARS`. On
+        KB-missing/empty/error paths returns the same shape with an empty
+        list plus a ``kb_status`` or ``error`` key — never raises.
     """
 
     if not isinstance(kb_name, str) or not _KB_NAME_RE.match(kb_name):
@@ -97,12 +107,16 @@ def kb_query(
     if not isinstance(question, str) or not question.strip():
         return {"hits": [], "error": "question must be a non-empty string"}
     k = max(1, min(int(k), 50))
-    try:
-        alpha = float(alpha)
-    except (TypeError, ValueError):
-        return {"hits": [], "error": f"alpha must be a number, got {alpha!r}"}
-    if not (0.0 <= alpha <= 1.0):
-        return {"hits": [], "error": f"alpha must be in [0, 1], got {alpha!r}"}
+    alpha_val: float | None = None
+    if alpha is not None:
+        try:
+            alpha_val = float(alpha)
+        except (TypeError, ValueError):
+            return {"hits": [], "error": f"alpha must be a number, got {alpha!r}"}
+        if not (0.0 <= alpha_val <= 1.0):
+            return {"hits": [], "error": f"alpha must be in [0, 1], got {alpha!r}"}
+    if fusion not in ("rrf", "alpha"):
+        return {"hits": [], "error": f"fusion must be 'rrf' or 'alpha', got {fusion!r}"}
 
     kb_root = _resolve_kb_root()
     kb_dir = kb_root / kb_name
@@ -143,7 +157,9 @@ def kb_query(
             kb_dir,
             question,
             k=k,
-            alpha=alpha,
+            fusion=fusion,  # type: ignore[arg-type]
+            rerank=bool(rerank),
+            alpha=alpha_val,
             filter_authority=authority,
         )
     except Exception as exc:
@@ -167,6 +183,8 @@ def kb_query(
                 "score": h.score,
                 "dense_score": h.dense_score,
                 "sparse_score": h.sparse_score,
+                "rerank_score": h.rerank_score,
+                "stage1_rank": h.stage1_rank,
                 "retrieved_at": h.retrieved_at,
                 "authority": h.authority,
             }

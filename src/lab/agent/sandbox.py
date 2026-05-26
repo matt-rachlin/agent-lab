@@ -100,6 +100,13 @@ class _PodmanArgs:
     # default sandbox surface unchanged.
     kb_root_mount: Path | None = None
     kb_mount_target: str = "/kb"
+    # Read-write bind mount for the HuggingFace cache (Phase 7 reranker
+    # weights). Sharing this between cells avoids re-downloading the
+    # cross-encoder on every container restart. When None, no mount is added
+    # and the reranker falls back to an in-container cache (which gets
+    # wiped at sandbox shutdown).
+    hf_cache_mount: Path | None = None
+    hf_cache_target: str = "/data/hf-cache"
 
     def to_argv(self) -> list[str]:
         argv = [
@@ -135,6 +142,10 @@ class _PodmanArgs:
             # but conflicts with `label=disable` we already pass, so we leave
             # SELinux relabelling alone (gVisor doesn't care).
             argv += [f"-v={self.kb_root_mount}:{self.kb_mount_target}:ro"]
+        if self.hf_cache_mount is not None:
+            # rw because the reranker writes downloaded weights into this
+            # tree on first run; subsequent cells get an instant cache hit.
+            argv += [f"-v={self.hf_cache_mount}:{self.hf_cache_target}:rw"]
         for k, v in sorted(self.env.items()):
             argv += ["--env", f"{k}={v}"]
         argv += [
@@ -161,6 +172,8 @@ def _build_run_argv(
     dns_servers: list[str] | None = None,
     kb_root_mount: Path | None = None,
     kb_mount_target: str = "/kb",
+    hf_cache_mount: Path | None = None,
+    hf_cache_target: str = "/data/hf-cache",
 ) -> list[str]:
     """Pure helper exposed for unit tests; mirrors `_PodmanArgs.to_argv`."""
 
@@ -176,6 +189,8 @@ def _build_run_argv(
         dns_servers=list(dns_servers or []),
         kb_root_mount=kb_root_mount,
         kb_mount_target=kb_mount_target,
+        hf_cache_mount=hf_cache_mount,
+        hf_cache_target=hf_cache_target,
     ).to_argv()
 
 
@@ -221,6 +236,8 @@ class Sandbox:
         env: dict[str, str] | None = None,
         kb_root_mount: Path | None = None,
         kb_mount_target: str = "/kb",
+        hf_cache_mount: Path | None = None,
+        hf_cache_target: str = "/data/hf-cache",
     ) -> None:
         # Allow-list of (host, ip) pairs to bake into the container's
         # `/etc/hosts`; empty in non-allow-list modes.
@@ -254,6 +271,10 @@ class Sandbox:
             Path(kb_root_mount) if kb_root_mount is not None else None
         )
         self.kb_mount_target = kb_mount_target
+        self.hf_cache_mount: Path | None = (
+            Path(hf_cache_mount) if hf_cache_mount is not None else None
+        )
+        self.hf_cache_target = hf_cache_target
         # Container name: short + unique + recognisable in `podman ps`.
         self.container_name = f"lab-sandbox-{uuid.uuid4().hex[:12]}"
         self._started = False
@@ -308,6 +329,8 @@ class Sandbox:
             dns_servers=dns_servers,
             kb_root_mount=self.kb_root_mount,
             kb_mount_target=self.kb_mount_target,
+            hf_cache_mount=self.hf_cache_mount,
+            hf_cache_target=self.hf_cache_target,
         )
         try:
             proc = subprocess.run(
