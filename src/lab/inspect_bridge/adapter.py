@@ -24,8 +24,25 @@ from lab.inspect_bridge.scorer import (
     tool_correctness,
     trajectory_judge,
 )
+from lab.inspect_bridge.scorers.rag import (
+    attribution,
+    faithfulness,
+    mrr,
+    ndcg,
+    recall_at_k,
+)
 from lab.inspect_bridge.solver import model_with_tools
 from lab.tasks.registry import Task as LabTask
+
+
+def _task_uses_kb_query(task: LabTask) -> bool:
+    """True if the task's tool list includes the `kb_query` MCP tool."""
+
+    if not task.tools:
+        return False
+    return any(
+        isinstance(spec, dict) and spec.get("name") == "kb_query" for spec in task.tools
+    )
 
 
 def _select_scorers(task: LabTask) -> list[Scorer]:
@@ -39,24 +56,43 @@ def _select_scorers(task: LabTask) -> list[Scorer]:
       * `trajectory_judge` if `task.success_predicate.include_judge` is
         true (lets a task opt into the LLM-judged dimension without
         forcing the cost on every run).
+      * RAG family (`recall_at_k`, `mrr`, `ndcg`, `attribution`) if
+        `task.success_predicate.type == "retrieval_recall"`.
+      * `faithfulness` if `success_predicate.include_faithfulness` is
+        true AND the task wires up the `kb_query` tool — otherwise we'd
+        be running a judge on a trajectory with nothing to ground
+        against.
 
     The order matters for the logwriter's primary-score preference (see
-    `logwriter._select_primary_score`): we want `end_state` first when
-    present, then `tool_correctness`, then `trajectory_judge`, then
-    `budget_respected`. We build the list in that order; the logwriter
-    re-checks by name so the order here is documentation, not load-bearing.
+    `logwriter._select_primary_score`): on RAG tasks `recall_at_k`
+    should outrank `tool_correctness` and `budget_respected`. We build
+    the list in that order; the logwriter re-checks by name so the
+    order here is documentation, not load-bearing.
     """
 
     scorers: list[Scorer] = []
-    if task.success_predicate:
-        scorers.append(end_state(task.success_predicate))
+    pred = task.success_predicate
+    pred_type = pred.get("type") if isinstance(pred, dict) else None
+
+    if pred:
+        scorers.append(end_state(pred))
+    if pred_type == "retrieval_recall":
+        retrieval_k = int(pred.get("k", 5)) if isinstance(pred, dict) else 5
+        scorers.append(recall_at_k(k=retrieval_k))
+        scorers.append(mrr())
+        scorers.append(ndcg(k=retrieval_k))
+        scorers.append(attribution())
     if task.rubric is not None and task.rubric.type == "tool_call":
         scorers.append(tool_correctness())
     if (
-        isinstance(task.success_predicate, dict)
-        and bool(task.success_predicate.get("include_judge"))
+        isinstance(pred, dict)
+        and bool(pred.get("include_faithfulness"))
+        and _task_uses_kb_query(task)
     ):
-        judge_model = task.success_predicate.get("judge_model", "gpt-oss-120b-cloud")
+        judge_model = pred.get("judge_model", "gpt-oss-120b-cloud")
+        scorers.append(faithfulness(judge_model=judge_model))
+    if isinstance(pred, dict) and bool(pred.get("include_judge")):
+        judge_model = pred.get("judge_model", "gpt-oss-120b-cloud")
         scorers.append(trajectory_judge(judge_model=judge_model))
     scorers.append(budget_respected())
     return scorers

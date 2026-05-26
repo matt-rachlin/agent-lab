@@ -129,10 +129,19 @@ def _extract_sample_metadata(log: Any) -> dict[str, Any]:
 
 
 # Preferred order for picking the cell's "primary" score. The Inspect
-# scorer registration names (see `lab.inspect_bridge.scorer`) live here.
+# scorer registration names (see `lab.inspect_bridge.scorer` and
+# `lab.inspect_bridge.scorers.rag`) live here. On RAG tasks `recall_at_k`
+# is the headline metric, so it outranks `tool_correctness`; `mrr` /
+# `ndcg` / `attribution` ride along but the primary score that drives
+# pass/fail dashboards is recall@k.
 _PRIMARY_PREFERENCE = (
     "end_state",
+    "recall_at_k",
     "tool_correctness",
+    "faithfulness",
+    "mrr",
+    "ndcg",
+    "attribution",
     "trajectory_judge",
     "budget_respected",
 )
