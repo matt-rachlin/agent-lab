@@ -61,6 +61,12 @@ class ModelDefaults(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     system_prompt: str | None = None
+    # Extra request-body fields merged into call_litellm_chat() per-model.
+    # Use this for backend knobs that vary by model — e.g. Ollama's
+    # `think: false` to disable qwen3 reasoning (see commit ae3f1db).
+    # Per-model `extra` takes precedence over `config.extra` for overlapping
+    # keys; system_prompt remains a separate field.
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 class SweepConfig(BaseModel):

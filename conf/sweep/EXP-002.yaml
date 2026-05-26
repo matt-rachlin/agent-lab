@@ -31,12 +31,15 @@ configs:
     # Runner dispatches to the agent path automatically when
     # task.max_turns > 1, which is true for all 12 PBS-Agent v0.1 tasks.
 
-# No per-model system_prompt overrides. EXP-001b established that
-# /no_think in the system prompt does NOT actually disable qwen3
-# reasoning (only API-level think:false does), and we deliberately
-# leave reasoning ON for qwen3 in EXP-002 — agentic tasks need it more
-# than single-turn fmt tasks did. See docs/exp/EXP-002.md "Confounders".
-# model_defaults: {}
+# Per-model overrides. EXP-001b established that /no_think in the system
+# prompt does NOT actually disable qwen3 reasoning (only API-level
+# think:false does — commit ae3f1db). Per user direction (2026-05-26)
+# we disable reasoning for qwen3-14b-q4 in EXP-002. The reasoning-ON
+# comparison becomes EXP-002b (parallel to EXP-001b's structure).
+model_defaults:
+  qwen3-14b-q4:
+    extra:
+      think: false
 
 seeds: [1, 2, 3, 4, 5, 6, 7, 8]
 

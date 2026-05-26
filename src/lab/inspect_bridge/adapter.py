@@ -70,6 +70,7 @@ def lab_task_to_inspect(
     temperature: float = 0.0,
     max_tokens: int | None = None,
     solver_override: Solver | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> InspectTask:
     """Build an Inspect `Task` for one lab `Task`.
 
@@ -118,6 +119,7 @@ def lab_task_to_inspect(
             tool_names=tool_names,
             temperature=temperature,
             max_tokens=max_tokens or 1024,
+            extra=extra,
         )
 
     scorers = _select_scorers(task)

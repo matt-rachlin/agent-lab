@@ -397,6 +397,7 @@ def execute_cell(
     litellm_key: str,
     timeout: int,
     model_default_system: str | None = None,
+    model_default_extra: dict[str, Any] | None = None,
 ) -> CellResult:
     """Execute one matrix cell.
 
@@ -423,6 +424,7 @@ def execute_cell(
             cell=cell,
             manifest_sha=manifest.sha,
             timeout=timeout,
+            model_default_extra=model_default_extra,
         )
 
     return _execute_single_turn(
@@ -431,6 +433,7 @@ def execute_cell(
         timeout=timeout,
         manifest_sha=manifest.sha,
         model_default_system=model_default_system,
+        model_default_extra=model_default_extra,
     )
 
 
@@ -441,6 +444,7 @@ def _execute_single_turn(
     timeout: int,
     manifest_sha: str,
     model_default_system: str | None,
+    model_default_extra: dict[str, Any] | None = None,
 ) -> CellResult:
     """Phase 1-5 fast path: one LiteLLM call, one trace row, no Inspect."""
 
@@ -453,6 +457,15 @@ def _execute_single_turn(
         config_system=config_system,
         model_default_system=model_default_system,
     )
+    # Merge per-model extra over config.extra. Per-model wins on key clash;
+    # system_prompt is consumed locally and not forwarded.
+    merged_extra: dict[str, Any] = {}
+    if cell.config.extra:
+        merged_extra.update(cell.config.extra)
+    if model_default_extra:
+        merged_extra.update(model_default_extra)
+    # Materialise a config copy with merged extra so _call_litellm forwards it.
+    cell_config_for_call = cell.config.model_copy(update={"extra": merged_extra})
     result: CellResult
 
     try:
@@ -465,7 +478,7 @@ def _execute_single_turn(
                     litellm_key=litellm_key,
                     model=cell.model_litellm_id,
                     messages=messages,
-                    config=cell.config,
+                    config=cell_config_for_call,
                     timeout=timeout,
                 )
         else:
@@ -537,6 +550,7 @@ def _execute_agent_cell(
     cell: Cell,
     manifest_sha: str,
     timeout: int,
+    model_default_extra: dict[str, Any] | None = None,
 ) -> CellResult:
     """Phase 6 path: build an Inspect task, run it, mirror the log into Postgres + MinIO."""
 
@@ -597,12 +611,23 @@ def _execute_agent_cell(
             workspace_files=workspace_files,
             time_limit_sec=timeout,
         ) as sandbox:
+            # Merge per-model `extra` over config.extra (per-model wins).
+            merged_extra: dict[str, Any] = {}
+            if cell.config.extra:
+                merged_extra.update(cell.config.extra)
+            if model_default_extra:
+                merged_extra.update(model_default_extra)
+            # system_prompt is consumed locally and not forwarded as a
+            # backend knob; drop it before plumbing to the solver.
+            merged_extra.pop("system_prompt", None)
+
             inspect_task = lab_task_to_inspect(
                 lab_task,
                 model=cell.model_litellm_id,
                 sandbox=sandbox,
                 temperature=cell.config.temperature,
                 max_tokens=cell.config.max_tokens,
+                extra=merged_extra or None,
             )
             import tempfile
 
@@ -736,14 +761,17 @@ def run_sweep(
             bar = progress.add_task("sweeping", total=len(todo_sorted))
             for cell in todo_sorted:
                 model_default_system = None
+                model_default_extra: dict[str, Any] | None = None
                 md = spec.model_defaults.get(cell.model_litellm_id)
                 if md is not None:
                     model_default_system = md.system_prompt
+                    model_default_extra = dict(md.extra) if md.extra else None
                 result = execute_cell(
                     cell,
                     litellm_key=litellm_key,
                     timeout=spec.request_timeout_sec,
                     model_default_system=model_default_system,
+                    model_default_extra=model_default_extra,
                 )
                 summary["executed"] += 1
                 if result.status == "error":

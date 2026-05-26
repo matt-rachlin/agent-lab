@@ -221,6 +221,7 @@ def model_with_tools(
     tool_names: list[str] | None = None,
     temperature: float = 0.0,
     max_tokens: int = 1024,
+    extra: dict[str, Any] | None = None,
 ) -> Solver:
     """Solver: drives `model` through up to `max_turns` of tool-using chat.
 
@@ -320,6 +321,7 @@ def model_with_tools(
                         temperature=temperature,
                         max_tokens=max_tokens,
                         tools=tool_specs or None,
+                        extra=extra,
                     )
                 except Exception as exc:
                     error = f"litellm call failed at turn {turn_idx}: {exc}"
