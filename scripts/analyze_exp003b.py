@@ -80,7 +80,7 @@ def fetch_cells() -> list[Cell]:
     SELECT
       m.litellm_id     AS model,
       t.slug           AS task,
-      t.success_predicate AS predicate,
+      t.payload->'success_predicate' AS predicate,
       r.seed           AS seed,
       r.status         AS status,
       r.actual_turns   AS actual_turns,
@@ -304,7 +304,11 @@ def compute_h1(cells: list[Cell]) -> dict[str, Any]:
     w_local, wo_local, delta_local, n_local = class_delta(LOCAL_MODELS)
     w_cloud, wo_cloud, delta_cloud, n_cloud = class_delta(CLOUD_MODELS)
     diff = delta_local - delta_cloud if not (math.isnan(delta_local) or math.isnan(delta_cloud)) else float("nan")
-    verdict = "CONFIRMED" if not math.isnan(diff) and diff >= 0.10 else "REFUTED"
+    verdict = (
+        "UNDEFINED" if math.isnan(diff)
+        else "CONFIRMED" if diff >= 0.10
+        else "REFUTED"
+    )
     return {
         "verdict": verdict,
         "delta_local": delta_local,
