@@ -1,0 +1,97 @@
+# PBS-Agent v0.1 — http-domain tasks.
+#
+# Two tasks against http_fetch. Both run in offline-fixture mode: the
+# sandbox env sets LAB_HTTP_FIXTURE_DIR=/workspace/_http_fixtures and the
+# workspace pre-populates the fixture tree, so no live HTTP is required.
+# The allow-list still gates which hosts are dispatched to the fixture lookup.
+
+suite: pbs-agent-v0.1
+category: http
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: http-fetch-and-extract
+    difficulty: easy
+    description: |
+      Fetch a small JSON document and extract a field. Verifies the agent
+      can use http_fetch and propagate its content to fs_write.
+    input: |
+      Use http_fetch to GET http://example.com/status.json — this is a
+      small JSON document with a top-level field "uptime_minutes". Extract
+      the integer value of that field and write it (as plain text, no JSON
+      braces, no extra whitespace) to a new file 'uptime.txt' via fs_write
+      mode='create'. Reply with 'done'.
+    system: |
+      You are an assistant with HTTP and filesystem tool access. Always
+      use http_fetch when asked to GET a URL.
+    tools:
+      - name: http_fetch
+      - name: fs_write
+    max_turns: 5
+    tool_budget: 5
+    sandbox:
+      network: ["example.com"]
+      env:
+        LAB_HTTP_ALLOWLIST: "example.com"
+        LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
+      workspace_files:
+        "_http_fixtures/example.com/status.json": |
+          {"service": "lab", "uptime_minutes": 4242, "healthy": true}
+    success_predicate:
+      type: workspace_file_contains
+      path: uptime.txt
+      substring: "4242"
+    rubric:
+      type: tool_call
+      target_tool: http_fetch
+      expected_args:
+        url: "http://example.com/status.json"
+
+  # -------------------------------------------------------------------------
+  - slug: http-fetch-and-count
+    difficulty: medium
+    description: |
+      Fetch a small HTML page and count occurrences of a tag/word. Tests
+      whether the agent can chain http_fetch into a Python or shell count.
+    input: |
+      Use http_fetch to GET http://example.org/index.html. Count how many
+      times the word 'TODO' appears in the response body. Write the count
+      (a plain integer) to a new file 'todo_count.txt' via fs_write
+      mode='create'. Reply with the count.
+    system: |
+      You are an assistant with HTTP, filesystem, and Python tool access.
+      Use python_eval for counting if helpful.
+    tools:
+      - name: http_fetch
+      - name: fs_write
+      - name: python_eval
+    max_turns: 5
+    tool_budget: 6
+    sandbox:
+      network: ["example.org"]
+      env:
+        LAB_HTTP_ALLOWLIST: "example.org"
+        LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
+      workspace_files:
+        "_http_fixtures/example.org/index.html": |
+          <!DOCTYPE html>
+          <html><body>
+          <h1>Docs Home</h1>
+          <p>Welcome. TODO: write more here.</p>
+          <ul>
+            <li>TODO: index search</li>
+            <li>TODO: dark mode</li>
+            <li>Done: account settings</li>
+          </ul>
+          <p>Status: TODO.</p>
+          </body></html>
+    success_predicate:
+      type: workspace_file_contains
+      path: todo_count.txt
+      substring: "4"
+    rubric:
+      type: tool_call
+      target_tool: http_fetch
+      expected_args:
+        url: "http://example.org/index.html"

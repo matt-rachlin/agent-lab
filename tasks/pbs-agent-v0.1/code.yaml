@@ -1,0 +1,118 @@
+# PBS-Agent v0.1 — code-domain tasks.
+#
+# Three tasks that need the agent to author, run, or debug small Python
+# snippets via python_eval (plus fs tools to stage / inspect code).
+
+suite: pbs-agent-v0.1
+category: code
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: code-read-and-explain
+    difficulty: easy
+    description: |
+      Open a small Python file and report what it does. Grades on whether
+      the agent invoked fs_read and produced an explanation. Uses the
+      trajectory judge — this is the explicit include_judge probe.
+    input: |
+      The workspace contains a Python file 'fizzbuzz.py'. Read it with the
+      fs_read tool, then write a one-sentence plain-English explanation of
+      what the function does to a new file 'explanation.txt' using fs_write
+      mode='create'. Reply with 'done'.
+    system: |
+      You are an assistant with filesystem tool access. Read code before
+      describing it.
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+    max_turns: 4
+    tool_budget: 4
+    sandbox:
+      workspace_files:
+        "fizzbuzz.py": |
+          def classify(n: int) -> str:
+              if n % 15 == 0:
+                  return "fizzbuzz"
+              if n % 3 == 0:
+                  return "fizz"
+              if n % 5 == 0:
+                  return "buzz"
+              return str(n)
+    success_predicate:
+      type: workspace_file_exists
+      path: explanation.txt
+      include_judge: true
+      judge_model: gpt-oss-120b-cloud
+    rubric:
+      type: tool_call
+      target_tool: fs_read
+      expected_args:
+        path: fizzbuzz.py
+
+  # -------------------------------------------------------------------------
+  - slug: code-write-and-execute
+    difficulty: medium
+    description: |
+      Write a Python snippet that computes something and run it. Tests
+      python_eval alongside fs_write.
+    input: |
+      Use the python_eval tool to compute the sum of the first 100 positive
+      integers (1 through 100 inclusive). Then write the resulting integer
+      (as a plain decimal string, no extra text) to a new file 'answer.txt'
+      using fs_write mode='create'. Reply with 'done'.
+    system: |
+      You are an assistant with Python and filesystem tool access. Use
+      python_eval for computation rather than guessing.
+    tools:
+      - name: python_eval
+      - name: fs_write
+    max_turns: 4
+    tool_budget: 4
+    success_predicate:
+      type: workspace_file_equals
+      path: answer.txt
+      expected: "5050"
+    rubric:
+      type: tool_call
+      target_tool: python_eval
+
+  # -------------------------------------------------------------------------
+  - slug: code-find-and-fix-bug
+    difficulty: hard
+    description: |
+      Locate a buggy Python file via fs_grep, read it, then fix it by
+      overwriting. Exercises grep + read + write + shell.
+    input: |
+      A buggy Python script lives somewhere under the 'src/' directory in
+      the workspace. The bug is that it prints 'good' instead of 'great'.
+      Use fs_grep to find which file prints 'good', then use fs_write with
+      mode='overwrite' to replace the file's contents with a corrected
+      version that prints 'great' instead. Verify by running it with
+      shell_exec ('python3 <path>'). Reply with the captured stdout.
+    system: |
+      You are a debugging assistant with filesystem and shell access. Use
+      tools to locate and verify; do not guess.
+    tools:
+      - name: fs_grep
+      - name: fs_read
+      - name: fs_write
+      - name: shell_exec
+    max_turns: 6
+    tool_budget: 8
+    sandbox:
+      workspace_files:
+        "src/cli/main.py": |
+          # buggy: prints 'good' but should print 'great'
+          print("good")
+        "src/utils/other.py": "# unrelated\nprint('hello')\n"
+    success_predicate:
+      type: workspace_file_contains
+      path: src/cli/main.py
+      substring: "great"
+    rubric:
+      type: tool_call
+      target_tool: fs_grep
+      expected_args:
+        pattern: "good"

@@ -1,0 +1,112 @@
+# PBS-Agent v0.1 — filesystem-domain tasks.
+#
+# Three tasks exercising fs_read / fs_write / fs_grep. Each ends with a
+# verifiable workspace_file_* predicate so end_state can grade without an LLM.
+
+suite: pbs-agent-v0.1
+category: fs
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: fs-read-and-copy
+    difficulty: easy
+    description: |
+      Trivial read-then-write loop. Verifies the agent can read a file via
+      fs_read and emit a new file via fs_write, the most common shape.
+    input: |
+      Read the file at path 'source.txt' using the fs_read tool. Then write
+      its EXACT contents to a new file at path 'copy.txt' using the fs_write
+      tool with mode='create'. Finally, reply with the word 'done'.
+    system: |
+      You are an assistant with filesystem tool access. Always use the
+      provided tools — never guess file contents.
+    tools:
+      - name: fs_read
+      - name: fs_write
+    max_turns: 4
+    tool_budget: 4
+    sandbox:
+      workspace_files:
+        "source.txt": "the quick brown fox jumps over the lazy dog"
+    success_predicate:
+      type: workspace_file_equals
+      path: copy.txt
+      expected: "the quick brown fox jumps over the lazy dog"
+    rubric:
+      type: tool_call
+      target_tool: fs_write
+      expected_args:
+        path: copy.txt
+
+  # -------------------------------------------------------------------------
+  - slug: fs-grep-extract-and-write
+    difficulty: medium
+    description: |
+      Grep a multi-file workspace for a keyword, then write the matching line
+      out. Exercises fs_grep + fs_write composition and tests the agent's
+      ability to use grep results.
+    input: |
+      The workspace contains several small text files. Use the fs_grep tool
+      to find the single line that contains the token 'SECRET_VALUE='. Then
+      write JUST that one line (no path prefix, no quotes) to a new file at
+      path 'secret.txt' using fs_write mode='create'. Reply with 'done'.
+    system: |
+      You are an assistant with filesystem tool access. Use fs_grep to
+      locate content rather than reading every file individually.
+    tools:
+      - name: fs_grep
+      - name: fs_read
+      - name: fs_write
+    max_turns: 5
+    tool_budget: 5
+    sandbox:
+      workspace_files:
+        "config/a.txt": "name=alpha\nport=8080\n"
+        "config/b.txt": "name=beta\nSECRET_VALUE=alpaca-orbit-42\n"
+        "config/c.txt": "name=gamma\nport=9090\n"
+        "README.md": "Config files in config/. Look for SECRET_VALUE.\n"
+    success_predicate:
+      type: workspace_file_contains
+      path: secret.txt
+      substring: "SECRET_VALUE=alpaca-orbit-42"
+    rubric:
+      type: tool_call
+      target_tool: fs_grep
+      expected_args:
+        pattern: "SECRET_VALUE="
+
+  # -------------------------------------------------------------------------
+  - slug: fs-write-csv-summary
+    difficulty: medium
+    description: |
+      Multi-step file synthesis: read an input file, parse it mentally, and
+      write a transformed output. Tests that the agent can transform content
+      not just shuttle it.
+    input: |
+      Read the file 'numbers.txt' (one integer per line) using fs_read. Then
+      write a new file 'summary.csv' containing exactly two lines:
+        metric,value
+        sum,<SUM>
+      where <SUM> is the sum of the integers. Use fs_write mode='create'.
+      Reply with 'done' when finished.
+    system: |
+      You are an assistant with filesystem tool access. Compute carefully
+      and write the EXACT format requested.
+    tools:
+      - name: fs_read
+      - name: fs_write
+    max_turns: 4
+    tool_budget: 4
+    sandbox:
+      workspace_files:
+        "numbers.txt": "10\n20\n30\n40\n50\n"
+    success_predicate:
+      type: workspace_file_contains
+      path: summary.csv
+      substring: "sum,150"
+    rubric:
+      type: tool_call
+      target_tool: fs_write
+      expected_args:
+        path: summary.csv

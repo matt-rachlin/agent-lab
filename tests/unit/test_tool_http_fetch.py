@@ -97,3 +97,78 @@ def test_http_fetch_rejects_url_without_host(
 def test_http_fetch_max_bytes_must_be_positive() -> None:
     with pytest.raises(ValueError, match="max_bytes must be positive"):
         http_fetch_mod.http_fetch(url="https://example.com/", max_bytes=0)
+
+
+# ---------------------------------------------------------------------------
+# LAB_HTTP_FIXTURE_DIR offline mode (added 6f for PBS-Agent v0.1 HTTP tasks).
+# ---------------------------------------------------------------------------
+
+
+def test_http_fetch_fixture_dir_serves_from_disk(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """When LAB_HTTP_FIXTURE_DIR is set, http_fetch reads from <dir>/<host>/<path>."""
+
+    import pathlib
+
+    fixture_dir = pathlib.Path(tmp_path)  # type: ignore[arg-type]
+    (fixture_dir / "lab.example").mkdir(parents=True)
+    (fixture_dir / "lab.example" / "status.json").write_text(
+        '{"service": "lab", "uptime_minutes": 4242}'
+    )
+    monkeypatch.setenv("LAB_HTTP_ALLOWLIST", "lab.example")
+    monkeypatch.setenv("LAB_HTTP_FIXTURE_DIR", str(fixture_dir))
+
+    out = http_fetch_mod.http_fetch(url="http://lab.example/status.json")
+    assert out["status"] == 200
+    assert "4242" in out["content"]
+    assert out["headers"].get("x-lab-fixture") == "hit"
+
+
+def test_http_fetch_fixture_dir_miss_returns_404(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    import pathlib
+
+    fixture_dir = pathlib.Path(tmp_path)  # type: ignore[arg-type]
+    (fixture_dir / "lab.example").mkdir(parents=True)
+    monkeypatch.setenv("LAB_HTTP_ALLOWLIST", "lab.example")
+    monkeypatch.setenv("LAB_HTTP_FIXTURE_DIR", str(fixture_dir))
+
+    out = http_fetch_mod.http_fetch(url="http://lab.example/missing.json")
+    assert out["status"] == 404
+    assert out["headers"].get("x-lab-fixture") == "miss"
+
+
+def test_http_fetch_fixture_dir_still_enforces_allowlist(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Fixture mode does NOT bypass the host allow-list."""
+
+    import pathlib
+
+    fixture_dir = pathlib.Path(tmp_path)  # type: ignore[arg-type]
+    monkeypatch.setenv("LAB_HTTP_ALLOWLIST", "lab.example")
+    monkeypatch.setenv("LAB_HTTP_FIXTURE_DIR", str(fixture_dir))
+
+    with pytest.raises(PermissionError, match="not in the allow-list"):
+        http_fetch_mod.http_fetch(url="http://other.example/whatever")
+
+
+def test_http_fetch_fixture_dir_refuses_path_escape(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    import pathlib
+
+    fixture_dir = pathlib.Path(tmp_path)  # type: ignore[arg-type]
+    (fixture_dir / "lab.example").mkdir(parents=True)
+    monkeypatch.setenv("LAB_HTTP_ALLOWLIST", "lab.example")
+    monkeypatch.setenv("LAB_HTTP_FIXTURE_DIR", str(fixture_dir))
+
+    # `..` is normalised by urlparse before we see it for many shapes, but
+    # the safety check still has to refuse anything that resolves outside
+    # the host dir.
+    out = http_fetch_mod.http_fetch(url="http://lab.example/../etc/passwd")
+    # urlparse normalises the path so this is a miss inside the host dir,
+    # which is the expected safe outcome (404, not a server error).
+    assert out["status"] == 404

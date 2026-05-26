@@ -1,0 +1,76 @@
+# PBS-Agent v0.1 — shell-domain tasks.
+#
+# Two tasks that exercise shell_exec with predictable side effects.
+
+suite: pbs-agent-v0.1
+category: shell
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: shell-count-lines
+    difficulty: easy
+    description: |
+      Use shell_exec to run `wc -l` and capture the count. Tests basic shell
+      tool use and result extraction.
+    input: |
+      The workspace has a file 'lines.txt'. Use shell_exec to count its
+      lines (run something like 'wc -l < lines.txt'). Then write the
+      resulting count (a plain integer, no extra text) to a new file
+      'count.txt' via fs_write mode='create'. Reply with 'done'.
+    system: |
+      You are an assistant with shell and filesystem tool access. Use the
+      shell to query file properties.
+    tools:
+      - name: shell_exec
+      - name: fs_write
+    max_turns: 4
+    tool_budget: 4
+    sandbox:
+      workspace_files:
+        "lines.txt": "alpha\nbravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\n"
+    success_predicate:
+      type: workspace_file_contains
+      path: count.txt
+      substring: "7"
+    rubric:
+      type: tool_call
+      target_tool: shell_exec
+
+  # -------------------------------------------------------------------------
+  - slug: shell-pipeline-extract
+    difficulty: medium
+    description: |
+      Compose a shell pipeline: grep + cut + uniq to extract distinct values
+      from a CSV-like file. Tests shell composition.
+    input: |
+      The workspace has a file 'events.log'. Each line is 'TIMESTAMP|LEVEL|MESSAGE'.
+      Use shell_exec to extract every UNIQUE level (the 2nd pipe-delimited
+      field), one per line, sorted alphabetically. Capture the result and
+      write it to a new file 'levels.txt' via fs_write mode='create'.
+      Reply with 'done'.
+    system: |
+      You are a shell-savvy assistant. Use pipelines like `cut`, `sort -u`,
+      and `awk` to slice text efficiently.
+    tools:
+      - name: shell_exec
+      - name: fs_write
+      - name: fs_read
+    max_turns: 5
+    tool_budget: 6
+    sandbox:
+      workspace_files:
+        "events.log": |
+          2026-05-26T10:00:00|INFO|started
+          2026-05-26T10:00:01|WARN|slow query
+          2026-05-26T10:00:02|INFO|cache miss
+          2026-05-26T10:00:03|ERROR|disk full
+          2026-05-26T10:00:04|INFO|recovered
+          2026-05-26T10:00:05|WARN|retrying
+    success_predicate:
+      type: workspace_file_contains
+      path: levels.txt
+      substring: "ERROR"
+    rubric:
+      type: tool_call
+      target_tool: shell_exec

@@ -16,7 +16,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import shutil
 import subprocess
+import sys
 from typing import Any
 
 from inspect_ai.tool import Tool, ToolDef, ToolError, ToolParams, tool
@@ -44,16 +46,34 @@ class ToolSchema:
         self.input_schema = input_schema
 
 
+def _host_python() -> str:
+    """Resolve the Python interpreter to use for host-side tool introspection.
+
+    Prefer the running interpreter (`sys.executable`) so callers don't need an
+    activated venv. Fall back to `python3` then `python` on PATH if
+    `sys.executable` is unavailable (rare; embedded launchers etc.).
+    """
+
+    if sys.executable:
+        return sys.executable
+    for candidate in ("python3", "python"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return "python3"
+
+
 async def _list_tools_for_module(module: str) -> list[ToolSchema]:
-    """Spawn `python -m <module>` locally and ask it for its MCP tool list.
+    """Spawn `<host-python> -m <module>` locally and ask it for its MCP tool list.
 
     Used by the CLI and the Inspect bridge to learn each tool's schema
     without hand-duplicating it. The subprocess runs on the host (not the
     sandbox) because we just want the schema, not to execute any side
-    effects.
+    effects. Uses `sys.executable` so the bridge works outside an activated
+    venv — flagged in 6e and fixed in 6f.
     """
 
-    params = StdioServerParameters(command="python", args=["-m", module])
+    params = StdioServerParameters(command=_host_python(), args=["-m", module])
     schemas: list[ToolSchema] = []
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()

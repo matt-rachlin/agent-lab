@@ -1,0 +1,85 @@
+# PBS-Agent v0.1 — multi-domain tasks (fs + python + sometimes shell).
+#
+# Two tasks that intentionally need composed tool sequences. One of these
+# uses success_predicate: db_query — chosen because the lab agent sandbox
+# cannot mutate Postgres, so the db_query is a *read-only* meta-check that
+# the task is correctly registered in lab.tasks; this lets us exercise the
+# db_query predicate code path against real Postgres without inventing
+# write-side state for the agent to manipulate.
+
+suite: pbs-agent-v0.1
+category: multi
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: multi-words-and-hash
+    difficulty: medium
+    description: |
+      Read a file, compute its SHA-256 hash with python_eval, then write
+      the hex digest to a second file. Tests fs_read + python_eval + fs_write
+      composition.
+    input: |
+      Read 'message.txt' using fs_read. Then use python_eval to compute the
+      SHA-256 hex digest of that EXACT file content (read it inside Python
+      from /workspace/message.txt to avoid any encoding mismatch). Write
+      the 64-character hex digest (lowercase, no extra text or newline) to
+      a new file 'hash.txt' via fs_write mode='create'. Reply with 'done'.
+    system: |
+      You are an assistant with filesystem and Python tool access. Use
+      python_eval for hashing rather than guessing the digest.
+    tools:
+      - name: fs_read
+      - name: python_eval
+      - name: fs_write
+    max_turns: 5
+    tool_budget: 6
+    sandbox:
+      workspace_files:
+        # SHA-256 of "agent\n" == d20bc21bb3c7736d8d03ade3ddb4c68b665cdfbca6f6df0f7fdd192f37f59060
+        # Verified via `printf 'agent\n' | sha256sum`.
+        "message.txt": "agent\n"
+    success_predicate:
+      type: workspace_file_contains
+      path: hash.txt
+      substring: "d20bc21bb3c7736d8d03ade3ddb4c68b665cdfbca6f6df0f7fdd192f37f59060"
+    rubric:
+      type: tool_call
+      target_tool: python_eval
+
+  # -------------------------------------------------------------------------
+  - slug: multi-db-self-check
+    difficulty: medium
+    description: |
+      Exercises success_predicate type=db_query end-to-end. The agent's
+      visible job is a small fs + python summary. The grading predicate
+      then runs a read-only SQL query against the lab DB confirming that
+      this very task is registered — this is a meta-check that the
+      predicate code path works against real Postgres (since the sandboxed
+      agent cannot write to PG itself).
+    input: |
+      Use fs_read to read 'nums.csv' (single line, comma-separated integers).
+      Use python_eval to compute the arithmetic mean (Python: sum(xs)/len(xs))
+      as a floating-point value. Write the mean (e.g. '12.5') to a new file
+      'mean.txt' via fs_write mode='create'. Reply with the mean.
+    system: |
+      You are an assistant with filesystem and Python tool access. Compute
+      numerically; never approximate.
+    tools:
+      - name: fs_read
+      - name: python_eval
+      - name: fs_write
+    max_turns: 5
+    tool_budget: 6
+    sandbox:
+      workspace_files:
+        "nums.csv": "2,4,6,8,10\n"
+    success_predicate:
+      type: db_query
+      # Reads-only: confirms this task's row is present in lab.tasks. The
+      # scorer refuses any write-like keyword (INSERT/UPDATE/etc).
+      query: "SELECT slug FROM tasks WHERE suite = 'pbs-agent-v0.1' AND slug = 'multi-db-self-check' AND retired_at IS NULL"
+      expects_rows: 1
+    rubric:
+      type: tool_call
+      target_tool: python_eval
