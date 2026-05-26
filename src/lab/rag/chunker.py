@@ -396,6 +396,9 @@ def _sentence_split(text: str) -> list[tuple[int, int, str]]:
         piece = text[cur:end]
         if piece.strip():
             pieces.append((cur, end, piece))
+        elif pieces:
+            rs, _re, ptxt = pieces[-1]
+            pieces[-1] = (rs, end, ptxt + piece)
         cur = end
     tail = text[cur:]
     if tail.strip():

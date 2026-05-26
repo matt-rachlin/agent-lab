@@ -176,3 +176,68 @@ def test_parent_child_default_targets_constants() -> None:
     """The default constants should land inside the spec'd bands."""
     assert 512 <= DEFAULT_PARENT_TARGET_TOKENS <= 1024
     assert 128 <= DEFAULT_CHILD_TARGET_TOKENS <= 256
+
+
+def test_sentence_split_preserves_whitespace_only_pieces() -> None:
+    """Regression: _sentence_split must not drop whitespace-only pieces.
+
+    Previously, a whitespace-only piece (e.g. the gap between a `.` and the
+    next non-blank sentence when extra newlines separated them) was silently
+    discarded — leaving downstream children whose ``text`` was no longer a
+    substring of the parent's section slice. This breaks the
+    "child.text in parent.text" invariant the parent-child index relies on.
+    """
+    from lab.rag.chunker import _sentence_split
+
+    # Sentence boundary followed by a blank line — the regex matches the
+    # trailing ".\n\n" as one separator and the next match starts after.
+    # Whitespace-only inter-sentence chunks like a lone "\n" used to be lost.
+    text = "First sentence.\n\n\nSecond sentence ends here."
+    pieces = _sentence_split(text)
+    # Reconstruct: concatenating all piece texts must equal the input.
+    rebuilt = "".join(p[2] for p in pieces)
+    assert rebuilt == text, (
+        "sentence pieces must reconstruct the original text byte-for-byte"
+    )
+    # And the (start, end) ranges must tile [0, len(text)] without gaps.
+    cursor = 0
+    for start, end, _ in pieces:
+        assert start == cursor
+        cursor = end
+    assert cursor == len(text)
+
+
+def test_parent_child_every_child_text_is_substring_of_parent() -> None:
+    """Critical invariant: each child's ``text`` must appear verbatim inside
+    its parent's ``text``. Exercised with content engineered to produce
+    whitespace-only sentence-boundary fragments (multiple blank lines between
+    sentences).
+    """
+    # Many sentences with double/triple blank lines between groups — this
+    # produces whitespace-only inter-sentence pieces that the old splitter
+    # silently dropped, breaking the substring invariant for downstream
+    # children.
+    sentences = [f"Fact number {i} is interesting." for i in range(120)]
+    # Inject extra blank lines every few sentences.
+    chunks_of_sentences: list[str] = []
+    for i, s in enumerate(sentences):
+        chunks_of_sentences.append(s)
+        if i % 5 == 0:
+            chunks_of_sentences.append("\n\n")  # gap that becomes ws-only piece
+    doc = "# Section\n\n" + " ".join(chunks_of_sentences) + "\n"
+    chunks = chunk_document(
+        doc_path="x.md",
+        full_text=doc,
+        mode=ChunkMode.PARENT_CHILD,
+        parent_target_tokens=200,
+        child_target_tokens=40,
+    )
+    parents_by_id = {c.chunk_id: c for c in chunks if c.is_parent}
+    kids = [c for c in chunks if not c.is_parent]
+    assert kids, "expected at least one child"
+    for child in kids:
+        parent = parents_by_id[child.parent_id]  # type: ignore[index]
+        assert child.text in parent.text, (
+            f"child.text not in parent.text "
+            f"(child_id={child.chunk_id}, parent_id={parent.chunk_id})"
+        )
