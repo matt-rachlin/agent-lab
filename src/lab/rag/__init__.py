@@ -30,11 +30,24 @@ FALLBACK_EMBED_DIMS = 2560
 DEFAULT_ENRICH_MODEL = "qwen3:8b"
 
 #: Primary cross-encoder reranker (Phase 7). Apache 2.0; ~1.2 GB VRAM.
+#: Used when the caller opts in (env var set to this, or ``rerank=True``
+#: passed explicitly). Phase 7's reranker-by-default behaviour was
+#: reverted after EXP-004c (see F-007 amendment) — the +5pp recall@5
+#: lift didn't earn the +700ms-per-call latency cost for the average
+#: caller. The constant is kept; what changed is the env-var fallback
+#: (``DEFAULT_RERANKER_MODE_WHEN_UNSET``) and the ``rerank=`` defaults
+#: at the call sites (``kb_query``, ``hybrid_query``).
 DEFAULT_RERANKER_MODEL = "Qwen/Qwen3-Reranker-0.6B"
 #: Mature fallback if the primary fails to load (still Apache 2.0).
 FALLBACK_RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
 #: Env var used to override / disable the reranker (``=none`` for pass-through).
 RERANKER_ENV_VAR = "LAB_RAG_RERANKER"
+#: When ``LAB_RAG_RERANKER`` is unset or empty, default to this mode.
+#: Sentinel ``"none"`` post-EXP-004c (previously fell through to
+#: :data:`DEFAULT_RERANKER_MODEL`, which caused every :class:`LabReranker`
+#: instantiation without an env var to load the cross-encoder). See F-007
+#: amendment.
+DEFAULT_RERANKER_MODE_WHEN_UNSET = "none"
 #: RRF constant — Cormack et al. 2009 recommend k=60.
 RRF_K = 60
 

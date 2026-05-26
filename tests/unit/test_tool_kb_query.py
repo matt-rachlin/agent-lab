@@ -213,7 +213,8 @@ def test_kb_query_passes_authority_filter_through(
     # itself flips to alpha-blend on the inside. The MCP tool surfaces both:
     # caller passes fusion explicitly to control it.
     assert captured["fusion"] == "rrf"
-    assert captured["rerank"] is True
+    # Default rerank flipped to False post-EXP-004c (see F-007 amendment).
+    assert captured["rerank"] is False
 
 
 def test_kb_query_permission_denied_on_manifest_stat(

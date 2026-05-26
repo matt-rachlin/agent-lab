@@ -25,7 +25,11 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any
 
-from lab.rag import DEFAULT_RERANKER_MODEL, FALLBACK_RERANKER_MODEL, RERANKER_ENV_VAR
+from lab.rag import (
+    DEFAULT_RERANKER_MODE_WHEN_UNSET,
+    FALLBACK_RERANKER_MODEL,
+    RERANKER_ENV_VAR,
+)
 
 if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
@@ -56,9 +60,17 @@ class LabReranker:
         idle_unload_sec: int = 300,
     ) -> None:
         env_choice = os.environ.get(RERANKER_ENV_VAR, "").strip()
-        chosen = (model_name or env_choice or DEFAULT_RERANKER_MODEL).strip()
+        # Resolution order, post-EXP-004c (see F-007 amendment):
+        #   1. explicit ``model_name=`` constructor arg wins
+        #   2. else, the ``LAB_RAG_RERANKER`` env var (any non-empty value)
+        #   3. else, the unset-default constant
+        #      :data:`DEFAULT_RERANKER_MODE_WHEN_UNSET` (post-EXP-004c:
+        #      sentinel ``"none"`` for pass-through; pre-EXP-004c this
+        #      was the model id, causing every implicit instantiation to
+        #      load the cross-encoder).
+        chosen = (model_name or env_choice or DEFAULT_RERANKER_MODE_WHEN_UNSET).strip()
         if chosen == "":
-            chosen = DEFAULT_RERANKER_MODEL
+            chosen = DEFAULT_RERANKER_MODE_WHEN_UNSET
         self.model_name: str = chosen
         self.idle_unload_sec: int = int(idle_unload_sec)
         self._model: CrossEncoder | None = None

@@ -21,9 +21,11 @@ def _stage(tmp_path: Path, name: str) -> Path:
     return kb_dir
 
 
-def test_rerank_default_true(
+def test_rerank_default_false(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """Default reverted to False post-EXP-004c (see F-007 amendment)."""
+
     _stage(tmp_path, "bash")
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
     monkeypatch.setattr("lab.rag.index.count_rows", lambda _d: 5)
@@ -36,14 +38,16 @@ def test_rerank_default_true(
     monkeypatch.setattr("lab.rag.index.hybrid_query", fake)
     out = kb_query_mod.kb_query(kb_name="bash", question="hello")
     assert out["hits"] == []
-    assert captured["rerank"] is True
+    assert captured["rerank"] is False
     assert captured["fusion"] == "rrf"
     assert captured["alpha"] is None
 
 
-def test_rerank_can_be_disabled(
+def test_rerank_can_be_enabled(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """Callers can opt into rerank explicitly."""
+
     _stage(tmp_path, "bash")
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
     monkeypatch.setattr("lab.rag.index.count_rows", lambda _d: 5)
@@ -54,8 +58,8 @@ def test_rerank_can_be_disabled(
         return []
 
     monkeypatch.setattr("lab.rag.index.hybrid_query", fake)
-    kb_query_mod.kb_query(kb_name="bash", question="hi", rerank=False)
-    assert captured["rerank"] is False
+    kb_query_mod.kb_query(kb_name="bash", question="hi", rerank=True)
+    assert captured["rerank"] is True
 
 
 def test_invalid_fusion_rejected(

@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 import pytest
 
 from lab.rag import (
+    DEFAULT_RERANKER_MODE_WHEN_UNSET,
     DEFAULT_RERANKER_MODEL,
     RERANKER_ENV_VAR,
 )
@@ -70,8 +71,25 @@ def test_env_var_sets_model_name(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.model_name == "BAAI/bge-reranker-v2-m3"
 
 
-def test_default_model_when_env_unset() -> None:
+def test_default_when_env_unset_is_pass_through(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Post-EXP-004c revert: env unset → pass-through (was: load default model).
+
+    See F-007 amendment. The constant ``DEFAULT_RERANKER_MODEL`` is still
+    available for callers who pass it explicitly.
+    """
+
+    monkeypatch.delenv(RERANKER_ENV_VAR, raising=False)
     r = LabReranker()
+    assert r.model_name == DEFAULT_RERANKER_MODE_WHEN_UNSET
+    assert r.disabled is True
+
+
+def test_default_model_still_usable_when_passed_explicitly() -> None:
+    """Callers who want the cross-encoder explicitly still get it."""
+
+    r = LabReranker(model_name=DEFAULT_RERANKER_MODEL)
     assert r.model_name == DEFAULT_RERANKER_MODEL
     assert not r.disabled
 
@@ -92,7 +110,9 @@ def test_disabled_passthrough_clamps_top_n(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_rerank_orders_by_score_desc() -> None:
-    r = LabReranker(idle_unload_sec=0)  # no reaper interference
+    # Pass an explicit model_name so the constructor doesn't pick up the
+    # post-EXP-004c "none" default that disables the reranker.
+    r = LabReranker(model_name="dummy", idle_unload_sec=0)  # no reaper interference
     fake = _FakeCrossEncoder("dummy")
     fake.scores_for_text = {"alpha": 0.10, "beta": 0.95, "gamma": 0.50}
     _patch_load(r, fake)
@@ -111,7 +131,7 @@ def test_rerank_orders_by_score_desc() -> None:
 
 
 def test_rerank_clamps_to_top_n() -> None:
-    r = LabReranker(idle_unload_sec=0)
+    r = LabReranker(model_name="dummy", idle_unload_sec=0)
     fake = _FakeCrossEncoder("dummy")
     fake.scores_for_text = {f"t{i}": float(i) for i in range(10)}
     _patch_load(r, fake)
@@ -125,7 +145,7 @@ def test_rerank_clamps_to_top_n() -> None:
 
 
 def test_rerank_empty_and_zero_top_n() -> None:
-    r = LabReranker(idle_unload_sec=0)
+    r = LabReranker(model_name="dummy", idle_unload_sec=0)
     fake = _FakeCrossEncoder("dummy")
     _patch_load(r, fake)
     assert r.rerank("q", [], top_n=5) == []
@@ -133,7 +153,7 @@ def test_rerank_empty_and_zero_top_n() -> None:
 
 
 def test_idle_unload_releases_model() -> None:
-    r = LabReranker(idle_unload_sec=1)
+    r = LabReranker(model_name="dummy", idle_unload_sec=1)
     fake = _FakeCrossEncoder("dummy")
     _patch_load(r, fake)
     # Force last_used way into the past so the reaper fires.

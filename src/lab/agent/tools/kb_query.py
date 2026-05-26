@@ -63,7 +63,7 @@ def kb_query(
     k: int = 5,
     alpha: float | None = None,
     authority: str | None = None,
-    rerank: bool = True,
+    rerank: bool = False,
     fusion: str = "rrf",
     expand_to_parent: bool = True,
     dedupe_by_parent: bool = True,
@@ -86,9 +86,12 @@ def kb_query(
         authority: Optional filter on the source's authority tag (e.g.
             ``"official"`` to restrict to authoritative documentation).
         rerank: Run the stage-2 cross-encoder reranker on the stage-1
-            candidates (default True). Set False to compare retrieval-only
-            quality. Honoured per call; the env var ``LAB_RAG_RERANKER=none``
-            disables it process-wide.
+            candidates (default **False** post-EXP-004c — see F-007 amendment).
+            Set True to opt into a +5pp recall@5 lift at the cost of
+            ~700ms additional per-call latency on the host-side service.
+            Honoured per call; the env var ``LAB_RAG_RERANKER=none``
+            disables it process-wide, and ``LAB_RAG_RERANKER=<model>``
+            picks a non-default model.
         fusion: Stage-1 fusion strategy: ``"rrf"`` (rank-based, default) or
             ``"alpha"`` (legacy alpha-blend; requires ``alpha=...``).
         expand_to_parent: Phase 9 — for parent-child KBs, replace each

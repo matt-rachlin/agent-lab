@@ -391,7 +391,7 @@ def hybrid_query(
     *,
     k: int = 5,
     fusion: FusionStrategy = "rrf",
-    rerank: bool = True,
+    rerank: bool = False,
     top_k_stage1: int = 50,
     alpha: float | None = None,
     model: str | None = None,
@@ -405,12 +405,15 @@ def hybrid_query(
       1. **Stage-1** retrieves a pool of ``top_k_stage1`` candidates fused by
          ``fusion`` (``"rrf"`` — default — or ``"alpha"`` with explicit
          ``alpha`` weight).
-      2. **Stage-2** (optional, on by default) re-scores stage-1 with a
-         cross-encoder reranker and returns the top ``k``.
+      2. **Stage-2** (optional, **OFF by default** post-EXP-004c — see
+         F-007 amendment) re-scores stage-1 with a cross-encoder reranker
+         and returns the top ``k``. Set ``rerank=True`` to opt in: +5pp
+         recall@5 lift on bash KB, ~700ms additional latency per call.
 
-    When ``rerank=False`` or ``LAB_RAG_RERANKER=none`` the reranker is bypassed
-    and the top ``k`` come straight from stage-1. Phase 10 hooks (skip
-    heuristics + cosine dedupe) live in this same call site.
+    When ``rerank=False`` (the default) or ``LAB_RAG_RERANKER=none`` the
+    reranker is bypassed and the top ``k`` come straight from stage-1.
+    Phase 10 hooks (skip heuristics + cosine dedupe) live in this same
+    call site.
 
     Phase 9 parent-child:
       * ``dedupe_by_parent`` collapses multiple child hits sharing the same
