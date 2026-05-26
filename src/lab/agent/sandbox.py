@@ -278,9 +278,24 @@ class Sandbox:
             # Resolve each allow-listed host to a stable IPv4 at start time,
             # then pin DNS at a non-listening loopback port so unrelated names
             # cannot resolve.
-            for host in self._allowed_hosts:
+            #
+            # Special case: `host.containers.internal` is a podman-managed
+            # alias for the host bridge gateway. We can't resolve it on the
+            # host (it doesn't appear in /etc/hosts there) but podman injects
+            # it into the container's /etc/hosts automatically — so we let
+            # podman handle it AND skip the DNS-pin (the kb_query path needs
+            # to resolve other names too, e.g. Ollama remote-model proxies).
+            real_hosts = [
+                h for h in self._allowed_hosts
+                if h not in {"host.containers.internal", "host.docker.internal"}
+            ]
+            for host in real_hosts:
                 add_hosts.append((host, _resolve_host_ipv4(host)))
-            dns_servers = ["127.0.0.1"]
+            # Only pin DNS if ALL allow-listed hosts were resolvable on the
+            # host. host.containers.internal alone (the kb_query case) keeps
+            # default DNS so the container can reach the host via the alias.
+            if real_hosts and len(real_hosts) == len(self._allowed_hosts):
+                dns_servers = ["127.0.0.1"]
         argv = _build_run_argv(
             image=self.image,
             name=self.container_name,

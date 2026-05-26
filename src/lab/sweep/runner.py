@@ -635,6 +635,17 @@ def _execute_agent_cell(
 
         kb_root_mount = _get_settings_kb().kb_root
         env.setdefault("LAB_KB_ROOT", "/kb")
+        # See cli.py twin: the kb_query tool embeds queries via Ollama;
+        # `localhost` inside the sandbox is the container, not the host,
+        # so route through podman's host-internal alias.
+        env.setdefault("OLLAMA_HOST", "http://host.containers.internal:11434")
+        # Force bridge networking with host.containers.internal allowed so
+        # the sandbox can actually reach Ollama. sandbox.py has a magic-name
+        # carve-out so this doesn't try a host-side `getaddrinfo` lookup.
+        if network == "none":
+            network = ["host.containers.internal"]
+        elif isinstance(network, list) and "host.containers.internal" not in network:
+            network = [*network, "host.containers.internal"]
 
     result: CellResult
     sweep_ctx = SweepContext(

@@ -1,0 +1,271 @@
+# PBS-Agent RAG v0.1 — basic kb_query + workspace_file tasks.
+#
+# Six tasks that exercise the offline RAG slice of the agent harness. Each
+# task forces a `kb_query` against the bash KB and verifies via either
+# `workspace_file_contains` (the agent had to extract a fact and write it
+# to disk), `retrieval_recall` (the agent had to find specific chunks),
+# or both, plus `attribution` (does the final response cite the source).
+#
+# Naming: pbs-agent-rag-v0.1 sits alongside pbs-agent-v0.1 — the v0.1
+# suite is tool-use; this v0.1 is retrieval. Future PBS-Agent-RAG sweeps
+# (6h-d, 6h-f) will use this suite as the matrix base.
+#
+# Predicate-author trap (carry-over from F-005, applies here too): the
+# kb_query result is text — make sure success_predicate substrings can
+# NOT be matched by the chunk text itself if the model just dumps the
+# raw hit. Use predicates that require the agent to extract/reformat.
+
+suite: pbs-agent-rag-v0.1
+category: rag
+
+tasks:
+
+  # ---------------------------------------------------------------------
+  # 1. Simple lookup -> write fact to disk. workspace_file_contains.
+  - slug: rag-bash-redirection-operator
+    difficulty: easy
+    description: |
+      Use kb_query against the bash KB to find the redirection operator
+      for "redirect stderr to stdout", then write the operator to disk.
+      Exercises kb_query -> reasoning -> fs_write.
+    input: |
+      Use the kb_query tool with kb_name='bash' to look up the bash
+      redirection operator that merges stderr into stdout (i.e. so that
+      stderr is captured by anything reading stdout). Once you have found
+      it, write JUST the operator (the exact two-or-three-character
+      sequence — no surrounding text, no quotes, no whitespace before or
+      after) to a new file at path 'operator.txt' using fs_write with
+      mode='create'. Then reply with 'done'.
+    system: |
+      You are a research assistant with retrieval and filesystem tools.
+      Always call kb_query before answering bash questions; do not rely
+      on memory.
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 4
+    tool_budget: 5
+    success_predicate:
+      type: workspace_file_contains
+      path: operator.txt
+      # The canonical answer is "2>&1" — we accept this as a substring
+      # because the model may add a trailing newline.
+      substring: "2>&1"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # ---------------------------------------------------------------------
+  # 2. Multi-query summarisation. workspace_file_contains on multiple
+  # required tokens. Exercises chained kb_query calls.
+  - slug: rag-bash-param-expansion-forms
+    difficulty: medium
+    description: |
+      Summarise the bash parameter-expansion forms by issuing multiple
+      kb_query calls and then writing a short summary. The success
+      predicate requires the summary to mention several specific forms,
+      so a single query won't be enough.
+    input: |
+      Use the kb_query tool (kb_name='bash') to look up bash parameter
+      expansion. Run AT LEAST two distinct kb_query calls (e.g. one for
+      'parameter expansion default value', one for 'parameter expansion
+      substring length'). Then write a short summary to 'summary.md'
+      using fs_write with mode='create'. The summary MUST mention all of
+      these four parameter-expansion forms with their literal syntax:
+      "${parameter:-word}", "${parameter:=word}", "${#parameter}", and
+      "${parameter:offset:length}". Reply with 'done'.
+    system: |
+      You are a research assistant with retrieval and filesystem tools.
+      kb_query before answering. Quote exact syntax from the source.
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 6
+    tool_budget: 8
+    success_predicate:
+      type: workspace_file_contains
+      path: summary.md
+      # We check for the most distinctive of the four required tokens.
+      # The other three are checked by the trajectory_judge scorer.
+      substring: "${parameter:offset:length}"
+      include_judge: true
+      judge_model: gpt-oss-120b-cloud
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # ---------------------------------------------------------------------
+  # 3. Compare-and-reason. Two distinct kb_query calls; predicate requires
+  # mentioning both terms.
+  - slug: rag-bash-compare-test-bracket
+    difficulty: medium
+    description: |
+      Compare bash's `[ ... ]` (single-bracket test) and `[[ ... ]]`
+      (double-bracket conditional). Forces multiple kb_query calls + a
+      reasoning step to produce the comparison.
+    input: |
+      Use kb_query (kb_name='bash') to look up information about both
+      bash's `[ ... ]` test command AND its `[[ ... ]]` conditional
+      construct. Then write a comparison to 'compare.md' using fs_write
+      with mode='create'. The file MUST contain BOTH of these literal
+      tokens somewhere: '[[ ]]' AND 'word splitting'. Reply with 'done'.
+    system: |
+      You are a bash expert with retrieval tools. Always quote precise
+      facts from kb_query rather than guessing.
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 6
+    tool_budget: 8
+    success_predicate:
+      # We use the rarer "word splitting" token; if the model writes a
+      # comparison that explains the key difference (word splitting is
+      # suppressed inside [[ ... ]]), it will be present.
+      type: workspace_file_contains
+      path: compare.md
+      substring: "word splitting"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # ---------------------------------------------------------------------
+  # 4. Citation task — agent must include the retrieved source_url in
+  # the final response. Tests the `attribution` scorer.
+  - slug: rag-bash-cite-section-for-arrays
+    difficulty: medium
+    description: |
+      Look up bash arrays via kb_query, then in the FINAL assistant
+      message cite the source URL of one of the retrieved chunks. The
+      attribution scorer scans the final message for a `source_url`
+      anchor (host + first two path segments) — so the agent has to
+      actually echo the URL rather than just paraphrase.
+    input: |
+      Use kb_query (kb_name='bash') to find a passage about bash arrays
+      (try 'declare bash array' or similar). In your FINAL response,
+      do TWO things:
+        (a) write a one-sentence summary to 'answer.txt' (via fs_write
+            mode='create'), and
+        (b) reply to me with the source_url of one of the retrieved
+            chunks — the full URL, not a paraphrase.
+    system: |
+      You are a research assistant. Always call kb_query and cite sources
+      verbatim — never paraphrase a URL.
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 4
+    tool_budget: 5
+    success_predicate:
+      # End-state: file must exist (the file content itself isn't graded
+      # — the attribution scorer is what we care about).
+      type: workspace_file_exists
+      path: answer.txt
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # ---------------------------------------------------------------------
+  # 5. retrieval_recall: the agent must surface SPECIFIC expected chunks.
+  # The expected_chunks list is set as a placeholder here and will be
+  # populated post-deployment by inspecting kb_query interactively (see
+  # 6h-e step 5 in the plan; chunks chosen by hand from `lab kb query
+  # bash "for loop"`). Leaving as [] keeps the task valid but causes
+  # recall_at_k to NOANSWER instead of producing a misleading 0.0.
+  - slug: rag-bash-for-loop-recall
+    difficulty: hard
+    description: |
+      Retrieve passages about bash `for` loops; the `retrieval_recall`
+      scorer asserts that specific gold chunk_ids appear in the agent's
+      kb_query results. Pure-retrieval task (no fs_write requirement) —
+      exercises recall_at_k + mrr + ndcg + attribution simultaneously.
+
+      expected_chunks IS populated below; chunks were hand-picked from
+      `lab kb query bash "bash for loop iterate"` after the bash KB was
+      indexed in 6h-e. If a future KB refresh re-chunks the corpus the
+      ids will shift — this task's expected_chunks list will need to be
+      regenerated.
+    input: |
+      Use kb_query (kb_name='bash') to find passages explaining the bash
+      `for` loop — its syntax, iteration over lists, and the
+      `for ((init; cond; update))` arithmetic variant. Issue at least
+      one kb_query call (more if you want to compare multiple
+      formulations). In your final response, list the chunk_ids of the
+      hits you would consult to answer the question 'How do I write a
+      bash for loop?'.
+    system: |
+      You are a retrieval-augmented assistant. Always start by calling
+      kb_query; cite chunk_ids verbatim from the results.
+    tools:
+      - name: kb_query
+    max_turns: 4
+    tool_budget: 5
+    success_predicate:
+      type: retrieval_recall
+      # Hand-curated against the bash KB indexed in 6h-e by running
+      # kb_query interactively with three related queries and picking the
+      # top-5 by score across them (see /tmp/curate_for_loop_chunks.py).
+      # If a future KB refresh re-chunks the corpus the ids will shift;
+      # this list will need to be regenerated.
+      k: 5
+      expected_chunks:
+        - 01KSHSNCVYPP0R6NXXVFEFYVYV  # Conditional Loops (while, until and for)
+        - 01KSHSND29XQFMAJD6JHF65W0K  # String lists in for-loops
+        - 01KSHSND2Q0CYS3DFVZVJDFFGJ  # Arithmetic expressions in Bash
+        - 01KSHSND57SC10B1D3RNH504KG  # The classic for-loop / Examples / Loop over lines of output
+        - 01KSHSND5842N2Y9CVQ539E3H3  # The C-style for-loop / Description
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # ---------------------------------------------------------------------
+  # 6. Faithfulness: agent must produce a grounded answer; the judge
+  # scorer reads the retrieved chunks AND the final response and grades
+  # whether the response is supported by the chunks. Opt-in via
+  # include_faithfulness=true.
+  - slug: rag-bash-faithful-answer-shopt
+    difficulty: hard
+    description: |
+      Answer a question about bash's `shopt` builtin grounded in
+      kb_query results. The faithfulness scorer (LLM judge) reads the
+      retrieved chunks plus the final response and flags
+      hallucinations. Designed so the judge has clear material to grade
+      against — `shopt` is well-documented in the bash manual which is
+      a primary source in the bash KB.
+    input: |
+      Use kb_query (kb_name='bash') to look up the `shopt` builtin.
+      Then in your FINAL response, answer the following question
+      grounded ONLY in what the retrieved chunks say:
+      "What is the difference between `set -o` and `shopt -s`?"
+      Limit your answer to 4 sentences. Do not invent facts that are
+      not present in the retrieved passages — if the chunks don't
+      explain a point clearly, say so. Also write the answer to
+      'answer.txt' via fs_write mode='create'.
+    system: |
+      You are a careful research assistant. Ground every claim in the
+      retrieved passages. If the passages don't cover a point, admit it
+      rather than guessing.
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 5
+    tool_budget: 6
+    success_predicate:
+      type: workspace_file_exists
+      path: answer.txt
+      include_faithfulness: true
+      judge_model: gpt-oss-120b-cloud
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash

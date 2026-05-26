@@ -51,8 +51,17 @@ def embed_texts(
     batch_size: int = DEFAULT_BATCH,
     progress: Callable[[int, int], None] | None = None,
 ) -> EmbedResult:
-    """Embed a list of texts via Ollama. Auto-fallback to the 4B model if loading fails."""
-    client = Client(host="http://localhost:11434")
+    """Embed a list of texts via Ollama. Auto-fallback to the 4B model if loading fails.
+
+    Honours the standard ``OLLAMA_HOST`` env var (default
+    ``http://localhost:11434``). The kb_query MCP tool runs inside the agent
+    sandbox where ``localhost`` is the container, not the host — the
+    harness sets ``OLLAMA_HOST=http://host.containers.internal:11434`` so
+    the in-sandbox embedder reaches the host's Ollama. On the host (no env
+    var set) we keep the prior behaviour.
+    """
+    import os
+    client = Client(host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"))
     chosen = model
     dims: int | None = DEFAULT_EMBED_DIMS if model == DEFAULT_EMBED_MODEL else None
 

@@ -597,6 +597,21 @@ def agent_run(
     if task_needs_kb_mount(lab_task.tools):
         kb_root_mount = _get_settings_kb().kb_root
         env.setdefault("LAB_KB_ROOT", "/kb")
+        # The kb_query MCP tool needs to embed the query via Ollama, which
+        # lives on the host. Inside the sandbox `localhost` is the container,
+        # so point the vendored embedder at the podman-provided alias for
+        # the host. Allow callers to override (e.g. tests) by setting
+        # OLLAMA_HOST in task.sandbox.env beforehand. See `lab.rag.embedder`.
+        env.setdefault("OLLAMA_HOST", "http://host.containers.internal:11434")
+        # Also force the sandbox into bridge-network mode with
+        # host.containers.internal as an allow-listed host. Podman injects
+        # the /etc/hosts entry automatically; sandbox.py knows to skip the
+        # `_resolve_host_ipv4` step for this magic name. Without this the
+        # container has no network and can never reach Ollama.
+        if network == "none":
+            network = ["host.containers.internal"]
+        elif isinstance(network, list) and "host.containers.internal" not in network:
+            network = [*network, "host.containers.internal"]
 
     run_id_ = f"adhoc-{lab_task.slug}-{_uuid.uuid4().hex[:8]}"
     console.print(

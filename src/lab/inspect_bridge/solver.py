@@ -44,7 +44,19 @@ def _truncate(value: Any, cap: int = _TURN_PAYLOAD_CAP) -> Any:
     exceeds `cap`, replace it with a `{"_truncated": True, "preview": ...}`
     marker. Keeps trajectory rows in `agent_logs.turns` small enough for the
     DB; the full untruncated copy still lands in MinIO.
+
+    Special case for kb_query-shaped results: when ``value`` is a dict
+    carrying a ``hits`` list, we preserve the chunk_id / source_url /
+    score / section_path fields on each hit (the RAG scorers' read keys)
+    and only truncate each hit's ``text`` and ``summary`` strings. Without
+    this carve-out, recall_at_k / mrr / ndcg / attribution would all
+    score 0 on any RAG task whose retrieved chunks crossed the 4 KB cap
+    — even when the agent correctly returned the gold chunks. F-005's
+    successor finding; surfaced during the 6h-e RAG smoke.
     """
+
+    if isinstance(value, dict) and isinstance(value.get("hits"), list):
+        return _truncate_kb_query_result(value, cap)
 
     try:
         text = json.dumps(value, default=str)
@@ -53,6 +65,64 @@ def _truncate(value: Any, cap: int = _TURN_PAYLOAD_CAP) -> Any:
     if len(text) <= cap:
         return value
     return {"_truncated": True, "preview": text[:cap], "original_size": len(text)}
+
+
+def _truncate_kb_query_result(value: dict[str, Any], cap: int) -> dict[str, Any]:
+    """Truncate a kb_query result while preserving structure for RAG scorers.
+
+    Strategy: keep all top-level fields except ``hits``; for each hit,
+    keep the cheap structural fields (chunk_id, source_url, score, etc.)
+    verbatim and progressively trim ``text`` + ``summary`` until the
+    serialised payload fits the cap. We never drop hits — losing a hit
+    silently would underreport recall in exactly the way the cap is meant
+    to NOT do.
+    """
+
+    # Cheap path: maybe it already fits.
+    try:
+        full = json.dumps(value, default=str)
+        if len(full) <= cap:
+            return value
+    except Exception:  # noqa: S110 - serialisation failure means we must trim; fall through
+        pass
+
+    base: dict[str, Any] = {k: v for k, v in value.items() if k != "hits"}
+    pruned_hits: list[dict[str, Any]] = []
+    for hit in value.get("hits") or []:
+        if not isinstance(hit, dict):
+            pruned_hits.append(hit)
+            continue
+        pruned: dict[str, Any] = {}
+        for k, v in hit.items():
+            if k in ("text", "summary") and isinstance(v, str) and len(v) > 240:
+                pruned[k] = v[:240] + "…"
+            else:
+                pruned[k] = v
+        pruned_hits.append(pruned)
+
+    candidate = {**base, "hits": pruned_hits, "_hits_text_trimmed": True}
+    try:
+        if len(json.dumps(candidate, default=str)) <= cap:
+            return candidate
+    except Exception:  # noqa: S110 - same rationale as the upper try; fall through to minimal
+        pass
+
+    # If still over cap, drop text entirely from each hit but keep the
+    # structural fields needed by RAG scorers (chunk_id, source_url,
+    # section_path, score) — the agent's recall/attribution can still be
+    # measured even without text. The full untruncated payload is in
+    # MinIO; this branch keeps the DB row scorer-readable.
+    minimal_hits = [
+        {
+            kk: vv
+            for kk, vv in hit.items()
+            if kk in {"chunk_id", "source_url", "section_path", "score", "title"}
+        }
+        for hit in pruned_hits
+        if isinstance(hit, dict)
+    ]
+    minimal = {**base, "hits": minimal_hits, "_hits_text_dropped": True}
+    return minimal
 
 
 def _read_litellm_key() -> str:
