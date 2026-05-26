@@ -795,8 +795,165 @@ def _wilcoxon_one_sided_greater(deltas: list[float]) -> float:
         return p
 
 
+def _extend_query_cache(
+    *,
+    cache_path: Path,
+    seed_cache_path: Path,
+    kb_dir: Path,
+    n_target: int,
+    question_model: str,
+) -> list[SyntheticQuery]:
+    """EXP-004c — seed a query cache from another cache, then generate up to n_target.
+
+    If `cache_path` already has `>= n_target` queries, returns them verbatim.
+    Otherwise: copies the seed cache, then generates additional questions
+    against the same KB using :func:`_gen_question`, deduping by
+    ``origin_chunk_id`` so seeded chunks aren't re-used. Writes the merged
+    cache to `cache_path`.
+    """
+    # Existing extended cache?
+    if cache_path.exists():
+        rows = [
+            json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()
+        ]
+        if len(rows) >= n_target:
+            console.print(
+                f"[green]loaded[/] {len(rows)} cached queries from {cache_path} (n_target={n_target})"
+            )
+            return [
+                SyntheticQuery(
+                    question=r["question"],
+                    origin_chunk_id=r["origin_chunk_id"],
+                    origin_doc_path=r["origin_doc_path"],
+                    origin_section=list(r.get("origin_section") or []),
+                )
+                for r in rows
+            ]
+        console.print(
+            f"[yellow]partial cache[/] {cache_path} has {len(rows)} < {n_target}; extending"
+        )
+        existing = rows
+    else:
+        # Seed from EXP-003a cache.
+        if not seed_cache_path.exists():
+            raise RuntimeError(f"seed cache missing: {seed_cache_path}")
+        existing = [
+            json.loads(line)
+            for line in seed_cache_path.read_text().splitlines()
+            if line.strip()
+        ]
+        console.print(
+            f"[dim]seeded[/] {len(existing)} queries from {seed_cache_path}"
+        )
+
+    used_ids = {r["origin_chunk_id"] for r in existing}
+
+    # Pull KB rows, exclude already-used origin chunks, sample stratified.
+    db = lancedb.connect(str(kb_dir / "index"))
+    if TABLE_NAME not in db.list_tables().tables:
+        raise RuntimeError(f"no index at {kb_dir}/index — build the KB first")
+    rows_arrow = db.open_table(TABLE_NAME).to_arrow().to_pylist()
+    avail = [r for r in rows_arrow if r["chunk_id"] not in used_ids]
+    n_needed = n_target - len(existing)
+    if n_needed <= 0:
+        # Trim back to n_target.
+        return [
+            SyntheticQuery(
+                question=r["question"],
+                origin_chunk_id=r["origin_chunk_id"],
+                origin_doc_path=r["origin_doc_path"],
+                origin_section=list(r.get("origin_section") or []),
+            )
+            for r in existing[:n_target]
+        ]
+    # Use a different seed than EXP-003a's (which was 0) so we don't re-sample
+    # the same chunks even after the dedupe; EXP-003a's _sample_chunks used
+    # seed=0.
+    chosen = _sample_chunks(avail, n_needed, seed=42)
+    console.print(
+        f"[bold yellow]q-gen[/] generating {len(chosen)} new queries "
+        f"(have {len(existing)}, target {n_target}, model={question_model})"
+    )
+
+    # Pre-flight: ensure Ollama embedder AND the rerank service's model are
+    # unloaded so the question-gen model (qwen3:14b-q4_K_M, ~9 GB) has VRAM.
+    try:
+        import httpx as _httpx
+        with _httpx.Client(timeout=10.0) as cli:
+            cli.post(
+                "http://localhost:11434/api/generate",
+                json={"model": DEFAULT_EMBED_MODEL, "prompt": "", "keep_alive": 0},
+            )
+    except Exception:
+        pass
+    rerank_url_env = os.environ.get("LAB_RAG_RERANKER_URL", "http://127.0.0.1:8401")
+    try:
+        import httpx as _httpx
+        with _httpx.Client(timeout=15.0) as cli:
+            cli.post(f"{rerank_url_env.rstrip('/')}/unload")
+        time.sleep(1.0)
+    except Exception:
+        pass
+
+    client = Client(host="http://localhost:11434")
+    new_rows: list[dict[str, Any]] = []
+    skipped = 0
+    t0 = time.time()
+    for i, row in enumerate(chosen, 1):
+        try:
+            q = _gen_question(client, row["text"], list(row.get("section_path") or []), question_model)
+        except Exception as e:
+            console.print(f"[red]q-gen failed[/] {row['chunk_id']}: {e}")
+            skipped += 1
+            continue
+        if not q or len(q) < 8:
+            console.print(f"[yellow]q-gen empty[/] {row['chunk_id']}")
+            skipped += 1
+            continue
+        new_rows.append(
+            {
+                "question": q,
+                "origin_chunk_id": row["chunk_id"],
+                "origin_doc_path": row["doc_path"],
+                "origin_section": list(row.get("section_path") or []),
+            }
+        )
+        if i % 10 == 0 or i == len(chosen):
+            elapsed = time.time() - t0
+            rate = i / max(elapsed, 1.0)
+            eta = (len(chosen) - i) / max(rate, 0.001)
+            console.print(
+                f"[dim]q-gen {i}/{len(chosen)} (skipped={skipped}, rate={rate:.2f}/s, eta={eta/60:.1f}m): {q[:80]}[/]"
+            )
+
+    merged = existing + new_rows
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_path.open("w") as f:
+        for r in merged:
+            f.write(json.dumps(r) + "\n")
+    console.print(
+        f"[green]wrote[/] {len(merged)} queries to {cache_path} "
+        f"(new={len(new_rows)}, skipped={skipped})"
+    )
+    return [
+        SyntheticQuery(
+            question=r["question"],
+            origin_chunk_id=r["origin_chunk_id"],
+            origin_doc_path=r["origin_doc_path"],
+            origin_section=list(r.get("origin_section") or []),
+        )
+        for r in merged
+    ]
+
+
 def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
-    """EXP-004a — run a list of (cell) configurations, with optional rerank."""
+    """EXP-004a / EXP-004c — run a list of (cell) configurations, with optional rerank.
+
+    EXP-004c extension: cells may carry `rerank_model`, `truncation`
+    (int chars or null=no-trunc), and `mode` (rpc | inproc). The runner
+    dispatches per-cell to the host-side service (rpc) or constructs a
+    :class:`LabReranker` directly (inproc) — exercising the no-RPC path.
+    """
 
     kb_name = cfg["kb"]["name"]
     kb_dir = KB_ROOT / kb_name
@@ -805,6 +962,13 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
     rerank_cfg = cfg.get("rerank") or {}
     rerank_url = rerank_cfg.get("url") or os.environ.get("LAB_RAG_RERANKER_URL")
     rerank_model = rerank_cfg.get("model")
+    slug = cfg.get("experiment", {}).get("slug", "EXP-004?")
+
+    # Detect EXP-004c shape by presence of new per-cell fields.
+    is_exp004c = any(
+        ("mode" in c) or ("truncation" in c) or ("rerank_model" in c)
+        for c in cells_cfg
+    )
 
     out_summary = REPO_ROOT / cfg["outputs"]["summary"]
     out_verdicts = REPO_ROOT / cfg["outputs"]["verdicts"]
@@ -812,14 +976,17 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
     out_per_cell = REPO_ROOT / cfg["outputs"]["per_cell"]
     out_rerank_stats = REPO_ROOT / cfg["outputs"]["rerank_stats"]
 
-    slug = cfg.get("experiment", {}).get("slug", "EXP-004?")
     console.print(f"[bold]{slug}[/] per-cell sweep on KB={kb_name} ({kb_dir})")
 
-    # Pre-flight: any rerank cell requires the service to be reachable.
-    any_rerank = any(c.get("rerank") for c in cells_cfg)
-    if any_rerank:
+    # Pre-flight: any RPC rerank cell requires the service to be reachable.
+    # Inproc rerank cells don't — they construct LabReranker directly.
+    rpc_cells = [c for c in cells_cfg if c.get("rerank") and c.get("mode", "rpc") == "rpc"]
+    inproc_cells = [c for c in cells_cfg if c.get("rerank") and c.get("mode") == "inproc"]
+    any_rerank = bool(rpc_cells) or bool(inproc_cells)
+    any_rpc = bool(rpc_cells)
+    if any_rpc:
         if not rerank_url:
-            console.print("[red]KILL[/] rerank cells configured but no rerank.url set")
+            console.print("[red]KILL[/] rpc rerank cells configured but no rerank.url set")
             return 2
         import httpx as _httpx
 
@@ -832,29 +999,60 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                 )
                 return 2
             health = hresp.json()
+            server_model = health.get("model")
             console.print(
-                f"[green]rerank service[/] healthy: model={health.get('model')} loaded={health.get('loaded')}"
+                f"[green]rerank service[/] healthy: model={server_model} loaded={health.get('loaded')}"
             )
+            # Check per-cell rerank_model compatibility with the running server.
+            for c in rpc_cells:
+                cell_model = c.get("rerank_model") or rerank_model
+                if cell_model and cell_model != server_model:
+                    console.print(
+                        f"[red]KILL[/] cell {c['name']} requests rpc rerank with model "
+                        f"{cell_model} but server runs {server_model}; "
+                        f"swap cell mode to inproc or restart rerank service with that model"
+                    )
+                    return 2
         except Exception as exc:
             console.print(f"[red]KILL[/] rerank service unreachable at {rerank_url}: {exc}")
             return 2
 
-    # Load queries (cache only — never regenerate for EXP-004a).
-    if not cache_path.exists():
-        console.print(f"[red]KILL[/] query cache missing at {cache_path}")
-        return 2
-    rows = [json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()]
-    queries = [
-        SyntheticQuery(
-            question=r["question"],
-            origin_chunk_id=r["origin_chunk_id"],
-            origin_doc_path=r["origin_doc_path"],
-            origin_section=list(r.get("origin_section") or []),
+    # Load queries.
+    # EXP-004c extension: if `seed_cache_path` + `n_target` are set, seed +
+    # generate up to n_target. EXP-004a behaviour preserved otherwise.
+    queries_cfg = cfg["queries"]
+    seed_cache_raw = queries_cfg.get("seed_cache_path")
+    n_target_raw = queries_cfg.get("n_target")
+    question_model_raw = queries_cfg.get("question_model")
+    if seed_cache_raw and n_target_raw:
+        seed_cache_path = REPO_ROOT / seed_cache_raw
+        queries = _extend_query_cache(
+            cache_path=cache_path,
+            seed_cache_path=seed_cache_path,
+            kb_dir=kb_dir,
+            n_target=int(n_target_raw),
+            question_model=str(question_model_raw),
         )
-        for r in rows
-    ]
-    if len(queries) < 25:
-        console.print(f"[red]KILL[/] only {len(queries)} queries loaded (< 25)")
+    else:
+        if not cache_path.exists():
+            console.print(f"[red]KILL[/] query cache missing at {cache_path}")
+            return 2
+        rows = [
+            json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()
+        ]
+        queries = [
+            SyntheticQuery(
+                question=r["question"],
+                origin_chunk_id=r["origin_chunk_id"],
+                origin_doc_path=r["origin_doc_path"],
+                origin_section=list(r.get("origin_section") or []),
+            )
+            for r in rows
+        ]
+    # EXP-004c min-N kill criterion is 100; EXP-004a's was 25.
+    min_n = 100 if is_exp004c else 25
+    if len(queries) < min_n:
+        console.print(f"[red]KILL[/] only {len(queries)} queries loaded (< {min_n})")
         return 2
     console.print(f"[green]queries[/] {len(queries)} loaded from {cache_path}")
 
@@ -942,18 +1140,87 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
     rerank_call_count = 0
     rerank_err_count = 0
     rerank_latencies: list[float] = []
+    per_cell_latencies: dict[str, list[float]] = {}
+    per_cell_errors_count: dict[str, int] = {}
 
     per_cell_rows: list[dict[str, Any]] = []
     per_query_rows: list[dict[str, Any]] = []
     cell_recalls_for_h2: dict[str, list[int]] = {}  # cell_name -> per-query 0/1
 
-    for cell in cells_cfg:
+    # Cache of in-process LabReranker instances by model_name, so cells that
+    # share a model don't re-load weights. Lazy-construct only when needed.
+    inproc_rerankers: dict[str, Any] = {}
+
+    def _get_inproc(model_name: str) -> Any:
+        if model_name in inproc_rerankers:
+            return inproc_rerankers[model_name]
+        from lab.rag.rerank import LabReranker
+
+        console.print(
+            f"[bold yellow]inproc rerank load[/] {model_name} "
+            f"(may take 30-120s on first call, cold download for non-cached models)"
+        )
+        # Clear LAB_RAG_RERANKER_URL in process env so LabReranker.rerank()
+        # doesn't try to dispatch over HTTP — we want the in-process predict
+        # path exercised.
+        os.environ.pop("LAB_RAG_RERANKER_URL", None)
+        r = LabReranker(model_name=model_name, idle_unload_sec=0)
+        inproc_rerankers[model_name] = r
+        return r
+
+    # Track when we transition from rpc cells to inproc cells, to free the
+    # rerank service's VRAM before constructing in-process rerankers.
+    rpc_cell_names = {c["name"] for c in rpc_cells}
+    inproc_cell_names = {c["name"] for c in inproc_cells}
+    last_rpc_idx = -1
+    for ci, c in enumerate(cells_cfg):
+        if c["name"] in rpc_cell_names:
+            last_rpc_idx = ci
+
+    for cell_idx, cell in enumerate(cells_cfg):
         name = cell["name"]
         fusion = cell["fusion"]
         alpha_v = float(cell.get("alpha")) if cell.get("alpha") is not None else None
         top_k_stage1 = int(cell["top_k_stage1"])
         do_rerank = bool(cell.get("rerank"))
         final_k = int(cell["final_k"])
+        cell_mode = cell.get("mode", "rpc") if do_rerank else None
+        cell_rerank_model = cell.get("rerank_model") or rerank_model
+
+        # Before the first inproc cell, ask the rerank service to unload its
+        # weights so the in-process reranker has VRAM headroom.
+        if (
+            do_rerank
+            and cell_mode == "inproc"
+            and name in inproc_cell_names
+            and last_rpc_idx >= 0
+            and cell_idx > last_rpc_idx
+            and rerank_url
+        ):
+            already_unloaded = any(
+                pc.get("cell") in inproc_cell_names for pc in per_cell_rows
+            )
+            if not already_unloaded:
+                try:
+                    import httpx as _httpx
+                    with _httpx.Client(timeout=15.0) as cli:
+                        u = cli.post(f"{rerank_url.rstrip('/')}/unload")
+                    console.print(
+                        f"[dim]rerank service /unload[/] -> {u.status_code} {u.text[:80]}"
+                    )
+                    time.sleep(2.0)
+                except Exception as exc:
+                    console.print(f"[yellow]warn[/] rerank /unload failed: {exc}")
+        # Truncation handling:
+        #   - explicit key "truncation": null  -> no truncation (full passage)
+        #   - integer N                         -> text[:N]
+        #   - missing key                       -> default 1500 (EXP-004a behaviour)
+        if "truncation" in cell:
+            cell_trunc = cell["truncation"]
+            cell_trunc_int = int(cell_trunc) if cell_trunc is not None else None
+        else:
+            cell_trunc_int = 1500
+
         key = (fusion, alpha_v, top_k_stage1)
         stage1_all = stage1_cache[key]
 
@@ -962,7 +1229,24 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         mrr_vals: list[float] = []
         ndcg_vals: list[float] = []
         cell_errors = 0
+        cell_latencies: list[float] = []
         gold_in_pool_count = 0
+
+        console.print(
+            f"[bold]cell {name}[/] mode={cell_mode} model={cell_rerank_model} "
+            f"truncation={cell_trunc_int if cell_trunc_int is not None else 'none'} "
+            f"(rerank={do_rerank})"
+        )
+
+        # Pre-warm inproc reranker if this cell uses one — loads weights and
+        # primes GPU before per-query timing starts.
+        if do_rerank and cell_mode == "inproc":
+            try:
+                _get_inproc(cell_rerank_model)
+            except Exception as exc:
+                console.print(f"[red]cell {name} inproc-load failed[/] {exc}")
+                cell_errors = len(queries)
+                # Fall through to record empty cell rows.
 
         for qi, (q, stage1) in enumerate(zip(queries, stage1_all, strict=True)):
             gold = q.origin_chunk_id
@@ -971,41 +1255,72 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                 gold_in_pool_count += 1
 
             if do_rerank and stage1:
-                # Truncate passage text to bound the cross-encoder's attention
-                # matrix. Some bash KB chunks are multi-page markdown sections
-                # (>10k chars) which OOM the 12 GB GPU when batched. The
-                # reranker only needs enough context to score relevance.
-                # Limit chosen empirically: 1500 chars ≈ 400-500 tokens,
-                # leaves headroom for the query + cross-attention.
-                _MAX_PASSAGE_CHARS = 1500
-                candidates = [
-                    {
-                        "chunk_id": c[0],
-                        "combined": c[1],
-                        "dense_score": c[2],
-                        "sparse_score": c[3],
-                        "text": (c[4].get("text", "") or "")[:_MAX_PASSAGE_CHARS],
-                        "stage1_rank": idx + 1,
-                    }
-                    for idx, c in enumerate(stage1)
-                ]
-                hits, lat_ms, err = _rerank_via_http(
-                    url=rerank_url,
-                    model=rerank_model,
-                    query=q.question,
-                    candidates=candidates,
-                    top_n=final_k,
-                )
+                # Truncate passage text (or not) per cell config.
+                if cell_trunc_int is None:
+                    candidates = [
+                        {
+                            "chunk_id": c[0],
+                            "combined": c[1],
+                            "dense_score": c[2],
+                            "sparse_score": c[3],
+                            "text": (c[4].get("text", "") or ""),
+                            "stage1_rank": idx + 1,
+                        }
+                        for idx, c in enumerate(stage1)
+                    ]
+                else:
+                    candidates = [
+                        {
+                            "chunk_id": c[0],
+                            "combined": c[1],
+                            "dense_score": c[2],
+                            "sparse_score": c[3],
+                            "text": (c[4].get("text", "") or "")[:cell_trunc_int],
+                            "stage1_rank": idx + 1,
+                        }
+                        for idx, c in enumerate(stage1)
+                    ]
+
+                err: str | None = None
+                lat_ms = 0.0
+                final_hits: list[dict[str, Any]] = []
+                final_ids: list[str | None] = []
+                if cell_mode == "inproc":
+                    try:
+                        r_inst = _get_inproc(cell_rerank_model)
+                        t0_l = time.perf_counter()
+                        hits_local = r_inst.rerank(
+                            q.question, list(candidates), top_n=final_k
+                        )
+                        lat_ms = (time.perf_counter() - t0_l) * 1000.0
+                        final_hits = hits_local
+                        final_ids = [h.get("chunk_id") for h in hits_local]
+                    except Exception as exc:
+                        err = f"inproc: {exc}"
+                else:
+                    # rpc
+                    hits, lat_ms, err = _rerank_via_http(
+                        url=rerank_url,
+                        model=cell_rerank_model,
+                        query=q.question,
+                        candidates=candidates,
+                        top_n=final_k,
+                    )
+                    if not err:
+                        final_hits = hits
+                        final_ids = [h.get("chunk_id") for h in hits]
                 rerank_call_count += 1
                 rerank_latencies.append(lat_ms)
+                cell_latencies.append(lat_ms)
                 if err:
                     rerank_err_count += 1
                     cell_errors += 1
                     final_ids = []
                     final_hits = []
-                else:
-                    final_hits = hits
-                    final_ids = [h.get("chunk_id") for h in hits]
+                    if qi < 5 or qi % 50 == 0:
+                        console.print(
+                            f"[red]rerank err[/] cell={name} qi={qi}: {err[:200]}"
+                        )
             else:
                 final_hits = []
                 final_ids = [c[0] for c in stage1[:final_k]]
@@ -1032,6 +1347,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                     "alpha": alpha_v if alpha_v is not None else "",
                     "top_k_stage1": top_k_stage1,
                     "rerank": int(do_rerank),
+                    "rerank_model": cell_rerank_model or "",
+                    "truncation": (cell_trunc_int if cell_trunc_int is not None else 0),
+                    "mode": cell_mode or "",
                     "final_k": final_k,
                     "query_idx": qi,
                     "question": q.question.replace("\n", " ")[:300],
@@ -1048,6 +1366,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                         if final_hits and "rerank_score" in final_hits[-1]
                         else ""
                     ),
+                    "rerank_latency_ms": f"{lat_ms:.1f}" if do_rerank and stage1 else "",
                     "hit_rank": rank,
                     "recall_at_5": r5,
                     "mrr10": f"{m:.6f}",
@@ -1056,10 +1375,19 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
             )
 
         cell_recalls_for_h2[name] = recall_5
+        per_cell_latencies[name] = cell_latencies
+        per_cell_errors_count[name] = cell_errors
         mean_r5 = statistics.mean(recall_5) if recall_5 else 0.0
         mean_mrr = statistics.mean(mrr_vals) if mrr_vals else 0.0
         mean_ndcg = statistics.mean(ndcg_vals) if ndcg_vals else 0.0
         wall = time.time() - t_cell
+        if cell_latencies:
+            sl = sorted(cell_latencies)
+            lat_p50_cell = sl[len(sl) // 2]
+            lat_p95_cell = sl[min(len(sl) - 1, int(0.95 * len(sl)))]
+            lat_mean_cell = sum(cell_latencies) / len(cell_latencies)
+        else:
+            lat_p50_cell = lat_p95_cell = lat_mean_cell = 0.0
         per_cell_rows.append(
             {
                 "cell": name,
@@ -1067,6 +1395,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                 "alpha": alpha_v if alpha_v is not None else "",
                 "top_k_stage1": top_k_stage1,
                 "rerank": int(do_rerank),
+                "rerank_model": cell_rerank_model or "",
+                "truncation": (cell_trunc_int if cell_trunc_int is not None else 0),
+                "mode": cell_mode or "",
                 "final_k": final_k,
                 "n_queries": len(queries),
                 "recall_at_5": f"{mean_r5:.4f}",
@@ -1075,6 +1406,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                 "gold_in_stage1_pool_frac": f"{gold_in_pool_count / len(queries):.4f}",
                 "errors": cell_errors,
                 "wall_sec": f"{wall:.1f}",
+                "rerank_lat_p50_ms": f"{lat_p50_cell:.1f}",
+                "rerank_lat_p95_ms": f"{lat_p95_cell:.1f}",
+                "rerank_lat_mean_ms": f"{lat_mean_cell:.1f}",
             }
         )
         console.print(
@@ -1123,101 +1457,266 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
 
     # Verdicts.
     per_cell_by_name = {r["cell"]: r for r in per_cell_rows}
-    c0 = float(per_cell_by_name["C0_alpha_baseline"]["recall_at_5"])
-    c1 = float(per_cell_by_name["C1_rrf_baseline"]["recall_at_5"])
-    c2 = float(per_cell_by_name["C2_alpha_rerank"]["recall_at_5"])
-    c3 = float(per_cell_by_name["C3_rrf_rerank"]["recall_at_5"])
-    best_rerank = max(c2, c3)
-    h1_verdict = "CONFIRMED" if best_rerank >= 0.92 else "REFUTED"
 
-    deltas_c2_vs_c0 = [
-        cell_recalls_for_h2["C2_alpha_rerank"][i] - cell_recalls_for_h2["C0_alpha_baseline"][i]
-        for i in range(len(queries))
-    ]
-    deltas_c3_vs_c1 = [
-        cell_recalls_for_h2["C3_rrf_rerank"][i] - cell_recalls_for_h2["C1_rrf_baseline"][i]
-        for i in range(len(queries))
-    ]
-    p_c2 = _wilcoxon_one_sided_greater([float(x) for x in deltas_c2_vs_c0])
-    p_c3 = _wilcoxon_one_sided_greater([float(x) for x in deltas_c3_vs_c1])
-    h2_verdict = "CONFIRMED" if (p_c2 < 0.05 and p_c3 < 0.05) else "REFUTED"
+    if is_exp004c:
+        # EXP-004c verdicts: H1 replication, H2 truncation monotone,
+        # H3 RPC overhead, H4 model winner.
+        b0 = float(per_cell_by_name["B0_alpha_baseline"]["recall_at_5"])
+        q1 = float(per_cell_by_name["Q1_qwen3_1500c"]["recall_at_5"])
+        q2 = float(per_cell_by_name["Q2_qwen3_2500c"]["recall_at_5"])
+        q3 = float(per_cell_by_name["Q3_qwen3_notrunc"]["recall_at_5"])
+        q4 = float(per_cell_by_name["Q4_qwen3_1500c_inproc"]["recall_at_5"])
+        b1 = float(per_cell_by_name["B1_bge_1500c_inproc"]["recall_at_5"])
 
-    h3_delta_alpha = c1 - c0
-    h3_delta_rerank_arm = c3 - c2
+        # Q3 may have errored out entirely (OOM); guard.
+        q3_errored = int(per_cell_by_name["Q3_qwen3_notrunc"].get("errors", 0)) >= len(queries)
 
-    # SUMMARY.md
-    lines: list[str] = []
-    lines.append(f"# {slug} — reranker validation — SUMMARY\n")
-    lines.append(f"N queries: {len(queries)}  KB: {kb_name}  Rerank model: {rerank_model}\n")
-    lines.append("\n## Per-cell metrics\n")
-    lines.append("| cell | fusion | alpha | stage-1 top-k | rerank | final-k | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
-    for r in per_cell_rows:
+        best_rerank = max(q1, q2, q3, q4, b1)
+        h1_verdict = "CONFIRMED" if best_rerank >= 0.92 else "REFUTED"
+
+        # H2: strict monotone Q3 > Q2 > Q1
+        if q3_errored:
+            h2_verdict = "REFUTED"
+            h2_reason = "Q3 errored (no-truncation infeasible) — strict monotone undefined"
+        elif (q3 > q2) and (q2 > q1):
+            h2_verdict = "CONFIRMED"
+            h2_reason = f"Q3({q3:.3f}) > Q2({q2:.3f}) > Q1({q1:.3f})"
+        else:
+            h2_verdict = "REFUTED"
+            h2_reason = f"Q3={q3:.3f}, Q2={q2:.3f}, Q1={q1:.3f} — not strictly increasing"
+
+        # H3: |Q4 - Q1| <= 0.02
+        h3_delta = q4 - q1
+        h3_verdict = "CONFIRMED" if abs(h3_delta) <= 0.02 else "REFUTED"
+
+        # H4: Q4 vs B1 (both inproc)
+        h4_delta = q4 - b1
+        if q4 - b1 >= 0.05:
+            h4_winner = "Qwen3-Reranker-0.6B"
+        elif b1 - q4 >= 0.05:
+            h4_winner = "bge-reranker-v2-m3"
+        else:
+            h4_winner = "tie (keep Qwen3)"
+
+        # Paired Wilcoxon p-values for each rerank cell vs B0 (descriptive).
+        wilcoxons: dict[str, dict[str, Any]] = {}
+        for cell_name in ("Q1_qwen3_1500c", "Q2_qwen3_2500c", "Q3_qwen3_notrunc",
+                          "Q4_qwen3_1500c_inproc", "B1_bge_1500c_inproc"):
+            if cell_name not in cell_recalls_for_h2:
+                continue
+            deltas = [
+                cell_recalls_for_h2[cell_name][i] - cell_recalls_for_h2["B0_alpha_baseline"][i]
+                for i in range(len(queries))
+            ]
+            p = _wilcoxon_one_sided_greater([float(x) for x in deltas])
+            n_pos = sum(1 for d in deltas if d > 0)
+            n_neg = sum(1 for d in deltas if d < 0)
+            wilcoxons[cell_name] = {"p": p, "pos": n_pos, "neg": n_neg}
+
+        # SUMMARY.md
+        lines: list[str] = []
+        lines.append(f"# {slug} — reranker validation at higher N — SUMMARY\n")
+        lines.append(f"N queries: {len(queries)}  KB: {kb_name}\n")
+        lines.append("\n## Per-cell metrics\n")
+        lines.append("| cell | mode | rerank model | trunc | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) | rerank p50 (ms) |")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
+        for r in per_cell_rows:
+            trunc_s = str(r.get("truncation", "")) if r.get("truncation") else "none"
+            if r.get("truncation") == 0 and r["rerank"]:
+                trunc_s = "none"
+            lines.append(
+                f"| {r['cell']} | {r.get('mode') or '—'} | "
+                f"{r.get('rerank_model') or '—'} | {trunc_s if r['rerank'] else '—'} | "
+                f"{r['recall_at_5']} | {r['mrr10']} | {r['ndcg_at_10']} | "
+                f"{r['gold_in_stage1_pool_frac']} | {r['errors']} | {r['wall_sec']} | "
+                f"{r.get('rerank_lat_p50_ms', '0.0')} |"
+            )
+        lines.append("\n## Hypothesis verdicts\n")
         lines.append(
-            f"| {r['cell']} | {r['fusion']} | {r['alpha']} | {r['top_k_stage1']} | "
-            f"{'yes' if r['rerank'] else 'no'} | {r['final_k']} | "
-            f"{r['recall_at_5']} | {r['mrr10']} | {r['ndcg_at_10']} | "
-            f"{r['gold_in_stage1_pool_frac']} | {r['errors']} | {r['wall_sec']} |"
+            f"- **H1** (best reranked ≥ 0.92, +10pp over B0={b0:.3f}): **{h1_verdict}**  "
+            f"max(rerank cells) = {best_rerank:.3f}; delta over B0 = {best_rerank - b0:+.3f}"
         )
-    lines.append("\n## Hypothesis verdicts\n")
-    lines.append(f"- H1 (aggressive, ≥0.92 best reranked): **{h1_verdict}**  "
-                 f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank-c0:+.3f}")
-    lines.append(f"- H2 (rerank always improves, paired Wilcoxon both p<0.05): **{h2_verdict}**  "
-                 f"C2 vs C0 p={p_c2:.4f}; C3 vs C1 p={p_c3:.4f}")
-    lines.append(f"- H3 (informational): delta_alpha (C1-C0)={h3_delta_alpha:+.3f}; "
-                 f"delta_rerank_arm (C3-C2)={h3_delta_rerank_arm:+.3f}")
-    lines.append("\n## Rerank-service stats\n")
-    lines.append(f"- calls: {stats['rerank_call_count']}")
-    lines.append(f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)")
-    lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
-    lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
-    lines.append(f"- latency mean: {stats['latency_ms_mean']:.1f} ms")
-    lines.append(f"- latency max: {stats['latency_ms_max']:.1f} ms")
-    out_summary.write_text("\n".join(lines) + "\n")
+        lines.append(
+            f"- **H2** (truncation monotone Q3>Q2>Q1): **{h2_verdict}**  {h2_reason}"
+        )
+        lines.append(
+            f"- **H3** (|Q4-Q1| ≤ 0.02 — RPC overhead): **{h3_verdict}**  "
+            f"Q4={q4:.3f}, Q1={q1:.3f}, delta={h3_delta:+.3f}"
+        )
+        lines.append(
+            f"- **H4** (Qwen3 vs BGE, inproc): winner = **{h4_winner}**  "
+            f"Q4={q4:.3f}, B1={b1:.3f}, delta={h4_delta:+.3f}"
+        )
+        lines.append("\n## Wilcoxon vs B0 (one-sided, treat > control)\n")
+        for cell_name, w in wilcoxons.items():
+            ties = len(queries) - w["pos"] - w["neg"]
+            lines.append(
+                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; "
+                f"p = {w['p']:.4f}"
+            )
+        lines.append("\n## Rerank-service stats (RPC cells only)\n")
+        lines.append(f"- calls: {stats['rerank_call_count']}")
+        lines.append(f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)")
+        lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
+        lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
+        lines.append(f"- latency mean: {stats['latency_ms_mean']:.1f} ms")
+        lines.append(f"- latency max: {stats['latency_ms_max']:.1f} ms")
+        out_summary.write_text("\n".join(lines) + "\n")
 
-    # verdicts.md (detailed)
-    vlines: list[str] = []
-    vlines.append(f"# {slug} — verdicts\n")
-    vlines.append(f"Pre-registered in `docs/exp/{slug}.md`.\n")
-    vlines.append("\n## H1 — best reranked cell ≥ 0.92 (i.e. +10pp over C0=0.820)\n")
-    vlines.append(f"**Verdict: {h1_verdict}**\n")
-    vlines.append(f"- C0 (alpha=0.75, no rerank) recall@5: {c0:.3f}")
-    vlines.append(f"- C1 (RRF, no rerank) recall@5: {c1:.3f}")
-    vlines.append(f"- C2 (alpha=0.75 + rerank) recall@5: {c2:.3f}")
-    vlines.append(f"- C3 (RRF + rerank) recall@5: {c3:.3f}")
-    vlines.append(f"- max(C2, C3) = {best_rerank:.3f}; threshold = 0.920")
-    vlines.append(f"- delta over C0: {best_rerank - c0:+.3f}")
+        # verdicts.md
+        vlines: list[str] = []
+        vlines.append(f"# {slug} — verdicts\n")
+        vlines.append(f"Pre-registered in `docs/exp/{slug}.md`.\n")
 
-    vlines.append("\n## H2 — rerank always improves (paired Wilcoxon, one-sided, both p<0.05)\n")
-    vlines.append(f"**Verdict: {h2_verdict}**\n")
-    n_pos_c2 = sum(1 for d in deltas_c2_vs_c0 if d > 0)
-    n_neg_c2 = sum(1 for d in deltas_c2_vs_c0 if d < 0)
-    n_pos_c3 = sum(1 for d in deltas_c3_vs_c1 if d > 0)
-    n_neg_c3 = sum(1 for d in deltas_c3_vs_c1 if d < 0)
-    vlines.append(f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries)-n_pos_c2-n_neg_c2}; "
-                  f"Wilcoxon one-sided p = {p_c2:.4f}")
-    vlines.append(f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries)-n_pos_c3-n_neg_c3}; "
-                  f"Wilcoxon one-sided p = {p_c3:.4f}")
+        vlines.append("\n## H1 — best reranked cell ≥ 0.92 (i.e. +10pp over B0)\n")
+        vlines.append(f"**Verdict: {h1_verdict}**\n")
+        vlines.append(f"- B0 (alpha=0.75, no rerank) recall@5: {b0:.3f}")
+        vlines.append(f"- Q1 (Qwen3 + 1500c, rpc) recall@5: {q1:.3f}")
+        vlines.append(f"- Q2 (Qwen3 + 2500c, rpc) recall@5: {q2:.3f}")
+        if q3_errored:
+            vlines.append(f"- Q3 (Qwen3 + no-trunc, rpc) recall@5: ERRORED (OOM expected)")
+        else:
+            vlines.append(f"- Q3 (Qwen3 + no-trunc, rpc) recall@5: {q3:.3f}")
+        vlines.append(f"- Q4 (Qwen3 + 1500c, inproc) recall@5: {q4:.3f}")
+        vlines.append(f"- B1 (BGE + 1500c, inproc) recall@5: {b1:.3f}")
+        vlines.append(f"- max(rerank cells) = {best_rerank:.3f}; threshold = 0.920")
+        vlines.append(f"- delta over B0: {best_rerank - b0:+.3f}")
 
-    vlines.append("\n## H3 — RRF beats alpha-blend as stage-1 (informational)\n")
-    vlines.append(f"- delta_alpha (C1 - C0): {h3_delta_alpha:+.3f}")
-    vlines.append(f"- delta_rerank_arm (C3 - C2): {h3_delta_rerank_arm:+.3f}")
-    if h3_delta_alpha < 0 or h3_delta_rerank_arm < 0:
-        vlines.append("- NOTE: at least one comparison favors alpha-blend; see SUMMARY.md")
+        vlines.append("\n## H2 — truncation monotone: Q3 > Q2 > Q1\n")
+        vlines.append(f"**Verdict: {h2_verdict}**\n")
+        vlines.append(f"- {h2_reason}")
 
-    out_verdicts.write_text("\n".join(vlines) + "\n")
+        vlines.append("\n## H3 — RPC overhead: |Q4 - Q1| ≤ 0.02\n")
+        vlines.append(f"**Verdict: {h3_verdict}**\n")
+        vlines.append(f"- Q4 (in-process) recall@5: {q4:.3f}")
+        vlines.append(f"- Q1 (rpc) recall@5: {q1:.3f}")
+        vlines.append(f"- delta (Q4 - Q1): {h3_delta:+.3f}  (threshold ±0.020)")
 
-    # Final console summary.
-    total_errors = sum(int(r["errors"]) for r in per_cell_rows)
-    console.print(
-        f"\n[bold]DONE[/] cells={len(per_cell_rows)} queries={len(queries)} "
-        f"rerank_calls={rerank_call_count} rerank_errs={rerank_err_count} "
-        f"rerank_p50={p50:.0f}ms total_errors={total_errors}\n"
-        f"  H1: {h1_verdict}  (best reranked recall@5 = {best_rerank:.3f}; threshold 0.920)\n"
-        f"  H2: {h2_verdict}  (p_C2={p_c2:.4f}, p_C3={p_c3:.4f})\n"
-        f"  H3 informational: delta_alpha={h3_delta_alpha:+.3f}, "
-        f"delta_rerank_arm={h3_delta_rerank_arm:+.3f}"
-    )
+        vlines.append("\n## H4 — rerank-model comparison: Q4 (Qwen3 inproc) vs B1 (BGE inproc)\n")
+        vlines.append(f"**Winner: {h4_winner}**\n")
+        vlines.append(f"- Q4 (Qwen3-Reranker-0.6B): {q4:.3f}")
+        vlines.append(f"- B1 (bge-reranker-v2-m3): {b1:.3f}")
+        vlines.append(f"- delta (Q4 - B1): {h4_delta:+.3f}  (threshold ±0.050)")
+
+        vlines.append("\n## Wilcoxon vs B0 (one-sided, treat > control)\n")
+        for cell_name, w in wilcoxons.items():
+            ties = len(queries) - w["pos"] - w["neg"]
+            vlines.append(
+                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; "
+                f"p = {w['p']:.4f}"
+            )
+
+        out_verdicts.write_text("\n".join(vlines) + "\n")
+
+        # Console summary
+        total_errors = sum(int(r["errors"]) for r in per_cell_rows)
+        console.print(
+            f"\n[bold]DONE[/] {slug} cells={len(per_cell_rows)} queries={len(queries)} "
+            f"rerank_calls={rerank_call_count} rerank_errs={rerank_err_count} "
+            f"total_errors={total_errors}\n"
+            f"  H1 (≥0.92): {h1_verdict}  best={best_rerank:.3f} (B0={b0:.3f})\n"
+            f"  H2 (Q3>Q2>Q1): {h2_verdict}  {h2_reason}\n"
+            f"  H3 (|Q4-Q1|≤0.02): {h3_verdict}  Q4={q4:.3f} Q1={q1:.3f} d={h3_delta:+.3f}\n"
+            f"  H4 winner: {h4_winner}  (Q4={q4:.3f}, B1={b1:.3f})\n"
+        )
+
+    else:
+        # EXP-004a verdicts (legacy path).
+        c0 = float(per_cell_by_name["C0_alpha_baseline"]["recall_at_5"])
+        c1 = float(per_cell_by_name["C1_rrf_baseline"]["recall_at_5"])
+        c2 = float(per_cell_by_name["C2_alpha_rerank"]["recall_at_5"])
+        c3 = float(per_cell_by_name["C3_rrf_rerank"]["recall_at_5"])
+        best_rerank = max(c2, c3)
+        h1_verdict = "CONFIRMED" if best_rerank >= 0.92 else "REFUTED"
+
+        deltas_c2_vs_c0 = [
+            cell_recalls_for_h2["C2_alpha_rerank"][i] - cell_recalls_for_h2["C0_alpha_baseline"][i]
+            for i in range(len(queries))
+        ]
+        deltas_c3_vs_c1 = [
+            cell_recalls_for_h2["C3_rrf_rerank"][i] - cell_recalls_for_h2["C1_rrf_baseline"][i]
+            for i in range(len(queries))
+        ]
+        p_c2 = _wilcoxon_one_sided_greater([float(x) for x in deltas_c2_vs_c0])
+        p_c3 = _wilcoxon_one_sided_greater([float(x) for x in deltas_c3_vs_c1])
+        h2_verdict = "CONFIRMED" if (p_c2 < 0.05 and p_c3 < 0.05) else "REFUTED"
+
+        h3_delta_alpha = c1 - c0
+        h3_delta_rerank_arm = c3 - c2
+
+        # SUMMARY.md
+        lines = []
+        lines.append(f"# {slug} — reranker validation — SUMMARY\n")
+        lines.append(f"N queries: {len(queries)}  KB: {kb_name}  Rerank model: {rerank_model}\n")
+        lines.append("\n## Per-cell metrics\n")
+        lines.append("| cell | fusion | alpha | stage-1 top-k | rerank | final-k | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) |")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+        for r in per_cell_rows:
+            lines.append(
+                f"| {r['cell']} | {r['fusion']} | {r['alpha']} | {r['top_k_stage1']} | "
+                f"{'yes' if r['rerank'] else 'no'} | {r['final_k']} | "
+                f"{r['recall_at_5']} | {r['mrr10']} | {r['ndcg_at_10']} | "
+                f"{r['gold_in_stage1_pool_frac']} | {r['errors']} | {r['wall_sec']} |"
+            )
+        lines.append("\n## Hypothesis verdicts\n")
+        lines.append(f"- H1 (aggressive, ≥0.92 best reranked): **{h1_verdict}**  "
+                     f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank-c0:+.3f}")
+        lines.append(f"- H2 (rerank always improves, paired Wilcoxon both p<0.05): **{h2_verdict}**  "
+                     f"C2 vs C0 p={p_c2:.4f}; C3 vs C1 p={p_c3:.4f}")
+        lines.append(f"- H3 (informational): delta_alpha (C1-C0)={h3_delta_alpha:+.3f}; "
+                     f"delta_rerank_arm (C3-C2)={h3_delta_rerank_arm:+.3f}")
+        lines.append("\n## Rerank-service stats\n")
+        lines.append(f"- calls: {stats['rerank_call_count']}")
+        lines.append(f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)")
+        lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
+        lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
+        lines.append(f"- latency mean: {stats['latency_ms_mean']:.1f} ms")
+        lines.append(f"- latency max: {stats['latency_ms_max']:.1f} ms")
+        out_summary.write_text("\n".join(lines) + "\n")
+
+        # verdicts.md
+        vlines = []
+        vlines.append(f"# {slug} — verdicts\n")
+        vlines.append(f"Pre-registered in `docs/exp/{slug}.md`.\n")
+        vlines.append("\n## H1 — best reranked cell ≥ 0.92 (i.e. +10pp over C0=0.820)\n")
+        vlines.append(f"**Verdict: {h1_verdict}**\n")
+        vlines.append(f"- C0 (alpha=0.75, no rerank) recall@5: {c0:.3f}")
+        vlines.append(f"- C1 (RRF, no rerank) recall@5: {c1:.3f}")
+        vlines.append(f"- C2 (alpha=0.75 + rerank) recall@5: {c2:.3f}")
+        vlines.append(f"- C3 (RRF + rerank) recall@5: {c3:.3f}")
+        vlines.append(f"- max(C2, C3) = {best_rerank:.3f}; threshold = 0.920")
+        vlines.append(f"- delta over C0: {best_rerank - c0:+.3f}")
+
+        vlines.append("\n## H2 — rerank always improves (paired Wilcoxon, one-sided, both p<0.05)\n")
+        vlines.append(f"**Verdict: {h2_verdict}**\n")
+        n_pos_c2 = sum(1 for d in deltas_c2_vs_c0 if d > 0)
+        n_neg_c2 = sum(1 for d in deltas_c2_vs_c0 if d < 0)
+        n_pos_c3 = sum(1 for d in deltas_c3_vs_c1 if d > 0)
+        n_neg_c3 = sum(1 for d in deltas_c3_vs_c1 if d < 0)
+        vlines.append(f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries)-n_pos_c2-n_neg_c2}; "
+                      f"Wilcoxon one-sided p = {p_c2:.4f}")
+        vlines.append(f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries)-n_pos_c3-n_neg_c3}; "
+                      f"Wilcoxon one-sided p = {p_c3:.4f}")
+
+        vlines.append("\n## H3 — RRF beats alpha-blend as stage-1 (informational)\n")
+        vlines.append(f"- delta_alpha (C1 - C0): {h3_delta_alpha:+.3f}")
+        vlines.append(f"- delta_rerank_arm (C3 - C2): {h3_delta_rerank_arm:+.3f}")
+        if h3_delta_alpha < 0 or h3_delta_rerank_arm < 0:
+            vlines.append("- NOTE: at least one comparison favors alpha-blend; see SUMMARY.md")
+
+        out_verdicts.write_text("\n".join(vlines) + "\n")
+
+        # Final console summary.
+        total_errors = sum(int(r["errors"]) for r in per_cell_rows)
+        console.print(
+            f"\n[bold]DONE[/] cells={len(per_cell_rows)} queries={len(queries)} "
+            f"rerank_calls={rerank_call_count} rerank_errs={rerank_err_count} "
+            f"rerank_p50={p50:.0f}ms total_errors={total_errors}\n"
+            f"  H1: {h1_verdict}  (best reranked recall@5 = {best_rerank:.3f}; threshold 0.920)\n"
+            f"  H2: {h2_verdict}  (p_C2={p_c2:.4f}, p_C3={p_c3:.4f})\n"
+            f"  H3 informational: delta_alpha={h3_delta_alpha:+.3f}, "
+            f"delta_rerank_arm={h3_delta_rerank_arm:+.3f}"
+        )
 
     # Honor kill criterion overall: > 5% of all rerank calls failing.
     if rerank_call_count and (rerank_err_count / rerank_call_count) > 0.05:

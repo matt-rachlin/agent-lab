@@ -1,0 +1,101 @@
+# EXP-004c — Reranker validation at higher N + setup ablations
+# Plan: docs/exp/EXP-004c.md
+#
+# scripts/retrieval_sweep.py detects this "cells:" shape and dispatches to
+# the per-cell runner. The EXP-004c extension adds per-cell `rerank_model`,
+# `truncation` (int chars or null=no-trunc), and `mode` (rpc | inproc) fields.
+# Back-compat: cells without those fields behave as EXP-004a.
+
+experiment:
+  slug: EXP-004c
+  title: "Bash KB reranker validation at N=200 with setup ablations"
+  hypothesis: "EXP-004a setup undersold the reranker; at N=200 with truncation/RPC ablations the +10pp threshold clears"
+  plan_path: docs/exp/EXP-004c.md
+
+kb:
+  name: bash
+  embedding_model: qwen3-embedding:8b-q8_0
+
+queries:
+  # 200-query cache: 50 reused verbatim from EXP-003a + 150 new generated this run.
+  # Do NOT touch the EXP-003a cache; this is its own file.
+  cache_path: analysis/EXP-004c/queries.jsonl
+  # Source of the initial 50 to seed the cache.
+  seed_cache_path: analysis/EXP-003a/queries.jsonl
+  # Generate 150 more to reach N=200.
+  n_target: 200
+  question_model: qwen3:14b-q4_K_M
+
+rerank:
+  url: http://127.0.0.1:8401
+  # Default model; per-cell rerank_model overrides for B1.
+  model: Qwen/Qwen3-Reranker-0.6B
+
+cells:
+  - name: B0_alpha_baseline
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 5
+    rerank: false
+    final_k: 5
+
+  - name: Q1_qwen3_1500c
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true
+    rerank_model: Qwen/Qwen3-Reranker-0.6B
+    truncation: 1500
+    mode: rpc
+    final_k: 5
+
+  - name: Q2_qwen3_2500c
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true
+    rerank_model: Qwen/Qwen3-Reranker-0.6B
+    truncation: 2500
+    mode: rpc
+    final_k: 5
+
+  - name: Q3_qwen3_notrunc
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true
+    rerank_model: Qwen/Qwen3-Reranker-0.6B
+    truncation: null
+    mode: rpc
+    final_k: 5
+
+  - name: Q4_qwen3_1500c_inproc
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true
+    rerank_model: Qwen/Qwen3-Reranker-0.6B
+    truncation: 1500
+    mode: inproc
+    final_k: 5
+
+  - name: B1_bge_1500c_inproc
+    fusion: alpha
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true
+    rerank_model: BAAI/bge-reranker-v2-m3
+    truncation: 1500
+    # The host-side rerank server is configured at startup for a single
+    # model (Qwen3-Reranker-0.6B) and returns 409 on a mismatched `model`
+    # field. To compare BGE vs Qwen3 with execution path held constant,
+    # run BGE in-process and compare against Q4 (Qwen3 in-process).
+    mode: inproc
+    final_k: 5
+
+outputs:
+  summary: analysis/EXP-004c/SUMMARY.md
+  verdicts: analysis/EXP-004c/verdicts.md
+  raw: analysis/EXP-004c/raw.csv
+  per_cell: analysis/EXP-004c/per_cell.csv
+  rerank_stats: analysis/EXP-004c/rerank_stats.json

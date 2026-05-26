@@ -1,21 +1,27 @@
 ---
 slug: F-007-reranker-validation-refuted
-title: "F-007: Cross-encoder reranker REFUTED at +10pp threshold on bash KB — +4pp gain not significant at N=50"
+title: "F-007: Cross-encoder reranker REFUTED at +10pp threshold on bash KB — +5pp gain replicated at N=199 with paired Wilcoxon p=0.0038; +10pp infeasible on this KB"
 status: final
 date: 2026-05-26
-experiment: EXP-004a
+experiment: EXP-004a + EXP-004c
 plan_path: docs/exp/EXP-004a.md
 confidence: high
-source: EXP-004a
+source: EXP-004a + EXP-004c
 importance: 7
 evidence:
   - experiments/EXP-004a
+  - experiments/EXP-004c
   - scripts/retrieval_sweep.py
   - analysis/EXP-004a/SUMMARY.md
   - analysis/EXP-004a/verdicts.md
   - analysis/EXP-004a/raw.csv
   - analysis/EXP-004a/per_cell.csv
   - analysis/EXP-004a/rerank_stats.json
+  - analysis/EXP-004c/SUMMARY.md
+  - analysis/EXP-004c/verdicts.md
+  - analysis/EXP-004c/raw.csv
+  - analysis/EXP-004c/per_cell.csv
+  - analysis/EXP-004c/rerank_stats.json
 ---
 
 # F-007: Cross-encoder reranker REFUTED at +10pp threshold on bash KB — +4pp gain not significant at N=50
@@ -319,3 +325,141 @@ uv run python scripts/retrieval_sweep.py conf/sweep/EXP-004a.yaml
 - Rerank service:
   [`src/lab/rag/rerank_server.py`](../../src/lab/rag/rerank_server.py),
   unit `~/.config/systemd/user/rerank.service`
+
+---
+
+## Amendment 2026-05-26: EXP-004c replicates at N=199 with setup ablations
+
+EXP-004c re-ran the validation at N=199 (50 EXP-003a queries + 149 newly
+generated this run) with three setup ablations to rule out that the
+EXP-004a result was driven by the test harness. Pre-reg
+[`docs/exp/EXP-004c.md`](../exp/EXP-004c.md), config
+[`conf/sweep/EXP-004c.yaml`](../../conf/sweep/EXP-004c.yaml), results
+`analysis/EXP-004c/`.
+
+### Per-cell metrics (full sweep, N=199)
+
+| cell | mode | rerank model | trunc | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) | rerank p50 (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B0 (alpha=0.75) | — | — | — | **0.799** | 0.692 | 0.719 | 0.799 | 0 | 0.0 | — |
+| Q1 (Qwen3 + 1500c, rpc) | rpc | Qwen3-Reranker-0.6B | 1500 | **0.849** | 0.691 | 0.731 | 0.900 | 0 | 131.1 | 686 |
+| Q2 (Qwen3 + 2500c, rpc) | rpc | Qwen3-Reranker-0.6B | 2500 | **0.854** | 0.698 | 0.738 | 0.900 | 0 | 167.2 | 896 |
+| Q3 (Qwen3 + no-trunc, rpc) | rpc | Qwen3-Reranker-0.6B | none | 0.543 | 0.458 | 0.479 | 0.900 | **77 OOMs** | 143.1 | 620 |
+| Q4 (Qwen3 + 1500c, inproc) | inproc | Qwen3-Reranker-0.6B | 1500 | **0.849** | 0.691 | 0.731 | 0.900 | 0 | 134.8 | 686 |
+| B1 (BGE + 1500c, inproc) | inproc | bge-reranker-v2-m3 | 1500 | **0.824** | 0.672 | 0.710 | 0.900 | 0 | 184.7 | 1041 |
+
+### Per-hypothesis verdict (EXP-004c)
+
+- **H1 (replication, ≥0.92, i.e. +10pp over B0)**: **REFUTED again.**
+  `max(rerank cells) = 0.854`, delta over B0 = +0.055. Same direction
+  as EXP-004a (+0.040 there, +0.055 here at higher N), still well short
+  of the +10pp the plan pre-committed to. **The +10pp threshold is
+  structurally infeasible on this KB at this stage-1 ceiling
+  (gold-in-pool fraction = 0.90 at top-50; remaining 10% rerank cannot
+  recover).** The rerank lift is real and now paired-Wilcoxon
+  significant (Q1 vs B0 p=0.0038, Q2 vs B0 p=0.0023, Q4 vs B0 p=0.0038,
+  one-sided), but it caps at +5-6pp, not +10pp.
+- **H2 (truncation monotone Q3>Q2>Q1)**: **REFUTED.** Q3 (no-truncation)
+  OOM'd on 77/199 queries — the bash KB has long markdown sections
+  whose attention matrices exceed 12 GB VRAM. Q3's recall@5 collapses
+  to 0.543 (39% misses by construction; remaining queries' recall is
+  comparable to Q1/Q2). The monotone claim is unrunnable. Comparing
+  the truncation-feasible pair: Q2 (2500c) = 0.854 vs Q1 (1500c) =
+  0.849 — a +0.5pp gain from 67% more context. **Truncation is not
+  the bottleneck**; 1500 chars captures the rerank signal.
+- **H3 (RPC overhead, |Q4 - Q1| ≤ 0.02)**: **CONFIRMED, exactly.**
+  Q4 (in-process LabReranker.rerank) = 0.849, Q1 (HTTP RPC to
+  rerank_server) = 0.849. Per-cell wall: 134.8s vs 131.1s. **The
+  host-side rerank service architecture has zero impact on the
+  measured rerank signal or wall time.**
+- **H4 (Q4 vs B1, Qwen3 vs BGE in-process)**: Qwen3 wins by 2.5pp
+  (Q4 = 0.849 vs B1 = 0.824). Below the 5pp swap threshold;
+  recommendation: **keep Qwen3-Reranker-0.6B** as the default. BGE is
+  configured as the fallback per existing `FALLBACK_RERANKER_MODEL`.
+
+### Statistical significance at N=199 vs N=50
+
+At N=50 the paired Wilcoxon was underpowered:
+
+| pair | EXP-004a (N=50) | EXP-004c (N=199) |
+|---|---|---|
+| Qwen3 1500c rpc vs baseline | p = 0.3125 | **p = 0.0038** |
+| Qwen3 2500c rpc vs baseline | (not tested) | **p = 0.0023** |
+| Qwen3 1500c inproc vs baseline | (not tested) | **p = 0.0038** |
+| BGE 1500c inproc vs baseline | (not tested) | p = 0.1334 |
+
+EXP-004a's H2 ("rerank always improves, paired Wilcoxon p<0.05")
+**now clears for Qwen3 at N=199**. The +5pp lift is reliable. What
+doesn't clear is the +10pp threshold — that's a real ceiling on this
+KB, not a power problem.
+
+### Operational findings from EXP-004c
+
+- **`/unload` between RPC and in-process cells works**. The runner POSTs
+  `/unload` to the rerank service before constructing the first
+  in-process `LabReranker`. VRAM peak stayed under 11 GB throughout.
+- **Q3's OOMs were per-query, not catastrophic.** The rerank service
+  surfaced 77 HTTP 500s but kept serving; the runner counted each as
+  a cell-level error. No mid-sweep crash. The kill criterion
+  (>5% rerank errors overall) tripped — 77/995 = 7.7% — but that's
+  entirely Q3; the four feasible rerank cells (Q1, Q2, Q4, B1)
+  produced 0/796 = 0% errors.
+- **BGE p50 latency = 1040 ms vs Qwen3's 686 ms** (1.5x slower) and
+  Qwen3 outperforms by 2.5pp recall@5. There's no reason to swap.
+- **In-process load adds ~3-15s cold-start** (Qwen3) / **~30s cold-start**
+  (BGE first-call on cached weights), then per-query latency matches the
+  RPC service almost exactly.
+
+### Decision
+
+**H1 stands as REFUTED at N=199.** The Phase 7 +10pp threshold is
+structurally infeasible on the bash KB (stage-1 ceiling). The
+reverted-default decision from the original F-007 stands:
+
+- `LAB_RAG_RERANKER` env-var default should fall to `"none"` when
+  unspecified (vs current fallthrough to `DEFAULT_RERANKER_MODEL`),
+  since the +5pp lift doesn't earn the +700ms per-query latency at
+  every call site by default.
+- `kb_query` MCP tool default `rerank: bool = False` (was True). Callers
+  who care opt in.
+- `hybrid_query` default `rerank: bool = False` (was True). Same
+  rationale.
+
+The +5pp lift IS real and statistically significant. Callers with a
+recall@5-critical workflow should opt in to `rerank=True`; the
+infrastructure (host-side service, in-process fallback, BGE fallback,
+truncation defaults) is validated and stable.
+
+### Components NOT run end-to-end in EXP-004c (replicating EXP-004a scope)
+
+- **EXP-004b** (agent-level rerank sweep) — still explicitly scoped out.
+- **Other KBs** — bash only.
+- **Other final top-k values** — only top-5.
+- **Other stage-1 fusion strategies** — α=0.75 only; RRF excluded per
+  EXP-004a's H3 finding (RRF -2pp on bash KB).
+- **Other rerank models** — only Qwen3-Reranker-0.6B and
+  bge-reranker-v2-m3. No bge-large, no Cohere/Voyage cloud rerank.
+- **Other embedders / chunk sizes** — still queued for EXP-003c.
+
+### Reproduction (EXP-004c)
+
+```bash
+cd /data/lab/code
+uv run lab exp register docs/exp/EXP-004c.md
+uv run python scripts/retrieval_sweep.py conf/sweep/EXP-004c.yaml
+# outputs: analysis/EXP-004c/{raw.csv, SUMMARY.md, verdicts.md,
+#          per_cell.csv, rerank_stats.json, queries.jsonl}
+```
+
+Estimated wall: ~110 min (75 min q-gen for 150 new queries + ~15 min
+sweep). Cache the queries.jsonl to make re-runs cheap.
+
+### Files (EXP-004c)
+
+- Pre-reg: [`docs/exp/EXP-004c.md`](../exp/EXP-004c.md)
+- Config: [`conf/sweep/EXP-004c.yaml`](../../conf/sweep/EXP-004c.yaml)
+- Runner: [`scripts/retrieval_sweep.py`](../../scripts/retrieval_sweep.py)
+  (EXP-004c dispatch detects per-cell `mode`/`truncation`/`rerank_model`)
+- Results: `analysis/EXP-004c/`
+- Query cache: `analysis/EXP-004c/queries.jsonl` (199 queries: 50
+  reused from EXP-003a + 149 newly generated)
