@@ -1,0 +1,1001 @@
+alpha,k,query_idx,question,origin_chunk_id,hit_rank,recall_at_1,recall_at_3,recall_at_5,recall_at_10,mrr10,ndcg_at_k
+0.0,1,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.0,1,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.0,1,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.0,1,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.0,1,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.0,1,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.0,1,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.0,1,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.0,1,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.0,1,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.000000
+0.0,1,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,1,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,2,0,1,1,1,0.500000,0.000000
+0.0,1,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.000000
+0.0,1,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,9,0,0,0,1,0.111111,0.000000
+0.0,1,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,3,0,1,1,1,0.333333,0.000000
+0.0,1,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.0,1,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.0,1,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.000000
+0.0,1,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,2,0,1,1,1,0.500000,0.000000
+0.0,1,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,0,0,0,0,0,0.000000,0.000000
+0.0,1,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.0,1,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,2,0,1,1,1,0.500000,0.000000
+0.0,1,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.0,1,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,0,0,0,0,0,0.000000,0.000000
+0.0,1,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.000000
+0.0,1,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.0,1,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,0,0,0,0,0,0.000000,0.000000
+0.0,1,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.000000
+0.0,1,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,0,0,0,0,0,0.000000,0.000000
+0.0,1,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,0,0,0,0,0,0.000000,0.000000
+0.0,1,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.0,1,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.0,1,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.0,1,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,3,0,1,1,1,0.333333,0.000000
+0.0,1,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.0,1,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,8,0,0,0,1,0.125000,0.000000
+0.0,1,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.0,1,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.0,1,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.000000
+0.0,1,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.0,1,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.000000
+0.0,1,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.0,1,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.0,1,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.0,1,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.0,1,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,0,0,0,0,0,0.000000,0.000000
+0.0,1,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,1,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,0,0,0,0,0,0.000000,0.000000
+0.0,1,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.0,1,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.0,3,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.0,3,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.0,3,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.0,3,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.0,3,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.0,3,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.0,3,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.0,3,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.0,3,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.0,3,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.0,3,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,3,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,2,0,1,1,1,0.500000,0.630930
+0.0,3,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.0,3,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,9,0,0,0,1,0.111111,0.000000
+0.0,3,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,3,0,1,1,1,0.333333,0.500000
+0.0,3,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.0,3,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.0,3,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.0,3,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,2,0,1,1,1,0.500000,0.630930
+0.0,3,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,0,0,0,0,0,0.000000,0.000000
+0.0,3,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.0,3,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,2,0,1,1,1,0.500000,0.630930
+0.0,3,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.0,3,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,0,0,0,0,0,0.000000,0.000000
+0.0,3,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.0,3,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.0,3,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,0,0,0,0,0,0.000000,0.000000
+0.0,3,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.0,3,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,0,0,0,0,0,0.000000,0.000000
+0.0,3,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,0,0,0,0,0,0.000000,0.000000
+0.0,3,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.0,3,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.0,3,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.0,3,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,3,0,1,1,1,0.333333,0.500000
+0.0,3,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.0,3,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,8,0,0,0,1,0.125000,0.000000
+0.0,3,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.0,3,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.0,3,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.0,3,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.0,3,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.0,3,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.0,3,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.0,3,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.0,3,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.0,3,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,0,0,0,0,0,0.000000,0.000000
+0.0,3,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,3,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,0,0,0,0,0,0.000000,0.000000
+0.0,3,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.0,3,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.0,5,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.0,5,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.0,5,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.0,5,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.0,5,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.0,5,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.0,5,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.0,5,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.0,5,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.0,5,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.0,5,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,5,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,2,0,1,1,1,0.500000,0.630930
+0.0,5,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.0,5,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,9,0,0,0,1,0.111111,0.000000
+0.0,5,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,3,0,1,1,1,0.333333,0.500000
+0.0,5,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.0,5,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.0,5,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.0,5,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,2,0,1,1,1,0.500000,0.630930
+0.0,5,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,0,0,0,0,0,0.000000,0.000000
+0.0,5,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.0,5,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,2,0,1,1,1,0.500000,0.630930
+0.0,5,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.0,5,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,0,0,0,0,0,0.000000,0.000000
+0.0,5,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.0,5,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.0,5,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,0,0,0,0,0,0.000000,0.000000
+0.0,5,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.0,5,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,0,0,0,0,0,0.000000,0.000000
+0.0,5,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,0,0,0,0,0,0.000000,0.000000
+0.0,5,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.0,5,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.0,5,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.0,5,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,3,0,1,1,1,0.333333,0.500000
+0.0,5,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.0,5,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,8,0,0,0,1,0.125000,0.000000
+0.0,5,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.0,5,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.0,5,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.0,5,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.0,5,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.0,5,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.0,5,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.0,5,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.0,5,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.0,5,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,0,0,0,0,0,0.000000,0.000000
+0.0,5,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,5,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,0,0,0,0,0,0.000000,0.000000
+0.0,5,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.0,5,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.0,10,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.0,10,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.0,10,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.0,10,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.0,10,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.0,10,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.0,10,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.0,10,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.0,10,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.0,10,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.0,10,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,10,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,2,0,1,1,1,0.500000,0.630930
+0.0,10,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.0,10,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,9,0,0,0,1,0.111111,0.301030
+0.0,10,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,3,0,1,1,1,0.333333,0.500000
+0.0,10,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.0,10,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.0,10,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.0,10,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,2,0,1,1,1,0.500000,0.630930
+0.0,10,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,0,0,0,0,0,0.000000,0.000000
+0.0,10,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.0,10,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,2,0,1,1,1,0.500000,0.630930
+0.0,10,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.0,10,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,0,0,0,0,0,0.000000,0.000000
+0.0,10,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.0,10,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.0,10,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,0,0,0,0,0,0.000000,0.000000
+0.0,10,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.0,10,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,0,0,0,0,0,0.000000,0.000000
+0.0,10,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,0,0,0,0,0,0.000000,0.000000
+0.0,10,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.0,10,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.0,10,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.0,10,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,3,0,1,1,1,0.333333,0.500000
+0.0,10,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.0,10,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,8,0,0,0,1,0.125000,0.315465
+0.0,10,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.0,10,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.0,10,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.0,10,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.0,10,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.0,10,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.0,10,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.0,10,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.0,10,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.0,10,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,0,0,0,0,0,0.000000,0.000000
+0.0,10,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.0,10,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,0,0,0,0,0,0.000000,0.000000
+0.0,10,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.0,10,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.25,1,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.25,1,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.25,1,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.25,1,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.25,1,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.25,1,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.25,1,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.25,1,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.25,1,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.25,1,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.000000
+0.25,1,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,1,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.25,1,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.000000
+0.25,1,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,3,0,1,1,1,0.333333,0.000000
+0.25,1,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.000000
+0.25,1,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.25,1,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.25,1,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.000000
+0.25,1,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.25,1,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,9,0,0,0,1,0.111111,0.000000
+0.25,1,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.25,1,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.25,1,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.25,1,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.25,1,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.000000
+0.25,1,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.25,1,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,4,0,0,1,1,0.250000,0.000000
+0.25,1,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.000000
+0.25,1,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.25,1,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.25,1,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.25,1,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.25,1,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.25,1,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,2,0,1,1,1,0.500000,0.000000
+0.25,1,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.25,1,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.25,1,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.25,1,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.25,1,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.000000
+0.25,1,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.25,1,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.000000
+0.25,1,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.25,1,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.25,1,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.25,1,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.25,1,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,7,0,0,0,1,0.142857,0.000000
+0.25,1,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,1,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.25,1,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.25,1,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.25,3,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.25,3,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.25,3,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.25,3,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.25,3,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.25,3,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.25,3,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.25,3,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.25,3,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.25,3,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.25,3,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,3,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.25,3,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.25,3,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,3,0,1,1,1,0.333333,0.500000
+0.25,3,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.000000
+0.25,3,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.25,3,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.25,3,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.25,3,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.25,3,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,9,0,0,0,1,0.111111,0.000000
+0.25,3,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.25,3,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.25,3,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.25,3,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.25,3,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.25,3,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.25,3,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,4,0,0,1,1,0.250000,0.000000
+0.25,3,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.25,3,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.25,3,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.25,3,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.25,3,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.25,3,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.25,3,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,2,0,1,1,1,0.500000,0.630930
+0.25,3,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.25,3,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.25,3,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.25,3,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.25,3,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.25,3,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.25,3,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.25,3,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.25,3,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.25,3,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.25,3,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.25,3,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,7,0,0,0,1,0.142857,0.000000
+0.25,3,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,3,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.25,3,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.25,3,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.25,5,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.25,5,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.25,5,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.25,5,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.25,5,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.25,5,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.25,5,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.25,5,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.25,5,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.25,5,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.25,5,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,5,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.25,5,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.25,5,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,3,0,1,1,1,0.333333,0.500000
+0.25,5,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.430677
+0.25,5,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.25,5,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.25,5,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.25,5,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.25,5,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,9,0,0,0,1,0.111111,0.000000
+0.25,5,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.25,5,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.25,5,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.25,5,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.25,5,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.25,5,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.25,5,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,4,0,0,1,1,0.250000,0.430677
+0.25,5,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.25,5,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.25,5,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.25,5,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.25,5,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.25,5,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.25,5,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,2,0,1,1,1,0.500000,0.630930
+0.25,5,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.25,5,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.25,5,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.25,5,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.25,5,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.25,5,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.25,5,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.25,5,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.25,5,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.25,5,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.25,5,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.25,5,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,7,0,0,0,1,0.142857,0.000000
+0.25,5,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,5,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.25,5,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.25,5,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.25,10,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.25,10,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.25,10,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.25,10,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.25,10,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.25,10,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.25,10,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.25,10,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.25,10,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.25,10,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.25,10,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,10,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.25,10,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.25,10,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,3,0,1,1,1,0.333333,0.500000
+0.25,10,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.430677
+0.25,10,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,0,0,0,0,0,0.000000,0.000000
+0.25,10,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.25,10,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.25,10,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.25,10,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,9,0,0,0,1,0.111111,0.301030
+0.25,10,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.25,10,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.25,10,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.25,10,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.25,10,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.25,10,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.25,10,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,4,0,0,1,1,0.250000,0.430677
+0.25,10,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.25,10,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.25,10,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.25,10,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.25,10,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.25,10,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.25,10,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,2,0,1,1,1,0.500000,0.630930
+0.25,10,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.25,10,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.25,10,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.25,10,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,1,1,1,1,1,1.000000,1.000000
+0.25,10,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.25,10,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,0,0,0,0,0,0.000000,0.000000
+0.25,10,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.25,10,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.25,10,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.25,10,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.25,10,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.25,10,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,7,0,0,0,1,0.142857,0.333333
+0.25,10,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.25,10,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.25,10,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,0,0,0,0,0,0.000000,0.000000
+0.25,10,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.5,1,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.5,1,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.5,1,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.5,1,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.5,1,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.5,1,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.5,1,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.5,1,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.5,1,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.5,1,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.000000
+0.5,1,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,1,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.5,1,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.000000
+0.5,1,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.5,1,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.000000
+0.5,1,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.000000
+0.5,1,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.5,1,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.000000
+0.5,1,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.5,1,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.000000
+0.5,1,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.5,1,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.5,1,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.5,1,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.5,1,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.000000
+0.5,1,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.5,1,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,3,0,1,1,1,0.333333,0.000000
+0.5,1,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.000000
+0.5,1,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.5,1,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.5,1,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.5,1,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.5,1,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.5,1,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.5,1,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.5,1,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.5,1,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.5,1,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.000000
+0.5,1,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.000000
+0.5,1,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.5,1,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.000000
+0.5,1,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.5,1,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.5,1,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.5,1,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.5,1,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.5,1,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,1,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.5,1,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.5,1,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.5,3,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.5,3,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.5,3,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.5,3,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.5,3,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.5,3,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.5,3,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.5,3,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.5,3,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.5,3,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.5,3,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,3,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.5,3,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.5,3,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.5,3,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.000000
+0.5,3,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.000000
+0.5,3,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.5,3,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.5,3,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.5,3,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.000000
+0.5,3,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.5,3,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.5,3,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.5,3,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.5,3,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.5,3,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.5,3,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,3,0,1,1,1,0.333333,0.500000
+0.5,3,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.5,3,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.5,3,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.5,3,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.5,3,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.5,3,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.5,3,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.5,3,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.5,3,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.5,3,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.5,3,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.630930
+0.5,3,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.5,3,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.5,3,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.5,3,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.5,3,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.5,3,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.5,3,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.5,3,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.5,3,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,3,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.5,3,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.5,3,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.5,5,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.5,5,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.5,5,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.5,5,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.5,5,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.5,5,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.5,5,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.5,5,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.5,5,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.5,5,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.5,5,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,5,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.5,5,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.5,5,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.5,5,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.430677
+0.5,5,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.000000
+0.5,5,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.5,5,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.5,5,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.5,5,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.000000
+0.5,5,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.5,5,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.5,5,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.5,5,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.5,5,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.5,5,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.5,5,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,3,0,1,1,1,0.333333,0.500000
+0.5,5,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.5,5,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.5,5,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.5,5,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.5,5,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.5,5,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.5,5,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.5,5,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.5,5,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.5,5,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.5,5,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.630930
+0.5,5,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.5,5,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.5,5,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.5,5,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.5,5,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.5,5,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.5,5,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.5,5,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.5,5,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,5,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.5,5,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.5,5,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.5,10,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.5,10,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.5,10,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.5,10,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.5,10,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.5,10,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.5,10,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.5,10,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.5,10,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.5,10,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.5,10,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,10,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.5,10,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,3,0,1,1,1,0.333333,0.500000
+0.5,10,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.5,10,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.430677
+0.5,10,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.289065
+0.5,10,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.5,10,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.5,10,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.5,10,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.315465
+0.5,10,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.5,10,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.5,10,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.5,10,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.5,10,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,3,0,1,1,1,0.333333,0.500000
+0.5,10,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.5,10,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,3,0,1,1,1,0.333333,0.500000
+0.5,10,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.5,10,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.5,10,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.5,10,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.5,10,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,0,0,0,0,0,0.000000,0.000000
+0.5,10,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.5,10,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.5,10,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.5,10,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.5,10,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.5,10,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.630930
+0.5,10,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,2,0,1,1,1,0.500000,0.630930
+0.5,10,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.5,10,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.5,10,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.5,10,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,1,1,1,1,1,1.000000,1.000000
+0.5,10,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.5,10,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.5,10,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.5,10,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.5,10,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.5,10,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.5,10,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.75,1,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.75,1,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.75,1,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.75,1,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.75,1,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.75,1,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.75,1,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.75,1,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.75,1,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.75,1,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.000000
+0.75,1,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,1,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.75,1,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.000000
+0.75,1,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.75,1,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.000000
+0.75,1,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.000000
+0.75,1,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.75,1,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.000000
+0.75,1,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.75,1,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,4,0,0,1,1,0.250000,0.000000
+0.75,1,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.75,1,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.75,1,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.75,1,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.75,1,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,4,0,0,1,1,0.250000,0.000000
+0.75,1,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.75,1,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+0.75,1,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.000000
+0.75,1,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.75,1,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.75,1,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.75,1,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,9,0,0,0,1,0.111111,0.000000
+0.75,1,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.75,1,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.75,1,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.75,1,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.75,1,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.75,1,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.000000
+0.75,1,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+0.75,1,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.75,1,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.000000
+0.75,1,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.75,1,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,2,0,1,1,1,0.500000,0.000000
+0.75,1,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.75,1,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.75,1,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.75,1,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,1,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.75,1,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.75,1,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.75,3,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.75,3,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.75,3,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.75,3,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.75,3,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.75,3,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.75,3,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.75,3,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.75,3,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.75,3,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.75,3,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,3,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.75,3,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.630930
+0.75,3,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.75,3,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.000000
+0.75,3,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.000000
+0.75,3,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+0.75,3,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.75,3,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.75,3,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,4,0,0,1,1,0.250000,0.000000
+0.75,3,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.75,3,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.75,3,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.75,3,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.75,3,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,4,0,0,1,1,0.250000,0.000000
+0.75,3,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.75,3,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+0.75,3,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.75,3,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.75,3,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.75,3,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.75,3,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,9,0,0,0,1,0.111111,0.000000
+0.75,3,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.75,3,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.75,3,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.75,3,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.75,3,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.75,3,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.630930
+0.75,3,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+0.75,3,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.75,3,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.75,3,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.75,3,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,2,0,1,1,1,0.500000,0.630930
+0.75,3,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.75,3,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.75,3,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.75,3,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,3,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.75,3,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.75,3,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.75,5,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.75,5,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.75,5,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.75,5,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.75,5,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.75,5,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.75,5,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.75,5,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.75,5,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.75,5,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.75,5,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,5,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.75,5,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.630930
+0.75,5,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.75,5,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.430677
+0.75,5,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.000000
+0.75,5,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.75,5,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.75,5,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.75,5,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,4,0,0,1,1,0.250000,0.430677
+0.75,5,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.75,5,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.75,5,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.75,5,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.75,5,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,4,0,0,1,1,0.250000,0.430677
+0.75,5,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.75,5,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+0.75,5,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.75,5,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.75,5,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.75,5,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.75,5,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,9,0,0,0,1,0.111111,0.000000
+0.75,5,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.75,5,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.75,5,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.75,5,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.75,5,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.75,5,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.630930
+0.75,5,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+0.75,5,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.75,5,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.75,5,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.75,5,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,2,0,1,1,1,0.500000,0.630930
+0.75,5,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.75,5,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.75,5,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.75,5,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,5,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.75,5,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.75,5,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+0.75,10,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+0.75,10,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+0.75,10,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+0.75,10,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+0.75,10,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+0.75,10,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+0.75,10,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,1,1,1,1,1,1.000000,1.000000
+0.75,10,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+0.75,10,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+0.75,10,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+0.75,10,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,10,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+0.75,10,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.630930
+0.75,10,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,1,1,1,1,1,1.000000,1.000000
+0.75,10,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,4,0,0,1,1,0.250000,0.430677
+0.75,10,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,10,0,0,0,1,0.100000,0.289065
+0.75,10,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+0.75,10,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+0.75,10,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,1,1,1,1,1,1.000000,1.000000
+0.75,10,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,4,0,0,1,1,0.250000,0.430677
+0.75,10,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+0.75,10,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+0.75,10,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+0.75,10,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+0.75,10,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,4,0,0,1,1,0.250000,0.430677
+0.75,10,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,1,1,1,1,1,1.000000,1.000000
+0.75,10,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+0.75,10,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,2,0,1,1,1,0.500000,0.630930
+0.75,10,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+0.75,10,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+0.75,10,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+0.75,10,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,9,0,0,0,1,0.111111,0.301030
+0.75,10,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,1,1,1,1,1,1.000000,1.000000
+0.75,10,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+0.75,10,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+0.75,10,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,1,1,1,1,1,1.000000,1.000000
+0.75,10,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,0,0,0,0,0,0.000000,0.000000
+0.75,10,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,2,0,1,1,1,0.500000,0.630930
+0.75,10,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+0.75,10,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+0.75,10,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,2,0,1,1,1,0.500000,0.630930
+0.75,10,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,0,0,0,0,0,0.000000,0.000000
+0.75,10,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,2,0,1,1,1,0.500000,0.630930
+0.75,10,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+0.75,10,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,1,1,1,1,1,1.000000,1.000000
+0.75,10,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+0.75,10,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+0.75,10,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+0.75,10,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+0.75,10,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+1.0,1,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+1.0,1,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+1.0,1,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+1.0,1,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+1.0,1,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+1.0,1,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+1.0,1,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,6,0,0,0,1,0.166667,0.000000
+1.0,1,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+1.0,1,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+1.0,1,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.000000
+1.0,1,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,1,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+1.0,1,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.000000
+1.0,1,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,2,0,1,1,1,0.500000,0.000000
+1.0,1,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,5,0,0,1,1,0.200000,0.000000
+1.0,1,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,1,1,1,1,1,1.000000,1.000000
+1.0,1,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+1.0,1,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.000000
+1.0,1,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,3,0,1,1,1,0.333333,0.000000
+1.0,1,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.000000
+1.0,1,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+1.0,1,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+1.0,1,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+1.0,1,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+1.0,1,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,9,0,0,0,1,0.111111,0.000000
+1.0,1,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,6,0,0,0,1,0.166667,0.000000
+1.0,1,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+1.0,1,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,3,0,1,1,1,0.333333,0.000000
+1.0,1,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+1.0,1,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+1.0,1,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+1.0,1,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,5,0,0,1,1,0.200000,0.000000
+1.0,1,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,2,0,1,1,1,0.500000,0.000000
+1.0,1,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+1.0,1,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+1.0,1,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,4,0,0,1,1,0.250000,0.000000
+1.0,1,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,5,0,0,1,1,0.200000,0.000000
+1.0,1,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,6,0,0,0,1,0.166667,0.000000
+1.0,1,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+1.0,1,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+1.0,1,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,5,0,0,1,1,0.200000,0.000000
+1.0,1,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,1,1,1,1,1,1.000000,1.000000
+1.0,1,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,0,0,0,0,0,0.000000,0.000000
+1.0,1,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+1.0,1,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,2,0,1,1,1,0.500000,0.000000
+1.0,1,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+1.0,1,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,1,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+1.0,1,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+1.0,1,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+1.0,3,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+1.0,3,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+1.0,3,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+1.0,3,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+1.0,3,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+1.0,3,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+1.0,3,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,6,0,0,0,1,0.166667,0.000000
+1.0,3,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+1.0,3,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+1.0,3,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+1.0,3,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,3,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+1.0,3,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.630930
+1.0,3,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,2,0,1,1,1,0.500000,0.630930
+1.0,3,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,5,0,0,1,1,0.200000,0.000000
+1.0,3,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,1,1,1,1,1,1.000000,1.000000
+1.0,3,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.000000
+1.0,3,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+1.0,3,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,3,0,1,1,1,0.333333,0.500000
+1.0,3,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.000000
+1.0,3,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+1.0,3,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+1.0,3,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+1.0,3,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+1.0,3,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,9,0,0,0,1,0.111111,0.000000
+1.0,3,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,6,0,0,0,1,0.166667,0.000000
+1.0,3,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+1.0,3,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,3,0,1,1,1,0.333333,0.500000
+1.0,3,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+1.0,3,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+1.0,3,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+1.0,3,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,5,0,0,1,1,0.200000,0.000000
+1.0,3,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,2,0,1,1,1,0.500000,0.630930
+1.0,3,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+1.0,3,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+1.0,3,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,4,0,0,1,1,0.250000,0.000000
+1.0,3,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,5,0,0,1,1,0.200000,0.000000
+1.0,3,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,6,0,0,0,1,0.166667,0.000000
+1.0,3,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+1.0,3,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+1.0,3,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,5,0,0,1,1,0.200000,0.000000
+1.0,3,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,1,1,1,1,1,1.000000,1.000000
+1.0,3,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,0,0,0,0,0,0.000000,0.000000
+1.0,3,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+1.0,3,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,2,0,1,1,1,0.500000,0.630930
+1.0,3,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+1.0,3,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,3,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+1.0,3,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+1.0,3,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+1.0,5,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+1.0,5,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+1.0,5,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+1.0,5,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+1.0,5,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+1.0,5,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+1.0,5,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,6,0,0,0,1,0.166667,0.000000
+1.0,5,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+1.0,5,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+1.0,5,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+1.0,5,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,5,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+1.0,5,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.630930
+1.0,5,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,2,0,1,1,1,0.500000,0.630930
+1.0,5,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,5,0,0,1,1,0.200000,0.386853
+1.0,5,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,1,1,1,1,1,1.000000,1.000000
+1.0,5,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+1.0,5,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+1.0,5,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,3,0,1,1,1,0.333333,0.500000
+1.0,5,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.000000
+1.0,5,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+1.0,5,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+1.0,5,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+1.0,5,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+1.0,5,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,9,0,0,0,1,0.111111,0.000000
+1.0,5,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,6,0,0,0,1,0.166667,0.000000
+1.0,5,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+1.0,5,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,3,0,1,1,1,0.333333,0.500000
+1.0,5,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+1.0,5,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+1.0,5,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+1.0,5,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,5,0,0,1,1,0.200000,0.386853
+1.0,5,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,2,0,1,1,1,0.500000,0.630930
+1.0,5,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+1.0,5,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+1.0,5,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,4,0,0,1,1,0.250000,0.430677
+1.0,5,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,5,0,0,1,1,0.200000,0.386853
+1.0,5,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,6,0,0,0,1,0.166667,0.000000
+1.0,5,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+1.0,5,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+1.0,5,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,5,0,0,1,1,0.200000,0.386853
+1.0,5,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,1,1,1,1,1,1.000000,1.000000
+1.0,5,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,0,0,0,0,0,0.000000,0.000000
+1.0,5,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+1.0,5,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,2,0,1,1,1,0.500000,0.630930
+1.0,5,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+1.0,5,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,5,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+1.0,5,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+1.0,5,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000
+1.0,10,0,Are there any exceptions to the rule that `+=` is undefined in POSIX sh?,01KSHSND66G6AE7M0BECZKREST,0,0,0,0,0,0.000000,0.000000
+1.0,10,1,SC2104.md,01KSHSND80A396HJ701A2TB9FW,1,1,1,1,1,1.000000,1.000000
+1.0,10,2,How do I determine whether a variable is already defined? Or a function?,01KSHSND029K1S14CP1FHQTEH9,1,1,1,1,1,1.000000,1.000000
+1.0,10,3,how to fetch ssh hostkeys and add to known_hosts without interaction,01KSHSND2RCY7CHWM7FA7WZB97,1,1,1,1,1,1.000000,1.000000
+1.0,10,4,Why is ${$x} invalid in shell scripts and how to correctly use variable expansion and indirection?,01KSHSND6N5MGRV3JHMRAV4WG0,0,0,0,0,0,0.000000,0.000000
+1.0,10,5,SC2286.md,01KSHSND6R2KF0GY78D52GR4BV,1,1,1,1,1,1.000000,1.000000
+1.0,10,6,How to perform arithmetic evaluation in Bash using let and (( )) commands,01KSHSNCW876EV9G679ZTBEAB9,6,0,0,0,1,0.166667,0.356207
+1.0,10,7,Are there exceptions to the rule that numbers with leading 0 are considered octal in Bash?,01KSHSND860E18852HZDRHQ16Y,0,0,0,0,0,0.000000,0.000000
+1.0,10,8,What is the historical relationship between bc and dc in Unix?,01KSHSND44D8XQPG0N023DTMG6,1,1,1,1,1,1.000000,1.000000
+1.0,10,9,readline incremental search command history,01KSHSNCP4QVJ5E3899KKDN3KW,3,0,1,1,1,0.333333,0.500000
+1.0,10,10,"How to use ${@:START:COUNT} for expanding a range of positional parameters in Bash, including negative start values and differences between Bash 4 and older versions?",01KSHSND33D2JNEANE8TKRJBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,10,11,how to configure bash to archive command history by month using HISTFILE and date formatting,01KSHSND0579P0E32617QJ5WJ4,1,1,1,1,1,1.000000,1.000000
+1.0,10,12,How does the [n]<>word redirection operator open files for both reading and writing in shell scripting?,01KSHSNCQG3AHQD1ZG8MSXQ7D5,2,0,1,1,1,0.500000,0.630930
+1.0,10,13,How to disable the warning when a function runs without set -e in an if condition in Bash?,01KSHSND6JVG7A73RM55KQQ7ES,2,0,1,1,1,0.500000,0.630930
+1.0,10,14,bash history variables HISTSIZE HISTFILE HISTFILESIZE,01KSHSNCN4E4GQ4JCCB8MF8W9C,5,0,0,1,1,0.200000,0.386853
+1.0,10,15,"How to use foo ""$@"" in a shell script to make function's $1 refer to script's $1?",01KSHSND7XV2EPM69M5B27W9HA,1,1,1,1,1,1.000000,1.000000
+1.0,10,16,sh history expansion modifiers explanation,01KSHSNCR0046EPDH0CEY7J6V2,4,0,0,1,1,0.250000,0.430677
+1.0,10,17,how to use numbers with leading zeros in a bash loop using seq,01KSHSNCYA4WRGCVZ85JEQ8KJV,2,0,1,1,1,0.500000,0.630930
+1.0,10,18,Bash loop commands syntax explanation,01KSHSND1B99JABS5DV0BKMXX0,3,0,1,1,1,0.333333,0.500000
+1.0,10,19,readline function manpage name section,01KSHSNCP059MHZR946HT1HQ6V,8,0,0,0,1,0.125000,0.315465
+1.0,10,20,how to pass arguments with spaces in bash using arrays,01KSHSND84S923WGQRHDQSF0QC,0,0,0,0,0,0.000000,0.000000
+1.0,10,21,How does Bash handle regular expressions with the =~ operator and BASH_REMATCH variable?,01KSHSNCVS9VGHHAEGBPQGTRBM,1,1,1,1,1,1.000000,1.000000
+1.0,10,22,step 99.4 translate the strings,01KSHSND09JAAR298H1QFGWGPG,1,1,1,1,1,1.000000,1.000000
+1.0,10,23,What is the content of SC2075.md?,01KSHSND875BS6BTH9H81C61QH,1,1,1,1,1,1.000000,1.000000
+1.0,10,24,"In bats, why doesn't ! cause a test failure and how to fold it into a conditional?",01KSHSND6G8T6Q349J7HX8KE1M,9,0,0,0,1,0.111111,0.301030
+1.0,10,25,declare command portability bash zsh posix,01KSHSND4VD23GPDDXCA8SBTXN,6,0,0,0,1,0.166667,0.356207
+1.0,10,26,Bash local variable outside function error,01KSHSND7KZDPQTK94MAKVKXA0,1,1,1,1,1,1.000000,1.000000
+1.0,10,27,ShellCheck SC2171 error trailing ] tr -d ] fix,01KSHSND7J1YWCYE2DDT16YT1E,3,0,1,1,1,0.333333,0.500000
+1.0,10,28,What is the content of SC2073.md?,01KSHSND875BS6BTH9H81C61QS,1,1,1,1,1,1.000000,1.000000
+1.0,10,29,What is the content of SC2148.md?,01KSHSND7QYB0HKGB58BQA7NHR,1,1,1,1,1,1.000000,1.000000
+1.0,10,30,how to save a command as a function in bash to run later,01KSHSNCYZDAWVS4QJMWKX48TR,1,1,1,1,1,1.000000,1.000000
+1.0,10,31,How do I disable the warning for a variable not being assigned when I intentionally didn't use it?,01KSHSND7PQVGDV80EC19Y7B63,5,0,0,1,1,0.200000,0.386853
+1.0,10,32,Why is break or continue invalid outside a loop in scripting?,01KSHSND80A396HJ701A2TB9FV,2,0,1,1,1,0.500000,0.630930
+1.0,10,33,How to handle unset terminal variables in bash when stderr is not connected to a terminal using tput?,01KSHSNCYSZ3RQ555QEF1PNF4S,1,1,1,1,1,1.000000,1.000000
+1.0,10,34,How does quoting affect pattern matching in a Bash case statement?,01KSHSND16GFQMW1QEH51E1Y28,0,0,0,0,0,0.000000,0.000000
+1.0,10,35,inconsistent output of which command across different operating systems and recommended alternatives,01KSHSND013361FTXN7GHXNKWX,4,0,0,1,1,0.250000,0.430677
+1.0,10,36,command substitution syntax shell scripting best practices,01KSHSND30V9XRM99EKA1XFVQY,5,0,0,1,1,0.200000,0.386853
+1.0,10,37,How does the Bourne find command with 2>&1 and >/dev/null redirection work?,01KSHSNCZ1109RS8387YG9A1FM,6,0,0,0,1,0.166667,0.356207
+1.0,10,38,"Bash aliases vs functions: differences in behavior, limitations, and example of replacing an alias with a function",01KSHSNCW876EV9G679ZTBEABB,1,1,1,1,1,1.000000,1.000000
+1.0,10,39,What is the content of the SC2083.md section?,01KSHSND85B7WBD71QPWX99YRP,1,1,1,1,1,1.000000,1.000000
+1.0,10,40,how to convert filenames to lowercase using rename command in Linux,01KSHSNCYKX3NAEHHEYH9E0FFK,5,0,0,1,1,0.200000,0.386853
+1.0,10,41,How to add color to terminal scripts using ANSI codes,01KSHSND2XBGR79KE9MES6BGKH,1,1,1,1,1,1.000000,1.000000
+1.0,10,42,How can I avoid losing any history lines?,01KSHSNCWTSYN79T85P20X2VE6,0,0,0,0,0,0.000000,0.000000
+1.0,10,43,introduction to ANSI/VT100 terminal codes in bash scripting,01KSHSND2YVHM55A9K19SZXT5G,1,1,1,1,1,1.000000,1.000000
+1.0,10,44,process substitution bugs and portability issues in bash and other shells,01KSHSND4ZG6ZXHS42S8C1W7HY,2,0,1,1,1,0.500000,0.630930
+1.0,10,45,How to enable the nullglob option using the shopt command in bash?,01KSHSND4EPVKKS4PCDPDTKR7B,1,1,1,1,1,1.000000,1.000000
+1.0,10,46,how to remove leading zeros in posix shell,01KSHSNCZ9VNV59GGXQBJHHBPJ,1,1,1,1,1,1.000000,1.000000
+1.0,10,47,What is the content of SC3059.md?,01KSHSND5YNJZYGW26XF0PD0R0,1,1,1,1,1,1.000000,1.000000
+1.0,10,48,What is the content of SC2145.md?,01KSHSND7RW6EHB6V6W4HZ8ZM3,1,1,1,1,1,1.000000,1.000000
+1.0,10,49,obsolete Bash syntax &>FILE and $[EXPRESSION] replacement,01KSHSND34K1ZWPANCKFSS6B67,1,1,1,1,1,1.000000,1.000000

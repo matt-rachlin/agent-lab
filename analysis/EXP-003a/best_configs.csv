@@ -1,0 +1,5 @@
+metric,alpha,k,value,n_queries
+recall@5,0.75,5,0.8200,50
+recall@10,1.0,10,0.8800,50
+mrr10,0.75,1,0.6909,50
+ndcg,0.75,10,0.7320,50
