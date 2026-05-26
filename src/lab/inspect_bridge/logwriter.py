@@ -97,10 +97,14 @@ def _extract_sample_metadata(log: Any) -> dict[str, Any]:
     sample = samples[0]
     metadata = dict(sample.metadata or {})
     lab_agent = metadata.get("lab_agent") or {}
-    # Score is in `sample.scores`; we surface the noop value for the row.
+    # Score is in `sample.scores`; pick the "primary" via 6e preference
+    # ordering. The per-scorer breakdown is stored on agent_logs so the
+    # granularity isn't lost; this is just the single value the runs
+    # table carries for fast filtering.
     scores = sample.scores or {}
-    primary = next(iter(scores.values()), None)
+    primary = _select_primary_score(scores)
     score_value: float | None
+    score_breakdown: dict[str, Any] = _build_score_breakdown(scores)
     if primary is not None:
         try:
             score_value = float(primary.value)
@@ -116,11 +120,82 @@ def _extract_sample_metadata(log: Any) -> dict[str, Any]:
     return {
         "lab_agent": lab_agent,
         "score": score_value,
+        "score_breakdown": score_breakdown,
         "messages": messages,
         "model_usage": model_usage,
         "total_time": total_time,
         "error": (str(sample.error) if getattr(sample, "error", None) is not None else None),
     }
+
+
+# Preferred order for picking the cell's "primary" score. The Inspect
+# scorer registration names (see `lab.inspect_bridge.scorer`) live here.
+_PRIMARY_PREFERENCE = (
+    "end_state",
+    "tool_correctness",
+    "trajectory_judge",
+    "budget_respected",
+)
+
+
+def _select_primary_score(scores: dict[str, Any]) -> Any | None:
+    """Return the preferred scorer's `Score` object (or None).
+
+    `scores` is `dict[scorer_name, Score]` as recorded by Inspect on the
+    `EvalSample`. We walk the preference order and return the first one
+    that exists and isn't NOANSWER (so a tool_correctness=NOANSWER on a
+    non-tool-call task doesn't outrank a real budget_respected score).
+    Falls back to the first value if none of the preferred ones are
+    meaningful.
+    """
+
+    # Inspect scorer values use the literal "N" string for NOANSWER.
+    def _is_meaningful(score: Any) -> bool:
+        if score is None:
+            return False
+        val = getattr(score, "value", None)
+        if val is None:
+            return False
+        return not (isinstance(val, str) and val == "N")
+
+    for name in _PRIMARY_PREFERENCE:
+        for key, score in scores.items():
+            if key == name and _is_meaningful(score):
+                return score
+    # Fall back to the first non-NOANSWER, else the first value.
+    for score in scores.values():
+        if _is_meaningful(score):
+            return score
+    return next(iter(scores.values()), None)
+
+
+def _build_score_breakdown(scores: dict[str, Any]) -> dict[str, Any]:
+    """Compact per-scorer breakdown for the agent_logs row.
+
+    Each entry is `{value, explanation}` — enough for the analysis tier
+    to surface "task X passed end_state but failed budget_respected"
+    without parsing the full Inspect log.
+    """
+
+    breakdown: dict[str, Any] = {}
+    for key, score in scores.items():
+        if score is None:
+            continue
+        try:
+            value: Any = score.value
+        except AttributeError:
+            value = None
+        explanation = getattr(score, "explanation", None)
+        # Normalise NOANSWER sentinel for JSON readability.
+        if isinstance(value, str) and value == "N":
+            normalised: Any = None
+        else:
+            try:
+                normalised = float(value) if value is not None else None
+            except (TypeError, ValueError):
+                normalised = value
+        breakdown[key] = {"value": normalised, "explanation": explanation}
+    return breakdown
 
 
 def _message_to_jsonable(msg: Any) -> dict[str, Any]:
@@ -307,9 +382,26 @@ def _upsert_agent_log(
     run_id_: str,
     trajectory_key: str,
     compact_turns: list[dict[str, Any]],
+    score_breakdown: dict[str, Any] | None = None,
 ) -> None:
-    """UPSERT into `agent_logs`. Idempotent on `run_id`."""
+    """UPSERT into `agent_logs`. Idempotent on `run_id`.
 
+    `score_breakdown` is folded into the `turns` JSONB under a sentinel
+    key (`_score_breakdown`) — there's no separate column yet (6e
+    deliberately doesn't run a migration for this; 6f can promote it to
+    a column if EXP-002 wants to filter on it). The sentinel key cannot
+    collide with a turn since real turns are appended as `{turn, ...}`
+    objects, not strings.
+    """
+
+    payload: list[dict[str, Any]] | dict[str, Any] = compact_turns
+    if score_breakdown:
+        # Wrap as `{turns, score_breakdown}` so analytics can pick out
+        # either piece without parsing both.
+        payload = {
+            "turns": compact_turns,
+            "score_breakdown": score_breakdown,
+        }
     with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -323,7 +415,7 @@ def _upsert_agent_log(
             {
                 "run_id": run_id_,
                 "path": trajectory_key,
-                "turns": Json(compact_turns),
+                "turns": Json(payload),
             },
         )
 
@@ -343,6 +435,7 @@ def write_run_from_inspect_log(log: Any, sweep_context: SweepContext) -> str:
         run_id_=sweep_context.run_id,
         trajectory_key=trace_uri,
         compact_turns=_compact_turns(extracted.get("lab_agent") or {}),
+        score_breakdown=extracted.get("score_breakdown"),
     )
     return trace_uri
 

@@ -686,9 +686,10 @@ def agent_run(
     summary.add_row("terminated", str(lab_agent.get("terminated_reason")))
     summary.add_row("total latency (ms)", str(lab_agent.get("total_latency_ms")))
     summary.add_row("error", str(lab_agent.get("error") or "—"))
-    primary_score = next(iter((sample.scores or {}).values()), None)
-    if primary_score is not None:
-        summary.add_row("evaluator (6e pending)", str(primary_score.value))
+    # Show every scorer the adapter ran. Inspect stores them keyed by
+    # registered scorer name.
+    for scorer_name, scored in (sample.scores or {}).items():
+        summary.add_row(f"scorer:{scorer_name}", str(scored.value))
     if trace_uri:
         summary.add_row("trajectory", trace_uri)
     console.print(summary)

@@ -73,10 +73,14 @@ def test_adapter_round_trip_runs_under_inspect(tmp_path: Any) -> None:
     assert log.samples is not None
     assert len(log.samples) == 1
     sample = log.samples[0]
-    # Score is the noop 0.0 from Phase 6d; presence is what we're verifying.
+    # With Phase 6e: no success_predicate, no tool_call rubric → only
+    # `budget_respected` fires. The passthrough trajectory stays within
+    # the budgets so the score is 1.0.
     assert sample.scores
-    primary = next(iter(sample.scores.values()))
-    assert primary.value == 0.0
+    names = list(sample.scores.keys())
+    assert any("budget_respected" in n for n in names), names
+    bv = next(s for n, s in sample.scores.items() if "budget_respected" in n)
+    assert bv.value == 1.0
     # Trajectory landed on metadata.
     assert sample.metadata is not None
     assert sample.metadata.get("lab_agent", {}).get("actual_turns") == 1

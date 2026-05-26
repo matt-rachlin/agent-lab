@@ -19,3 +19,28 @@ tasks:
       type: exact_match
       case_sensitive: false
     gold_answer: "hello from agent-smoke"
+
+  - slug: fs-write-scorer-smoke
+    difficulty: easy
+    description: |
+      Exercise the 6e scorer pipeline end-to-end: success_predicate
+      checks the workspace file, tool_call rubric checks fs_write was
+      called with the right path, budget_respected always fires.
+    input: |
+      Use the fs_write tool to write the literal text 'PASS' to a file at
+      path 'answer.txt' (mode 'overwrite'). Then reply with the word
+      'done' and stop.
+    system: "You are an assistant with tool access. Always use tools when asked."
+    tools:
+      - name: fs_write
+    max_turns: 3
+    tool_budget: 2
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: PASS
+    rubric:
+      type: tool_call
+      target_tool: fs_write
+      expected_args:
+        path: answer.txt

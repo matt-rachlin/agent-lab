@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from lab.inspect_bridge.adapter import _noop_scorer, lab_task_to_inspect
+from lab.inspect_bridge.adapter import _select_scorers, lab_task_to_inspect
 from lab.tasks.registry import Task
 
 
@@ -66,25 +66,11 @@ def test_adapter_uses_gold_answer_as_target() -> None:
     assert sample.target == "42"
 
 
-def test_noop_scorer_returns_zero() -> None:
-    import asyncio
+def test_select_scorers_defaults_to_budget_only() -> None:
+    """No predicate, no tool_call rubric → only `budget_respected`."""
 
-    from inspect_ai.model import ChatMessageUser
-    from inspect_ai.scorer import Target
-    from inspect_ai.solver import TaskState
-
-    state = TaskState(
-        model="x",
-        sample_id="s",
-        epoch=0,
-        input="hi",
-        messages=[ChatMessageUser(content="hi")],
-        metadata={"lab_agent": {"actual_turns": 1, "tool_call_count": 0}},
-    )
-    scorer = _noop_scorer()
-    score = asyncio.run(scorer(state, Target("")))
-    assert score.value == 0.0
-    assert "noop scorer" in (score.explanation or "")
+    scorers = _select_scorers(_task())
+    assert len(scorers) == 1
 
 
 def test_adapter_validates_required_args() -> None:

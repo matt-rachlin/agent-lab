@@ -392,6 +392,12 @@ def model_with_tools(
             else:
                 terminated_reason = "max_turns_reached"
         finally:
+            # Snapshot any workspace files referenced by the task's
+            # success_predicate BEFORE we tear down the pool / sandbox.
+            # The sandbox is gone by the time scoring runs (it's a context
+            # manager around the eval call), so the scorer can't read
+            # `/workspace` itself — it must read from this snapshot.
+            workspace_snapshot = _snapshot_predicate_files(task_meta, sandbox)
             if pool is not None:
                 pool.stop()
 
@@ -407,6 +413,7 @@ def model_with_tools(
             tool_call_count=tool_call_count,
             total_latency_ms=int((time.monotonic() - run_started) * 1000),
             terminated_reason=terminated_reason,
+            workspace_snapshot=workspace_snapshot,
         )
         state.completed = True
         return state
@@ -494,6 +501,7 @@ def _stash_trajectory(
     tool_call_count: int,
     total_latency_ms: int,
     terminated_reason: str = "unknown",
+    workspace_snapshot: dict[str, bytes | None] | None = None,
 ) -> None:
     """Stash the agent trajectory on `state.metadata` for the logwriter."""
 
@@ -506,7 +514,46 @@ def _stash_trajectory(
         "tool_call_count": tool_call_count,
         "total_latency_ms": total_latency_ms,
         "terminated_reason": terminated_reason,
+        "workspace_snapshot": workspace_snapshot or {},
     }
+
+
+def _snapshot_predicate_files(
+    task_meta: Any, sandbox: Sandbox | None
+) -> dict[str, bytes | None]:
+    """Read any files referenced by `task.success_predicate` out of the sandbox.
+
+    Returns `{path: bytes_or_None}` — empty dict if the task has no
+    predicate or the sandbox is gone. Failures are non-fatal: a missing
+    file shows up as `None` and the scorer reports the absence; an
+    exception during snapshotting (e.g. sandbox already stopped) is
+    swallowed and the affected entry is `None`.
+
+    Only paths referenced by `workspace_file_*` predicates are read;
+    `db_query` predicates run at scoring time and don't need a snapshot.
+    """
+
+    if sandbox is None or task_meta is None:
+        return {}
+    predicate = getattr(task_meta, "success_predicate", None)
+    if not predicate or not isinstance(predicate, dict):
+        return {}
+    ptype = predicate.get("type")
+    if ptype not in {
+        "workspace_file_exists",
+        "workspace_file_equals",
+        "workspace_file_contains",
+    }:
+        return {}
+    path = predicate.get("path")
+    if not isinstance(path, str) or not path:
+        return {}
+    snapshot: dict[str, bytes | None] = {}
+    try:
+        snapshot[path] = sandbox.read_workspace_file(path)
+    except Exception:
+        snapshot[path] = None
+    return snapshot
 
 
 __all__ = ["model_with_tools"]

@@ -140,10 +140,19 @@ def test_write_run_uploads_and_upserts(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     def fake_agent_log_upsert(
-        *, run_id_: str, trajectory_key: str, compact_turns: list[dict[str, Any]]
+        *,
+        run_id_: str,
+        trajectory_key: str,
+        compact_turns: list[dict[str, Any]],
+        score_breakdown: dict[str, Any] | None = None,
     ) -> None:
         agent_logs.append(
-            {"run_id": run_id_, "trajectory_key": trajectory_key, "turns": compact_turns}
+            {
+                "run_id": run_id_,
+                "trajectory_key": trajectory_key,
+                "turns": compact_turns,
+                "score_breakdown": score_breakdown,
+            }
         )
 
     monkeypatch.setattr(lw_mod, "upload_bytes", fake_upload)
