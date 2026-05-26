@@ -36,15 +36,27 @@ def _is_ollama_local(litellm_params: dict[str, Any]) -> bool:
     """A model is treated as local-Ollama if its `model` string starts with
     `ollama` and its `api_base` (when present) points at the local daemon.
 
-    Cloud models also go through the local daemon but have `:Nb-cloud` tags
-    or live entirely on the cloud — they aren't materially affected by
+    Cloud models also go through the local daemon but have `:Nb-cloud`,
+    `:cloud`, or `-cloud` tags — they aren't materially affected by
     `keep_alive` because the local daemon never holds their weights in VRAM.
+    Examples of cloud tags we must NOT treat as local:
+        `ollama_chat/gpt-oss:20b-cloud`     (suffix `-cloud`)
+        `ollama_chat/glm-5.1:cloud`         (plain `:cloud` tag)
+        `ollama_chat/qwen3-coder:480b-cloud`
     """
     model = str(litellm_params.get("model", ""))
     if not model.startswith(("ollama_chat/", "ollama/")):
         return False
     tag = model.split("/", 1)[1] if "/" in model else ""
-    return not (tag.endswith("-cloud") or "-cloud" in tag.split(":", 1)[-1])
+    # The piece after the colon is the actual Ollama tag.
+    after_colon = tag.split(":", 1)[-1] if ":" in tag else ""
+    if (
+        tag.endswith("-cloud")
+        or "-cloud" in after_colon
+        or after_colon == "cloud"
+    ):
+        return False
+    return True
 
 
 def check_litellm_keep_alive(config_path: Path | None = None) -> None:
