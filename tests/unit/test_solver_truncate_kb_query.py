@@ -26,6 +26,10 @@ def _make_hits(n: int, text_len: int = 1500) -> list[dict[str, object]]:
             "summary": "s" * 200,
             "text": "x" * text_len,
             "score": 0.5 + i * 0.01,
+            "dense_score": 0.4 + i * 0.01,
+            "sparse_score": 0.3 + i * 0.01,
+            "rerank_score": 5.0 - i * 0.1,
+            "stage1_rank": i + 1,
             "truncated": False,
         }
         for i in range(n)
@@ -96,6 +100,11 @@ def test_kb_query_result_drops_text_when_even_trimmed_too_big() -> None:
         assert hit.get("chunk_id") == f"chunk-{i:03d}"
         assert hit.get("source_url") == f"https://example.com/doc-{i}"
         assert "score" in hit
+        # Phase 7 rerank signal must survive even in the minimal branch:
+        # EXP-004 post-hoc analysis relies on `rerank_score` being in the
+        # persisted trajectory regardless of payload size.
+        assert "rerank_score" in hit
+        assert "stage1_rank" in hit
         # text / summary are gone in this branch — that's the trade-off.
         assert "text" not in hit
 

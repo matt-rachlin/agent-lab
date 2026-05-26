@@ -590,7 +590,7 @@ def agent_run(
         k: v.encode("utf-8") if isinstance(v, str) else v for k, v in workspace_files_raw.items()
     }
 
-    from lab.agent.tools import task_needs_kb_mount
+    from lab.agent.tools import task_needs_hf_cache_mount, task_needs_kb_mount
     from lab.settings import get_settings as _get_settings_kb
 
     kb_root_mount: Path | None = None
@@ -613,6 +613,34 @@ def agent_run(
         elif isinstance(network, list) and "host.containers.internal" not in network:
             network = [*network, "host.containers.internal"]
 
+    # Phase 7 reranker: share the HF cache across cells so the ~1.5 GB
+    # cross-encoder weights download exactly once. Only mounted when the
+    # task can actually trigger the reranker (kb_query in tools AND
+    # LAB_RAG_RERANKER != "none"). The setting carries the host directory;
+    # we create it on first use so a clean clone JIT-bootstraps. We force
+    # ``HF_HUB_OFFLINE=1`` because the sandbox network is locked to
+    # ``host.containers.internal`` only (no huggingface.co reachability) —
+    # the cache MUST be warm host-side first, or the reranker silently
+    # falls back to stage-1.
+    hf_cache_mount: Path | None = None
+    if task_needs_hf_cache_mount(lab_task.tools):
+        hf_cache_root = _get_settings_kb().hf_cache_root
+        hf_cache_root.mkdir(parents=True, exist_ok=True)
+        hf_cache_mount = hf_cache_root
+        env.setdefault("HF_HOME", "/hf-cache")
+        env.setdefault("TRANSFORMERS_CACHE", "/hf-cache/transformers")
+        env.setdefault("HF_HUB_OFFLINE", "1")
+        env.setdefault("TRANSFORMERS_OFFLINE", "1")
+    # Propagate the host's LAB_RAG_RERANKER (if any) into the sandbox so
+    # the reranker can be disabled / pinned globally without per-task env
+    # surgery. Done unconditionally — the value is harmless when the tool
+    # never fires.
+    import os as _os
+
+    _host_reranker = _os.environ.get("LAB_RAG_RERANKER")
+    if _host_reranker is not None:
+        env.setdefault("LAB_RAG_RERANKER", _host_reranker)
+
     run_id_ = f"adhoc-{lab_task.slug}-{_uuid.uuid4().hex[:8]}"
     console.print(
         f"[bold]agent run[/]: task={lab_task.slug} model={model} "
@@ -630,6 +658,8 @@ def agent_run(
             env=env,
             workspace_files=workspace_files,
             kb_root_mount=kb_root_mount,
+            hf_cache_mount=hf_cache_mount,
+            hf_cache_target="/hf-cache",
         ) as sandbox:
             inspect_task = lab_task_to_inspect(
                 lab_task,

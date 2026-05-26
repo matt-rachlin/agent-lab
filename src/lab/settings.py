@@ -23,6 +23,14 @@ class Settings(BaseSettings):
         default=Path("~/db/kb").expanduser(),
         description="Knowledge-base root directory (lab.rag).",
     )
+    hf_cache_root: Path = Field(
+        default=Path("/data/lab/services/hf-cache"),
+        description=(
+            "Host directory bind-mounted into the sandbox at /hf-cache for the "
+            "Phase 7 cross-encoder reranker. Shared rw across cells so the "
+            "~1.5 GB Qwen3-Reranker weights download only once."
+        ),
+    )
     pg_dsn: str = Field(default="postgresql://m@/lab")
     redis_url: str = Field(default="redis://localhost:6379/0")
 

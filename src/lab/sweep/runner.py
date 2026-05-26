@@ -641,6 +641,9 @@ def _execute_agent_cell(
         for k, v in (workspace_files_raw or {}).items()
     }
 
+    from lab.agent.tools import (
+        task_needs_hf_cache_mount as _task_needs_hf_cache_mount,
+    )
     from lab.agent.tools import task_needs_kb_mount as _task_needs_kb_mount
 
     kb_root_mount: Path | None = None
@@ -660,6 +663,34 @@ def _execute_agent_cell(
             network = ["host.containers.internal"]
         elif isinstance(network, list) and "host.containers.internal" not in network:
             network = [*network, "host.containers.internal"]
+
+    # Phase 7 reranker: persistent HF cache across cells. Parallels the
+    # cli.py twin — mount the host hf_cache_root rw at /hf-cache and point
+    # HF_HOME / TRANSFORMERS_CACHE at it. Force offline mode because the
+    # sandbox network only allows ``host.containers.internal``: a cache
+    # miss would silently fall through to stage-1, hiding misconfigs.
+    # Skipped when the task can't trigger the reranker (no kb_query) or
+    # LAB_RAG_RERANKER=none in the sweep env.
+    # Propagate the host's LAB_RAG_RERANKER (if any) so the sandbox tool
+    # surface honours the same disable/select as the host. Done BEFORE the
+    # mount-needs check so the heuristic sees the propagated value.
+    import os as _os
+
+    _host_reranker = _os.environ.get("LAB_RAG_RERANKER")
+    if _host_reranker is not None:
+        env.setdefault("LAB_RAG_RERANKER", _host_reranker)
+
+    hf_cache_mount: Path | None = None
+    if _task_needs_hf_cache_mount(lab_task.tools, reranker_env=env.get("LAB_RAG_RERANKER")):
+        from lab.settings import get_settings as _get_settings_hf
+
+        hf_cache_root = _get_settings_hf().hf_cache_root
+        hf_cache_root.mkdir(parents=True, exist_ok=True)
+        hf_cache_mount = hf_cache_root
+        env.setdefault("HF_HOME", "/hf-cache")
+        env.setdefault("TRANSFORMERS_CACHE", "/hf-cache/transformers")
+        env.setdefault("HF_HUB_OFFLINE", "1")
+        env.setdefault("TRANSFORMERS_OFFLINE", "1")
 
     result: CellResult
     sweep_ctx = SweepContext(
@@ -685,6 +716,8 @@ def _execute_agent_cell(
             workspace_files=workspace_files,
             time_limit_sec=timeout,
             kb_root_mount=kb_root_mount,
+            hf_cache_mount=hf_cache_mount,
+            hf_cache_target="/hf-cache",
         ) as sandbox:
             # Merge per-model `extra` over config.extra (per-model wins).
             merged_extra: dict[str, Any] = {}

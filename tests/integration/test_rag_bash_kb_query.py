@@ -43,7 +43,12 @@ def test_bash_kb_query_or_skip():
     if lease:
         pytest.skip(f"GPU lease held ({lease!r}); refusing to query during sweep")
 
-    hits = hybrid_query(kb_dir, "how do I redirect stderr to stdout", k=5)
+    # rerank=False keeps this a stage-1 hybrid smoke test (its original
+    # intent before Phase 7 flipped the default). The reranker's GPU
+    # budget interacts with the embedding model pinned by Ollama
+    # (qwen3-embedding-8b ~9 GB on 12 GB cards); the dedicated rerank
+    # e2e in test_rerank_e2e.py exercises that path with proper guards.
+    hits = hybrid_query(kb_dir, "how do I redirect stderr to stdout", k=5, rerank=False)
     assert isinstance(hits, list)
     # Don't assert exact contents (depends on the live KB), just shape.
     for h in hits:

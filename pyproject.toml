@@ -77,6 +77,12 @@ notebook = [
     "matplotlib>=3.9.0",
     "altair>=5.4.0",
 ]
+rag = [
+    # Phase 7 cross-encoder reranker (host-side: integration tests + ad-hoc
+    # `lab rag` invocations). Sandbox cells get the same packages baked into
+    # the image, so this stays an opt-in extra to keep the base venv lean.
+    "sentence-transformers>=3.0",
+]
 
 [project.scripts]
 lab = "lab.cli:app"

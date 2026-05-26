@@ -120,8 +120,11 @@ class LabReranker:
         model = self._ensure_loaded()
         self._last_used = time.monotonic()
 
-        # CrossEncoder.predict returns one float per pair.
-        scores = list(model.predict(pairs))
+        # CrossEncoder.predict returns one float per pair. The list[tuple]
+        # signature mypy infers from sentence-transformers 5.x is invariant
+        # over a huge union — cast keeps strict mode clean without changing
+        # behaviour.
+        scores = list(model.predict(pairs))  # type: ignore[arg-type]
         scored: list[tuple[int, float, dict[str, Any]]] = []
         for idx, (cand, raw) in enumerate(zip(candidates, scores, strict=True)):
             out = dict(cand)

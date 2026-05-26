@@ -12,6 +12,7 @@ the Inspect bridge and CLI both reflect it.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable
 from typing import Any
 
@@ -48,4 +49,51 @@ def task_needs_kb_mount(tool_specs: Iterable[Any] | None) -> bool:
     return False
 
 
-__all__ = ["TOOLS_NEEDING_KB_MOUNT", "TOOL_SERVERS", "task_needs_kb_mount"]
+#: Tools that may trigger the Phase 7 cross-encoder reranker. When any of
+#: these appear in a task's tool list AND the reranker is enabled
+#: (``LAB_RAG_RERANKER`` unset or != ``"none"``), the harness mounts the
+#: shared HF cache so reranker weights persist across cells.
+TOOLS_NEEDING_HF_CACHE: frozenset[str] = frozenset({"kb_query"})
+
+
+def task_needs_hf_cache_mount(
+    tool_specs: Iterable[Any] | None,
+    *,
+    reranker_env: str | None = None,
+) -> bool:
+    """Return True iff `tool_specs` may trigger the reranker AND it is enabled.
+
+    ``reranker_env`` overrides the live ``LAB_RAG_RERANKER`` value (used by
+    tests). The mount is needed iff:
+
+    * the task uses a tool from :data:`TOOLS_NEEDING_HF_CACHE`, AND
+    * the reranker is not disabled (``LAB_RAG_RERANKER`` unset, empty, or
+      anything other than the case-insensitive sentinel ``"none"``).
+
+    Returning False keeps the sandbox surface minimal — no hf-cache mount
+    when the reranker is provably off.
+    """
+
+    if not tool_specs:
+        return False
+    value = (
+        reranker_env
+        if reranker_env is not None
+        else os.environ.get("LAB_RAG_RERANKER", "")
+    )
+    if value.strip().lower() == "none":
+        return False
+    for spec in tool_specs:
+        name = spec.get("name") if isinstance(spec, dict) else spec
+        if isinstance(name, str) and name in TOOLS_NEEDING_HF_CACHE:
+            return True
+    return False
+
+
+__all__ = [
+    "TOOLS_NEEDING_HF_CACHE",
+    "TOOLS_NEEDING_KB_MOUNT",
+    "TOOL_SERVERS",
+    "task_needs_hf_cache_mount",
+    "task_needs_kb_mount",
+]

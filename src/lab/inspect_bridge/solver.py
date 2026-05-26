@@ -109,14 +109,26 @@ def _truncate_kb_query_result(value: dict[str, Any], cap: int) -> dict[str, Any]
 
     # If still over cap, drop text entirely from each hit but keep the
     # structural fields needed by RAG scorers (chunk_id, source_url,
-    # section_path, score) — the agent's recall/attribution can still be
-    # measured even without text. The full untruncated payload is in
-    # MinIO; this branch keeps the DB row scorer-readable.
+    # section_path, score) and the Phase 7 rerank signal — the agent's
+    # recall/attribution can still be measured even without text, and
+    # rerank_score / stage1_rank are tiny but indispensable for EXP-004
+    # post-hoc analysis. The full untruncated payload is in MinIO; this
+    # branch keeps the DB row scorer-readable.
     minimal_hits = [
         {
             kk: vv
             for kk, vv in hit.items()
-            if kk in {"chunk_id", "source_url", "section_path", "score", "title"}
+            if kk in {
+                "chunk_id",
+                "source_url",
+                "section_path",
+                "score",
+                "title",
+                "rerank_score",
+                "stage1_rank",
+                "dense_score",
+                "sparse_score",
+            }
         }
         for hit in pruned_hits
         if isinstance(hit, dict)
