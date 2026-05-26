@@ -1,0 +1,6 @@
+model,n_done,n_error,model_finished,budget_exhausted,max_turns_reached,litellm_error,other_unknown
+qwen3-14b-q4,96,0,0,0,0,0,96
+llama3.1-8b-q4,96,0,0,0,0,0,96
+gpt-oss-20b-cloud,96,0,0,0,0,0,96
+glm-5.1-cloud,96,0,0,0,0,0,96
+gpt-oss-120b-cloud,96,0,0,0,0,0,96

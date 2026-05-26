@@ -1,0 +1,6 @@
+model,task,n_cells,mean_judge,ci_lo,ci_hi
+glm-5.1-cloud,code-read-and-explain,8,1.000000,1.000000,1.000000
+gpt-oss-120b-cloud,code-read-and-explain,8,1.000000,1.000000,1.000000
+gpt-oss-20b-cloud,code-read-and-explain,8,1.000000,1.000000,1.000000
+llama3.1-8b-q4,code-read-and-explain,8,0.875000,0.625000,1.000000
+qwen3-14b-q4,code-read-and-explain,8,1.000000,1.000000,1.000000

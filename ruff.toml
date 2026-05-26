@@ -19,7 +19,7 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/**" = ["S", "PLR2004"]
-"scripts/**" = ["S", "PLR2004"]
+"scripts/**" = ["S", "PLR2004", "RUF001"]
 
 [format]
 quote-style = "double"
