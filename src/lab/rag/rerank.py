@@ -108,6 +108,36 @@ class LabReranker:
         if self.disabled:
             return list(candidates[:top_n])
 
+        # Sandbox path: when LAB_RAG_RERANKER_URL is set, dispatch over HTTP
+        # to the host-side rerank service. The sandbox image no longer ships
+        # sentence-transformers/torch, so this is the only way an in-sandbox
+        # caller (kb_query) can rerank. The host service owns its own
+        # tier-2 cache; we forward ``cache_key`` through unchanged.
+        from lab.rag.rerank_client import (
+            RerankClientError,
+            get_remote_url,
+            rerank_via_http,
+        )
+
+        remote_url = get_remote_url()
+        if remote_url is not None:
+            try:
+                return rerank_via_http(
+                    url=remote_url,
+                    query=query,
+                    candidates=list(candidates),
+                    top_n=top_n,
+                    model=self.model_name,
+                    cache_key=cache_key,
+                )
+            except RerankClientError:
+                logger.warning(
+                    "rerank service at %s unavailable; falling back to top_n pass-through",
+                    remote_url,
+                    exc_info=True,
+                )
+                return list(candidates[:top_n])
+
         if cache_key is not None:
             cached = self._cache_lookup(query, cache_key)
             if cached is not None:

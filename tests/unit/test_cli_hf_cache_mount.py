@@ -143,6 +143,10 @@ def test_agent_run_mounts_hf_cache_when_kb_query_and_reranker_enabled(
     assert env["TRANSFORMERS_CACHE"] == "/hf-cache/transformers"
     assert env["HF_HUB_OFFLINE"] == "1"
     assert env["TRANSFORMERS_OFFLINE"] == "1"
+    # Phase 7.1: when the reranker is enabled, the sandbox must point at
+    # the host-side rerank service. Default port 8401, host alias via
+    # podman's host.containers.internal.
+    assert env["LAB_RAG_RERANKER_URL"] == "http://host.containers.internal:8401"
 
 
 def test_agent_run_skips_hf_cache_when_reranker_disabled(
@@ -160,6 +164,8 @@ def test_agent_run_skips_hf_cache_when_reranker_disabled(
     # reranker honours it too — otherwise the tool would try to load
     # weights with no HF cache or network and fail loudly.
     assert kw["env"]["LAB_RAG_RERANKER"] == "none"
+    # And there's no point sending the rerank URL when reranking is off.
+    assert "LAB_RAG_RERANKER_URL" not in kw["env"]
 
 
 def test_agent_run_skips_hf_cache_when_no_kb_query(

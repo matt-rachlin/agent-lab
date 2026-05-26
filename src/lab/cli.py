@@ -641,6 +641,20 @@ def agent_run(
     if _host_reranker is not None:
         env.setdefault("LAB_RAG_RERANKER", _host_reranker)
 
+    # Phase 7.1: point the in-sandbox LabReranker at the host-side HTTP
+    # service when kb_query is in play AND the reranker isn't disabled.
+    # The sandbox image no longer carries sentence-transformers/torch, so
+    # without this URL the reranker silently falls through to pass-through.
+    # ``host.containers.internal`` is already in the network allow-list
+    # above (the kb_query branch added it for Ollama); the rerank server
+    # binds 127.0.0.1 host-side but podman maps it on the same alias.
+    if task_needs_hf_cache_mount(lab_task.tools, reranker_env=env.get("LAB_RAG_RERANKER")):
+        _rerank_port = _os.environ.get("LAB_RAG_RERANKER_PORT", "8401")
+        env.setdefault(
+            "LAB_RAG_RERANKER_URL",
+            f"http://host.containers.internal:{_rerank_port}",
+        )
+
     run_id_ = f"adhoc-{lab_task.slug}-{_uuid.uuid4().hex[:8]}"
     console.print(
         f"[bold]agent run[/]: task={lab_task.slug} model={model} "

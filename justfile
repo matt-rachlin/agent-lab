@@ -56,6 +56,37 @@ sandbox-smoke:
     podman run --rm --runtime=runsc --security-opt label=disable --runtime-flag=ignore-cgroups \
         --network=none lab-agent-sandbox:0.1 python3 -c 'print("ok")'
 
+# --- rerank server (Phase 7.1) ---
+
+# Install + enable the host-side rerank server as a systemd user unit.
+# Copies services/rerank.service to ~/.config/systemd/user/ so
+# `systemctl --user` can manage it; then daemon-reload + enable + start.
+rerank-install:
+    install -D -m 0644 services/rerank.service \
+        ~/.config/systemd/user/rerank.service
+    systemctl --user daemon-reload
+    systemctl --user enable --now rerank.service
+    @echo "rerank.service installed; healthz:"
+    @sleep 1 && curl -sS http://127.0.0.1:8401/healthz || \
+        echo "(not yet responsive — check 'just rerank-status')"
+
+# Stop + disable + remove the systemd unit (leaves the source in repo).
+rerank-uninstall:
+    -systemctl --user disable --now rerank.service
+    -rm -f ~/.config/systemd/user/rerank.service
+    systemctl --user daemon-reload
+
+# Show service status + recent journal.
+rerank-status:
+    @systemctl --user status rerank.service --no-pager || true
+    @echo "--- last 20 log lines ---"
+    @journalctl --user -u rerank.service -n 20 --no-pager || true
+
+# Restart after a code change (no need to reinstall unless service file changed).
+rerank-restart:
+    systemctl --user restart rerank.service
+    @sleep 1 && curl -sS http://127.0.0.1:8401/healthz
+
 # --- backup ---
 
 # Nightly snapshot: 3 PG dumps + 2 MinIO bucket mirrors + git bundle, to /mnt/backup/lab

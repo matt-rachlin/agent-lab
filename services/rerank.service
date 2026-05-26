@@ -1,0 +1,23 @@
+[Unit]
+Description=Lab RAG reranker server (host-side cross-encoder)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/lab/code
+ExecStart=/data/lab/code/.venv/bin/python -m lab.rag.rerank_server
+Environment=LAB_RAG_RERANKER=Qwen/Qwen3-Reranker-0.6B
+Environment=LAB_RAG_RERANKER_PORT=8401
+Environment=LAB_RAG_RERANKER_HOST=127.0.0.1
+Environment=LAB_RAG_RERANKER_TIMEOUT_SEC=30
+Environment=HF_HOME=/data/lab/services/hf-cache
+Environment=TRANSFORMERS_CACHE=/data/lab/services/hf-cache/transformers
+Restart=on-failure
+RestartSec=5
+# Keep stderr/stdout in the journal for debugging; reranker chatter is light.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

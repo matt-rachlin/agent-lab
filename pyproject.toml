@@ -79,9 +79,16 @@ notebook = [
 ]
 rag = [
     # Phase 7 cross-encoder reranker (host-side: integration tests + ad-hoc
-    # `lab rag` invocations). Sandbox cells get the same packages baked into
-    # the image, so this stays an opt-in extra to keep the base venv lean.
+    # `lab rag` invocations + the rerank_server systemd unit). Sandbox cells
+    # no longer carry sentence-transformers/torch — they call the host
+    # rerank server over HTTP (see lab.rag.rerank_client). This stays an
+    # opt-in extra to keep the base venv lean.
     "sentence-transformers>=3.0",
+    # Phase 7.1 host-side rerank HTTP service. FastAPI + uvicorn are
+    # transitively pulled in via mcp today, but we pin them explicitly
+    # here so `uv sync -E rag` is self-contained for the systemd unit.
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
 ]
 
 [project.scripts]

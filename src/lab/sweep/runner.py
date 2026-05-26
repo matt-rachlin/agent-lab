@@ -691,6 +691,14 @@ def _execute_agent_cell(
         env.setdefault("TRANSFORMERS_CACHE", "/hf-cache/transformers")
         env.setdefault("HF_HUB_OFFLINE", "1")
         env.setdefault("TRANSFORMERS_OFFLINE", "1")
+        # Phase 7.1: route in-sandbox reranks to the host-side service.
+        # Without LAB_RAG_RERANKER_URL the slim sandbox image (no
+        # sentence-transformers/torch) would fail back to pass-through.
+        _rerank_port = _os.environ.get("LAB_RAG_RERANKER_PORT", "8401")
+        env.setdefault(
+            "LAB_RAG_RERANKER_URL",
+            f"http://host.containers.internal:{_rerank_port}",
+        )
 
     result: CellResult
     sweep_ctx = SweepContext(

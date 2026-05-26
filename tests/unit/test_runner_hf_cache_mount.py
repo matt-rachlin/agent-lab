@@ -104,6 +104,8 @@ def test_runner_mounts_hf_cache_when_kb_query_and_reranker_enabled(
     assert kw["env"]["TRANSFORMERS_CACHE"] == "/hf-cache/transformers"
     assert kw["env"]["HF_HUB_OFFLINE"] == "1"
     assert kw["env"]["TRANSFORMERS_OFFLINE"] == "1"
+    # Phase 7.1: route in-sandbox reranks to the host-side service.
+    assert kw["env"]["LAB_RAG_RERANKER_URL"] == "http://host.containers.internal:8401"
 
 
 def test_runner_skips_hf_cache_when_reranker_disabled_via_sandbox_env(
