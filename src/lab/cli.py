@@ -521,10 +521,177 @@ agent_app.add_typer(agent_sandbox_app, name="sandbox")
 def agent_run(
     task: str = typer.Option(..., "--task", help="Task slug to run"),
     model: str = typer.Option(..., "--model", help="LiteLLM model id"),
+    suite: str = typer.Option(
+        "agent",
+        "--suite",
+        help="Task suite to load from (e.g. pbs-agent-v0.1, smoke)",
+    ),
+    max_turns: int | None = typer.Option(
+        None, "--max-turns", help="Override the task's max_turns"
+    ),
+    tool_budget: int | None = typer.Option(
+        None, "--tool-budget", help="Override the task's tool_budget"
+    ),
+    temperature: float = typer.Option(0.0, "--temperature", help="Sampling temperature"),
+    max_tokens: int = typer.Option(1024, "--max-tokens", help="Max response tokens"),
+    no_persist: bool = typer.Option(
+        False, "--no-persist", help="Skip MinIO/Postgres write — useful for local debugging"
+    ),
 ) -> None:
-    """Run a single agent cell (placeholder)."""
-    console.print("6d — not yet implemented")
-    raise typer.Exit(code=2)
+    """Run a single agent cell end-to-end via the Inspect harness.
+
+    Loads the task from the registry, opens a Podman+gVisor sandbox, runs
+    the multi-turn agent loop, mirrors the result into MinIO + Postgres, and
+    prints a Rich summary.
+    """
+    import json as _json
+    import uuid as _uuid
+
+    from inspect_ai import eval as inspect_eval
+
+    from lab.agent.sandbox import Sandbox
+    from lab.inspect_bridge.adapter import lab_task_to_inspect
+    from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
+    from lab.tasks.registry import Task as LabTask
+    from lab.tasks.registry import get_tasks
+
+    rows = get_tasks(suite, [task])
+    if not rows:
+        console.print(f"[red]task {task!r} not found in suite {suite!r}")
+        raise typer.Exit(code=2)
+    row = rows[0]
+    payload = row["payload"]
+    if isinstance(payload, str):
+        payload = _json.loads(payload)
+    lab_task = LabTask.model_validate(
+        {
+            "suite": row["suite"],
+            "slug": row["slug"],
+            "category": row.get("category"),
+            "difficulty": row.get("difficulty"),
+            "input": payload["input"],
+            "system": payload.get("system"),
+            "tools": payload.get("tools"),
+            "max_turns": max_turns if max_turns is not None else payload.get("max_turns", 1),
+            "tool_budget": tool_budget
+            if tool_budget is not None
+            else payload.get("tool_budget", 0),
+            "success_predicate": payload.get("success_predicate"),
+            "sandbox": payload.get("sandbox"),
+            "gold_answer": payload.get("gold_answer"),
+            "rubric": payload.get("rubric"),
+            "description": payload.get("description"),
+        }
+    )
+
+    sandbox_cfg = lab_task.sandbox or {}
+    network = sandbox_cfg.get("network", "none")
+    env = dict(sandbox_cfg.get("env", {}))
+    workspace_files_raw = sandbox_cfg.get("workspace_files") or {}
+    workspace_files = {
+        k: v.encode("utf-8") if isinstance(v, str) else v
+        for k, v in workspace_files_raw.items()
+    }
+
+    run_id_ = f"adhoc-{lab_task.slug}-{_uuid.uuid4().hex[:8]}"
+    console.print(
+        f"[bold]agent run[/]: task={lab_task.slug} model={model} "
+        f"max_turns={lab_task.max_turns} tool_budget={lab_task.tool_budget}"
+    )
+
+    import shutil
+    import tempfile
+
+    parent_dir = tempfile.mkdtemp(prefix="lab-inspect-parent-")
+    log_dir = str(Path(parent_dir) / "inspect")
+    try:
+        with Sandbox(
+            network=network, env=env, workspace_files=workspace_files
+        ) as sandbox:
+            inspect_task = lab_task_to_inspect(
+                lab_task,
+                model=model,
+                sandbox=sandbox,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            logs = inspect_eval(
+                inspect_task,
+                display="plain",
+                log_samples=True,
+                log_dir=log_dir,
+                log_format="json",
+                log_realtime=False,
+            )
+    finally:
+        shutil.rmtree(parent_dir, ignore_errors=True)
+    if not logs:
+        console.print("[red]inspect_ai.eval returned no logs")
+        raise typer.Exit(code=1)
+    log = logs[0]
+    samples = getattr(log, "samples", None) or []
+    if not samples:
+        console.print("[red]inspect log has no samples")
+        raise typer.Exit(code=1)
+    sample = samples[0]
+    lab_agent = (sample.metadata or {}).get("lab_agent") or {}
+
+    trace_uri = None
+    if not no_persist:
+        import psycopg as _psycopg
+
+        from lab.settings import get_settings as _get_settings
+
+        with _psycopg.connect(_get_settings().pg_dsn) as pg, pg.cursor() as cur:
+            cur.execute(
+                "SELECT model_id FROM models WHERE litellm_id = %s LIMIT 1",
+                (model,),
+            )
+            mrow = cur.fetchone()
+            cur.execute("SELECT manifest_sha FROM manifests ORDER BY captured_at DESC LIMIT 1")
+            manr = cur.fetchone()
+        if mrow is None:
+            console.print(
+                f"[yellow]no models row for litellm_id={model!r} — skipping persist"
+            )
+        else:
+            ctx = SweepContext(
+                run_id=run_id_,
+                experiment_id=None,
+                experiment_slug="adhoc",
+                model_id=int(mrow[0]),
+                model_litellm_id=model,
+                task_id=int(row["task_id"]),
+                task_slug=lab_task.slug,
+                config_hash="adhoc",
+                config={
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                },
+                seed=0,
+                manifest_sha=str(manr[0]) if manr is not None else "adhoc",
+            )
+            try:
+                trace_uri = write_run_from_inspect_log(log, ctx)
+            except Exception as exc:
+                console.print(
+                    f"[yellow]logwriter failed: {exc} — continuing with summary only"
+                )
+
+    summary = Table(title=f"agent run — {lab_task.slug}")
+    summary.add_column("metric")
+    summary.add_column("value")
+    summary.add_row("turns used", str(lab_agent.get("actual_turns")))
+    summary.add_row("tool calls", str(lab_agent.get("tool_call_count")))
+    summary.add_row("terminated", str(lab_agent.get("terminated_reason")))
+    summary.add_row("total latency (ms)", str(lab_agent.get("total_latency_ms")))
+    summary.add_row("error", str(lab_agent.get("error") or "—"))
+    primary_score = next(iter((sample.scores or {}).values()), None)
+    if primary_score is not None:
+        summary.add_row("evaluator (6e pending)", str(primary_score.value))
+    if trace_uri:
+        summary.add_row("trajectory", trace_uri)
+    console.print(summary)
 
 
 @agent_tools_app.command("list")

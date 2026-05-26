@@ -1,0 +1,21 @@
+suite: agent-smoke
+category: smoke
+
+tasks:
+  - slug: fs-read-smoke
+    difficulty: easy
+    input: |
+      You MUST call the fs_read tool with path="note.txt" to read the file.
+      Then return its content verbatim. Do not guess — call the tool first.
+    system: "You are an assistant with tool access. Always call the fs_read tool when asked to read a file."
+    tools:
+      - name: fs_read
+    max_turns: 3
+    tool_budget: 2
+    sandbox:
+      workspace_files:
+        "note.txt": "hello from agent-smoke"
+    rubric:
+      type: exact_match
+      case_sensitive: false
+    gold_answer: "hello from agent-smoke"

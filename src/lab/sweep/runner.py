@@ -9,13 +9,10 @@ import signal
 import sys
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from io import BytesIO
 from pathlib import Path
 from types import FrameType
 from typing import Any
 
-import httpx
 import psycopg
 from psycopg.types.json import Json
 from rich.console import Console
@@ -299,53 +296,37 @@ def _call_litellm(
     config: RunConfig,
     timeout: int,
 ) -> tuple[dict[str, Any], int]:
-    """Hit the LiteLLM proxy; returns (response_json, latency_ms)."""
-    url = settings.litellm_url.rstrip("/") + "/v1/chat/completions"
-    body: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "temperature": config.temperature,
-        "top_p": config.top_p,
-    }
-    if config.max_tokens is not None:
-        body["max_tokens"] = config.max_tokens
-    # Forward extras to the backend (e.g. Ollama `think: false`), except
-    # locally-consumed keys.
-    if config.extra:
-        for k, v in config.extra.items():
-            if k == "system_prompt":
-                continue
-            body[k] = v
-    headers = {"Authorization": f"Bearer {litellm_key}", "Content-Type": "application/json"}
-    t0 = time.monotonic()
-    resp = httpx.post(url, json=body, headers=headers, timeout=timeout)
-    latency_ms = int((time.monotonic() - t0) * 1000)
-    resp.raise_for_status()
-    return resp.json(), latency_ms
+    """Hit the LiteLLM proxy; returns (response_json, latency_ms).
+
+    Single-turn fast path. Thin wrapper around `lab.llm.call_litellm_chat`
+    so the multi-turn agent solver and this path share the same request
+    shape.
+    """
+    from lab.llm import call_litellm_chat
+
+    return call_litellm_chat(
+        settings=settings,
+        litellm_key=litellm_key,
+        model=model,
+        messages=messages,
+        temperature=config.temperature,
+        top_p=config.top_p,
+        max_tokens=config.max_tokens,
+        extra=config.extra or None,
+        timeout=timeout,
+    )
 
 
 def _persist_trace(*, run_id_: str, payload: dict[str, Any]) -> str:
     """Upload trace JSONL to MinIO. Returns the s3:// path."""
-    settings = get_settings()
-    from minio import Minio
+    from lab.minio_io import run_key, upload_bytes
 
-    client = Minio(
-        settings.s3_endpoint.removeprefix("http://").removeprefix("https://"),
-        access_key=settings.s3_access_key,
-        secret_key=settings.s3_secret_key,
-        secure=settings.s3_endpoint.startswith("https://"),
-    )
-    ts = datetime.now(UTC)
-    key = f"runs/{ts:%Y-%m/%d}/{run_id_}/trace.jsonl"
     data = (json.dumps(payload) + "\n").encode()
-    client.put_object(
-        settings.s3_bucket,
-        key,
-        BytesIO(data),
-        length=len(data),
+    return upload_bytes(
+        key=run_key(run_id_, "trace.jsonl"),
+        data=data,
         content_type="application/x-ndjson",
     )
-    return f"s3://{settings.s3_bucket}/{key}"
 
 
 def _insert_run(
@@ -398,6 +379,18 @@ def _insert_run(
         )
 
 
+def _is_agent_cell(task_payload: dict[str, Any]) -> bool:
+    """Return True if this cell needs the multi-turn agent path.
+
+    Tasks shipped before Phase 6 default to `max_turns=1` and `tool_budget=0`
+    so they continue to go through the single-turn fast path untouched.
+    """
+
+    max_turns = int(task_payload.get("max_turns") or 1)
+    tool_budget = int(task_payload.get("tool_budget") or 0)
+    return max_turns > 1 or tool_budget > 0
+
+
 def execute_cell(
     cell: Cell,
     *,
@@ -405,8 +398,14 @@ def execute_cell(
     timeout: int,
     model_default_system: str | None = None,
 ) -> CellResult:
-    """Execute one matrix cell: capture manifest, call model, persist trace + row."""
-    settings = get_settings()
+    """Execute one matrix cell.
+
+    Dispatches between the single-turn fast path (Phase 1-5 behaviour,
+    unchanged) and the multi-turn agent path (Phase 6+). The fast path is
+    preserved bit-for-bit - only cells whose task declares `max_turns > 1`
+    or `tool_budget > 0` go through Inspect.
+    """
+
     manifest = capture_manifest(
         extra={
             "kind": "sweep_run",
@@ -419,6 +418,33 @@ def execute_cell(
         }
     )
 
+    if _is_agent_cell(cell.task_payload):
+        return _execute_agent_cell(
+            cell=cell,
+            manifest_sha=manifest.sha,
+            timeout=timeout,
+        )
+
+    return _execute_single_turn(
+        cell=cell,
+        litellm_key=litellm_key,
+        timeout=timeout,
+        manifest_sha=manifest.sha,
+        model_default_system=model_default_system,
+    )
+
+
+def _execute_single_turn(
+    *,
+    cell: Cell,
+    litellm_key: str,
+    timeout: int,
+    manifest_sha: str,
+    model_default_system: str | None,
+) -> CellResult:
+    """Phase 1-5 fast path: one LiteLLM call, one trace row, no Inspect."""
+
+    settings = get_settings()
     config_system = cell.config.extra.get("system_prompt") if cell.config.extra else None
     if config_system is None:
         config_system = getattr(cell.config, "system_prompt", None)
@@ -488,7 +514,7 @@ def execute_cell(
                 payload={
                     "run_id": cell.run_id,
                     "experiment_slug": cell.experiment_slug,
-                    "manifest_sha": manifest.sha,
+                    "manifest_sha": manifest_sha,
                     "model": cell.model_litellm_id,
                     "task_slug": cell.task_slug,
                     "config": cell.config.model_dump(),
@@ -502,7 +528,153 @@ def execute_cell(
         except Exception as exc:
             console.print(f"[yellow]trace upload failed for {cell.run_id}: {exc}")
 
-    _insert_run(cell=cell, result=result, manifest_sha=manifest.sha, trace_path=trace_path)
+    _insert_run(cell=cell, result=result, manifest_sha=manifest_sha, trace_path=trace_path)
+    return result
+
+
+def _execute_agent_cell(
+    *,
+    cell: Cell,
+    manifest_sha: str,
+    timeout: int,
+) -> CellResult:
+    """Phase 6 path: build an Inspect task, run it, mirror the log into Postgres + MinIO."""
+
+    from lab.agent.sandbox import Sandbox
+    from lab.inspect_bridge.adapter import lab_task_to_inspect
+    from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
+    from lab.tasks.registry import Task as LabTask
+
+    payload = cell.task_payload
+    lab_task = LabTask.model_validate(
+        {
+            "suite": payload.get("suite", "agent"),
+            "slug": cell.task_slug,
+            "category": payload.get("category"),
+            "input": payload["input"],
+            "system": payload.get("system"),
+            "tools": payload.get("tools"),
+            "max_turns": payload.get("max_turns", 1),
+            "tool_budget": payload.get("tool_budget", 0),
+            "success_predicate": payload.get("success_predicate"),
+            "sandbox": payload.get("sandbox"),
+            "gold_answer": payload.get("gold_answer"),
+            "rubric": payload.get("rubric"),
+            "description": payload.get("description"),
+        }
+    )
+
+    sandbox_cfg = lab_task.sandbox or {}
+    network: str | list[str] = sandbox_cfg.get("network", "none")
+    env: dict[str, str] = dict(sandbox_cfg.get("env", {}))
+    workspace_files_raw: dict[str, str] | None = sandbox_cfg.get("workspace_files")
+    workspace_files: dict[str, bytes] = {
+        k: v.encode("utf-8") if isinstance(v, str) else v
+        for k, v in (workspace_files_raw or {}).items()
+    }
+
+    result: CellResult
+    sweep_ctx = SweepContext(
+        run_id=cell.run_id,
+        experiment_id=cell.experiment_id,
+        experiment_slug=cell.experiment_slug,
+        model_id=cell.model_id,
+        model_litellm_id=cell.model_litellm_id,
+        task_id=cell.task_id,
+        task_slug=cell.task_slug,
+        config_hash=cell.config_hash,
+        config=cell.config.model_dump(),
+        seed=cell.seed,
+        manifest_sha=manifest_sha,
+    )
+
+    try:
+        from inspect_ai import eval as inspect_eval
+
+        with Sandbox(
+            network=network,
+            env=env,
+            workspace_files=workspace_files,
+            time_limit_sec=timeout,
+        ) as sandbox:
+            inspect_task = lab_task_to_inspect(
+                lab_task,
+                model=cell.model_litellm_id,
+                sandbox=sandbox,
+                temperature=cell.config.temperature,
+                max_tokens=cell.config.max_tokens,
+            )
+            import tempfile
+
+            with tempfile.TemporaryDirectory(prefix="lab-inspect-") as log_dir:
+                if _is_local_backend(cell.model_backend):
+                    with gpu_lease(
+                        f"sweep:{cell.experiment_slug}:{cell.model_litellm_id}",
+                        ttl_sec=timeout + 60,
+                    ):
+                        logs = inspect_eval(
+                            inspect_task,
+                            display="none",
+                            log_samples=True,
+                            log_dir=log_dir,
+                        )
+                else:
+                    logs = inspect_eval(
+                        inspect_task,
+                        display="none",
+                        log_samples=True,
+                        log_dir=log_dir,
+                    )
+        log = logs[0] if logs else None
+        if log is None:
+            raise RuntimeError("inspect_ai.eval returned no logs")
+        trace_uri = write_run_from_inspect_log(log, sweep_ctx)
+        # Read back the aggregated metrics we just upserted so the in-memory
+        # CellResult matches what's in the DB.
+        samples = getattr(log, "samples", None) or []
+        sample = samples[0] if samples else None
+        lab_agent: dict[str, Any] = {}
+        if sample is not None:
+            metadata = sample.metadata or {}
+            lab_agent = metadata.get("lab_agent") or {}
+        latency_ms = int(lab_agent.get("total_latency_ms") or 0)
+        usage = getattr(sample, "model_usage", None) if sample is not None else None
+        if usage is not None and hasattr(usage, "model_dump"):
+            usage = usage.model_dump()
+        tokens_in: int | None = None
+        tokens_out: int | None = None
+        for v in (usage or {}).values():
+            if isinstance(v, dict):
+                if v.get("input_tokens") is not None:
+                    tokens_in = (tokens_in or 0) + int(v["input_tokens"])
+                if v.get("output_tokens") is not None:
+                    tokens_out = (tokens_out or 0) + int(v["output_tokens"])
+        result = CellResult(
+            run_id=cell.run_id,
+            status="error" if lab_agent.get("error") else "done",
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            latency_ms=latency_ms,
+            cost_usd=None,
+            error=lab_agent.get("error"),
+            response_text=None,
+            raw_response={"trajectory_key": trace_uri, "lab_agent": lab_agent},
+        )
+    except Exception as exc:
+        result = CellResult(
+            run_id=cell.run_id,
+            status="error",
+            tokens_in=None,
+            tokens_out=None,
+            latency_ms=0,
+            cost_usd=None,
+            error=f"{type(exc).__name__}: {exc}",
+            response_text=None,
+            raw_response=None,
+        )
+        # Still record the error row in experiment_runs so the sweep
+        # bookkeeping survives.
+        _insert_run(cell=cell, result=result, manifest_sha=manifest_sha, trace_path=None)
     return result
 
 

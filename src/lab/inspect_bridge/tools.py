@@ -24,6 +24,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from lab.agent.sandbox import Sandbox
+from lab.agent.tool_pool import ToolPool
 from lab.agent.tools import TOOL_SERVERS
 from lab.tasks.registry import Task
 
@@ -68,17 +69,32 @@ async def _list_tools_for_module(module: str) -> list[ToolSchema]:
     return schemas
 
 
+def _run_coro_sync(coro: Any) -> Any:
+    """Run an awaitable to completion regardless of caller event-loop state.
+
+    If we're already inside a running loop (e.g. the Inspect solver),
+    `asyncio.run()` raises; spin up a dedicated thread with its own loop.
+    """
+    import concurrent.futures
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as exe:
+        return exe.submit(asyncio.run, coro).result()
+
+
 def discover_tool_schemas() -> dict[str, ToolSchema]:
     """Return `{tool_name: ToolSchema}` for every server in `TOOL_SERVERS`.
 
     Synchronous wrapper so callers (CLI, factories) don't have to manage an
-    event loop themselves.
+    event loop themselves. Safe to call from inside a running loop too.
     """
 
     out: dict[str, ToolSchema] = {}
     for tool_name, module in TOOL_SERVERS.items():
         try:
-            schemas = asyncio.run(_list_tools_for_module(module))
+            schemas = _run_coro_sync(_list_tools_for_module(module))
         except Exception as exc:  # pragma: no cover - defensive
             raise RuntimeError(f"failed to introspect {module}: {exc}") from exc
         for schema in schemas:
@@ -97,10 +113,23 @@ def _json_schema_to_tool_params(schema: dict[str, Any]) -> ToolParams:
     """Map a FastMCP JSON-schema object to Inspect `ToolParams`.
 
     FastMCP emits `{type: object, properties: {...}, required: [...]}`. Inspect
-    accepts the same shape natively but via its own pydantic model.
+    accepts the same shape natively but requires a non-empty `description` on
+    every property; FastMCP's pydantic-derived schemas omit that. We inject
+    the property's `title` (or name) as a fallback so validation passes.
     """
 
-    return ToolParams.model_validate(schema)
+    patched = dict(schema)
+    props = dict(patched.get("properties", {}) or {})
+    for prop_name, prop_schema in list(props.items()):
+        if not isinstance(prop_schema, dict):
+            continue
+        if not prop_schema.get("description"):
+            prop = dict(prop_schema)
+            prop["description"] = str(prop.get("title") or prop_name)
+            props[prop_name] = prop
+    if props:
+        patched["properties"] = props
+    return ToolParams.model_validate(patched)
 
 
 def _invoke_tool_via_sandbox_sync(
@@ -224,8 +253,15 @@ def _make_inspect_tool(
     sandbox: Sandbox,
     schema: ToolSchema,
     module: str,
+    pool: ToolPool | None = None,
 ) -> Tool:
-    """Build one Inspect `Tool` for a given MCP tool name."""
+    """Build one Inspect `Tool` for a given MCP tool name.
+
+    When `pool` is provided, calls reuse the pooled long-lived MCP server
+    inside the sandbox. Without a pool, each call spawns a fresh subprocess
+    — fine for unit tests and the `lab agent tools test` smoke path; far
+    too expensive for multi-turn agents (which should always pass a pool).
+    """
 
     tool_name = schema.name
     description = schema.description
@@ -234,6 +270,10 @@ def _make_inspect_tool(
     @tool(name=tool_name)
     def _factory() -> Tool:
         async def execute(**kwargs: Any) -> Any:
+            if pool is not None:
+                # The pool's underlying stdio I/O is blocking; punt it off
+                # the event loop so we don't stall the Inspect runner.
+                return await asyncio.to_thread(pool.invoke, module, tool_name, kwargs)
             return await asyncio.to_thread(
                 _invoke_tool_via_sandbox_sync,
                 sandbox,
@@ -252,18 +292,33 @@ def _make_inspect_tool(
     return _factory()
 
 
-def lab_tools_for_task(task: Task, sandbox: Sandbox) -> list[Tool]:
+def lab_tools_for_task(
+    task: Task,
+    sandbox: Sandbox,
+    *,
+    pool: ToolPool | None = None,
+    tool_names: list[str] | None = None,
+) -> list[Tool]:
     """Return Inspect tools for the names listed in `task.tools`.
 
     `task.tools` is a list of `{name: str, ...}` dicts. We only honour the
     `name` field — the schema comes from the MCP server itself, not the YAML
     — and we filter to known tools. Unknown names raise so a typo doesn't
     silently fall off the floor.
+
+    When `pool` is provided, the returned tools route through the pool
+    (one long-lived MCP server per (sandbox, module)) instead of spawning a
+    fresh subprocess per call. The solver should always pass a pool.
+
+    `tool_names`, when given, further restricts the returned tools to that
+    list — useful when a sweep wants to disable a tool the task technically
+    allows.
     """
 
     if not task.tools:
         return []
     schemas = discover_tool_schemas()
+    allow: set[str] | None = set(tool_names) if tool_names is not None else None
     out: list[Tool] = []
     for spec in task.tools:
         name = spec.get("name") if isinstance(spec, dict) else None
@@ -274,8 +329,17 @@ def lab_tools_for_task(task: Task, sandbox: Sandbox) -> list[Tool]:
                 f"task {task.slug!r} references unknown tool {name!r}; "
                 f"known tools: {sorted(TOOL_SERVERS)}"
             )
+        if allow is not None and name not in allow:
+            continue
         schema = schemas[name]
-        out.append(_make_inspect_tool(sandbox=sandbox, schema=schema, module=TOOL_SERVERS[name]))
+        out.append(
+            _make_inspect_tool(
+                sandbox=sandbox,
+                schema=schema,
+                module=TOOL_SERVERS[name],
+                pool=pool,
+            )
+        )
     return out
 
 
