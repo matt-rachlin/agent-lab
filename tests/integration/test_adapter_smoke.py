@@ -18,9 +18,9 @@ def test_adapter_round_trip_runs_under_inspect(tmp_path: Any) -> None:
     from inspect_ai import eval as inspect_eval
     from inspect_ai.model import ChatMessageAssistant
     from inspect_ai.solver import Generate, Solver, TaskState, solver
+    from lab.tasks.registry import Task
 
     from lab.inspect_bridge.adapter import lab_task_to_inspect
-    from lab.tasks.registry import Task
 
     @solver(name="lab_smoke_passthrough")
     def _passthrough() -> Solver:

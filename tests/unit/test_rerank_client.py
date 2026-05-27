@@ -12,7 +12,6 @@ from typing import Any
 
 import httpx
 import pytest
-
 from lab.rag import rerank_client
 from lab.rag.rerank_client import (
     DEFAULT_CLIENT_TIMEOUT_SEC,

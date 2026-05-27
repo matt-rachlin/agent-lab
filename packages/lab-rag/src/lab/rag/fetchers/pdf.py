@@ -6,7 +6,6 @@ Vendored from kb_builder.fetchers.pdf.
 from __future__ import annotations
 
 import httpx
-
 from lab.rag._plan import PlannedSource
 from lab.rag.fetchers import FetchedDoc, FetcherContext, FetchResult, register
 

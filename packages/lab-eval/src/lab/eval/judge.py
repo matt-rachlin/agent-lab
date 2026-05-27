@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
-
 from lab.core.settings import get_settings
 
 JUDGE_SYSTEM_PROMPT = (

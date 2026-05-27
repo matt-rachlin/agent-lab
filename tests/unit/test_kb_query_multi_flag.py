@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from lab.agent.tools import kb_query as kb_query_mod
 from lab.rag.index import Hit
 

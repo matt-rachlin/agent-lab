@@ -10,9 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 import lab.rag.index as idx_module
+import pytest
 from lab.rag.index import Hit, _hybrid_query_multi, hybrid_query
 
 

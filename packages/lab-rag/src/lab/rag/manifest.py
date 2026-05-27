@@ -10,9 +10,6 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-from ruamel.yaml import YAML
-
 from lab.rag import (
     CHUNK_FORMAT_VERSION,
     DEFAULT_EMBED_DIMS,
@@ -21,6 +18,8 @@ from lab.rag import (
     KB_FORMAT_VERSION,
 )
 from lab.rag._util import atomic_write_text, utcnow_iso
+from pydantic import BaseModel, Field
+from ruamel.yaml import YAML
 
 SourceType = Literal[
     "manpage",

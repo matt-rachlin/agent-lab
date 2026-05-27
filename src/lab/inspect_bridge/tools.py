@@ -22,13 +22,12 @@ import sys
 from typing import Any
 
 from inspect_ai.tool import Tool, ToolDef, ToolError, ToolParams, tool
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-
 from lab.agent.sandbox import Sandbox
 from lab.agent.tool_pool import ToolPool
 from lab.agent.tools import TOOL_SERVERS
 from lab.tasks.registry import Task
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 
 class ToolSchema:

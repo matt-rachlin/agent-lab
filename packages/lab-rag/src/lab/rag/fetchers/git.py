@@ -11,7 +11,6 @@ import tempfile
 from pathlib import Path
 
 import trafilatura
-
 from lab.rag._plan import PlannedSource
 from lab.rag.fetchers import FetchedDoc, FetcherContext, FetchResult, register
 

@@ -42,9 +42,8 @@ from typing import Any
 import anyio
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, Field
-
 from lab.rag.rerank import get_default_reranker, reset_default_reranker
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

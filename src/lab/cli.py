@@ -7,15 +7,16 @@ from datetime import datetime as _datetime
 from pathlib import Path
 
 import typer
-from rich.console import Console
-from rich.table import Table
-
-from lab.analyze.report import make_report
 from lab.core.daily_log import ensure_today, open_in_editor
 from lab.core.manifest import capture as capture_manifest
 from lab.core.notify import get_ntfy_url, notify
 from lab.eval import apply_to_experiment, get_registry, load_evaluators_from
 from lab.eval.builtin import register_all as register_builtin_evaluators
+from lab.tasks.registry import list_suites, load_tasks, register_tasks
+from rich.console import Console
+from rich.table import Table
+
+from lab.analyze.report import make_report
 from lab.experiment import (
     get_experiment,
     is_pre_registered,
@@ -30,7 +31,6 @@ from lab.quota import usage_window as quota_window
 from lab.spend import backfill as spend_backfill
 from lab.sweep.config import load_sweep
 from lab.sweep.runner import cancel_sweep, get_sweep_status, run_sweep
-from lab.tasks.registry import list_suites, load_tasks, register_tasks
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
@@ -546,12 +546,12 @@ def agent_run(
     import uuid as _uuid
 
     from inspect_ai import eval as inspect_eval
-
     from lab.agent.sandbox import Sandbox
-    from lab.inspect_bridge.adapter import lab_task_to_inspect
-    from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
     from lab.tasks.registry import Task as LabTask
     from lab.tasks.registry import get_tasks
+
+    from lab.inspect_bridge.adapter import lab_task_to_inspect
+    from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
 
     rows = get_tasks(suite, [task])
     if not rows:
@@ -706,7 +706,6 @@ def agent_run(
     trace_uri = None
     if not no_persist:
         import psycopg as _psycopg
-
         from lab.core.settings import get_settings as _get_settings
 
         with _psycopg.connect(_get_settings().pg_dsn) as pg, pg.cursor() as cur:
@@ -793,6 +792,7 @@ def agent_tools_test(
     """
     from lab.agent.sandbox import Sandbox, gvisor_available
     from lab.agent.tools import TOOL_SERVERS
+
     from lab.inspect_bridge.tools import _invoke_tool_via_sandbox_sync
 
     if name not in TOOL_SERVERS:
@@ -1096,7 +1096,6 @@ def kb_eval(
     for the sweep to finish, then retry.
     """
     import redis
-
     from lab.core.settings import get_settings
     from lab.rag.eval_retrieval import DEFAULT_EVAL_MODEL, run_eval
 

@@ -25,9 +25,8 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 import psycopg
-from psycopg.types.json import Json
-
 from lab.core.settings import get_settings
+from psycopg.types.json import Json
 
 # ---------------------------------------------------------------------------
 # Row types — minimal projections of the underlying tables

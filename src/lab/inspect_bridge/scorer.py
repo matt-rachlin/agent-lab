@@ -34,7 +34,6 @@ from typing import Any
 import psycopg
 from inspect_ai.scorer import NOANSWER, Score, Scorer, Target, mean, scorer
 from inspect_ai.solver import TaskState
-
 from lab.core.settings import get_settings
 from lab.eval.judge import make_judge
 

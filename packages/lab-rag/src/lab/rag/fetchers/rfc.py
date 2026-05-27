@@ -8,7 +8,6 @@ from __future__ import annotations
 import re
 
 import httpx
-
 from lab.rag._plan import PlannedSource
 from lab.rag.fetchers import FetchedDoc, FetcherContext, FetchResult, register
 

@@ -10,16 +10,15 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ollama import Client
-from rank_bm25 import BM25Okapi
-from tenacity import retry, stop_after_attempt, wait_exponential
-
 from lab.rag import (
     DEFAULT_EMBED_DIMS,
     DEFAULT_EMBED_MODEL,
     FALLBACK_EMBED_DIMS,
     FALLBACK_EMBED_MODEL,
 )
+from ollama import Client
+from rank_bm25 import BM25Okapi
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 DEFAULT_BATCH = 8  # conservative for 8B Q8 on a 12 GB GPU
 

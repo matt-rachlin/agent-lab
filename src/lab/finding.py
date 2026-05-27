@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Literal
 
 import psycopg
-
 from lab.core.settings import get_settings
 
 FINDINGS_DIR_DEFAULT = Path("/data/lab/code/docs/findings")

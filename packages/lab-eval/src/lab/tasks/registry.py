@@ -14,9 +14,8 @@ from typing import Any, Literal
 
 import psycopg
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 from lab.core.settings import get_settings
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TaskRubric(BaseModel):

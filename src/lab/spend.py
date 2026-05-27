@@ -14,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import psycopg
-
 from lab.core.settings import get_settings
 
 

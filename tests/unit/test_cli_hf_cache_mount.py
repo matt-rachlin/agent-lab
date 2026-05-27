@@ -96,8 +96,9 @@ def _run_agent_run(
     *,
     reranker_env: str | None = None,
 ) -> None:
-    from lab import cli as cli_mod
     from lab.core.settings import get_settings
+
+    from lab import cli as cli_mod
 
     # Reset settings cache so monkeypatched env or paths apply cleanly.
     monkeypatch.setattr("lab.core.settings._settings", None, raising=False)

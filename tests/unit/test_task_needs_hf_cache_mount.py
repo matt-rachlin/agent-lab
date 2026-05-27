@@ -9,7 +9,6 @@ skipped entirely, so we drop the mount to keep the sandbox surface lean.
 from __future__ import annotations
 
 import pytest
-
 from lab.agent.tools import TOOLS_NEEDING_HF_CACHE, task_needs_hf_cache_mount
 
 

@@ -38,9 +38,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
-from mcp.server.fastmcp import FastMCP
-
 from lab.agent.tools._common import http_allowlist
+from mcp.server.fastmcp import FastMCP
 
 mcp: FastMCP = FastMCP("lab.http_fetch")
 

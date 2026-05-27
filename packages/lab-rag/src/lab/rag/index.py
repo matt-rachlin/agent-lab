@@ -24,7 +24,6 @@ from typing import Any, Literal
 
 import lancedb
 import pyarrow as pa
-
 from lab.rag import RRF_K
 from lab.rag.embedder import embed_texts, tokenize_for_bm25
 

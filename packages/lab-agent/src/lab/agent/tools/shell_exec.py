@@ -10,9 +10,8 @@ from __future__ import annotations
 import subprocess
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
-
 from lab.agent.tools._common import WORKSPACE_ROOT
+from mcp.server.fastmcp import FastMCP
 
 mcp: FastMCP = FastMCP("lab.shell_exec")
 

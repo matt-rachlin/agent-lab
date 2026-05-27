@@ -14,6 +14,11 @@ from types import FrameType
 from typing import Any
 
 import psycopg
+from lab.core.gpu_lease import force_release, gpu_lease
+from lab.core.gpu_lease import status as gpu_lease_status
+from lab.core.manifest import capture as capture_manifest
+from lab.core.settings import get_settings
+from lab.tasks.registry import get_tasks
 from psycopg.types.json import Json
 from rich.console import Console
 from rich.progress import (
@@ -26,12 +31,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from lab.core.gpu_lease import force_release, gpu_lease
-from lab.core.gpu_lease import status as gpu_lease_status
-from lab.core.manifest import capture as capture_manifest
-from lab.core.settings import get_settings
 from lab.sweep.config import RunConfig, SweepConfig, config_hash, run_id
-from lab.tasks.registry import get_tasks
 
 console = Console()
 
@@ -595,9 +595,10 @@ def _execute_agent_cell(
     """Phase 6 path: build an Inspect task, run it, mirror the log into Postgres + MinIO."""
 
     from lab.agent.sandbox import Sandbox
+    from lab.tasks.registry import Task as LabTask
+
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
-    from lab.tasks.registry import Task as LabTask
 
     payload = cell.task_payload
 

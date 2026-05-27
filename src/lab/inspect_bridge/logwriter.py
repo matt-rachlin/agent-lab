@@ -25,10 +25,9 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
-from psycopg.types.json import Json
-
 from lab.core.minio_io import run_key, upload_bytes
 from lab.core.settings import get_settings
+from psycopg.types.json import Json
 
 
 @dataclass
