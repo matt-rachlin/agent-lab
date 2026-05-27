@@ -77,9 +77,7 @@ def _gen_question(client: Client, chunk_text: str, section: list[str], model: st
             },
             {
                 "role": "user",
-                "content": (
-                    f"Section: {sec}\nPassage:\n---\n{chunk_text[:1500]}\n---\nQuestion:"
-                ),
+                "content": (f"Section: {sec}\nPassage:\n---\n{chunk_text[:1500]}\n---\nQuestion:"),
             },
         ],
         options={"num_ctx": 4096, "temperature": 0.3},
@@ -144,7 +142,9 @@ def generate_or_load_queries(
     skipped = 0
     for i, row in enumerate(chosen, 1):
         try:
-            q = _gen_question(client, row["text"], list(row.get("section_path") or []), question_model)
+            q = _gen_question(
+                client, row["text"], list(row.get("section_path") or []), question_model
+            )
         except Exception as e:
             console.print(f"[red]q-gen failed[/] {row['chunk_id']}: {e}")
             skipped += 1
@@ -253,7 +253,9 @@ def hybrid_query_cached(
             d_score = d_sims.get(cid, 0.0)
             s_score = s_norms.get(cid, 0.0)
             combined = alpha * d_score + (1.0 - alpha) * s_score
-            scored.append(RankedHit(chunk_id=cid, score=combined, dense_score=d_score, sparse_score=s_score))
+            scored.append(
+                RankedHit(chunk_id=cid, score=combined, dense_score=d_score, sparse_score=s_score)
+            )
         scored.sort(key=lambda x: x.score, reverse=True)
         return scored[:k]
     else:
@@ -325,7 +327,9 @@ class PerQueryRow:
     ndcg_at_k: float
 
 
-def _bootstrap_ci(values: list[float], n_resamples: int = 2000, seed: int = 0) -> tuple[float, float]:
+def _bootstrap_ci(
+    values: list[float], n_resamples: int = 2000, seed: int = 0
+) -> tuple[float, float]:
     import random
 
     rnd = random.Random(seed)
@@ -493,13 +497,7 @@ def write_best_configs(metrics: list[CellMetrics], path: Path) -> None:
         for name, cm in by.items():
             if cm is None:
                 continue
-            val = (
-                cm.recall
-                if "recall" in name
-                else cm.mrr10
-                if "mrr" in name
-                else cm.ndcg
-            )
+            val = cm.recall if "recall" in name else cm.mrr10 if "mrr" in name else cm.ndcg
             w.writerow([name, cm.alpha, cm.k, f"{val:.4f}", cm.n_queries])
 
 
@@ -557,9 +555,7 @@ def compute_verdicts(metrics: list[CellMetrics]) -> dict[str, Any]:
             tied_with_endpoint = True
     h1_alpha_star = best_alpha if best_alpha in (0.25, 0.5, 0.75) else None
     h1_verdict = (
-        "MIXED"
-        if tied_with_endpoint
-        else ("CONFIRMED" if h1_alpha_star is not None else "REFUTED")
+        "MIXED" if tied_with_endpoint else ("CONFIRMED" if h1_alpha_star is not None else "REFUTED")
     )
 
     # H2 alpha: H1-confirmed alpha else 0.5
@@ -813,9 +809,7 @@ def _extend_query_cache(
     """
     # Existing extended cache?
     if cache_path.exists():
-        rows = [
-            json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()
-        ]
+        rows = [json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()]
         if len(rows) >= n_target:
             console.print(
                 f"[green]loaded[/] {len(rows)} cached queries from {cache_path} (n_target={n_target})"
@@ -838,13 +832,9 @@ def _extend_query_cache(
         if not seed_cache_path.exists():
             raise RuntimeError(f"seed cache missing: {seed_cache_path}")
         existing = [
-            json.loads(line)
-            for line in seed_cache_path.read_text().splitlines()
-            if line.strip()
+            json.loads(line) for line in seed_cache_path.read_text().splitlines() if line.strip()
         ]
-        console.print(
-            f"[dim]seeded[/] {len(existing)} queries from {seed_cache_path}"
-        )
+        console.print(f"[dim]seeded[/] {len(existing)} queries from {seed_cache_path}")
 
     used_ids = {r["origin_chunk_id"] for r in existing}
 
@@ -879,6 +869,7 @@ def _extend_query_cache(
     # unloaded so the question-gen model (qwen3:14b-q4_K_M, ~9 GB) has VRAM.
     try:
         import httpx as _httpx
+
         with _httpx.Client(timeout=10.0) as cli:
             cli.post(
                 "http://localhost:11434/api/generate",
@@ -889,6 +880,7 @@ def _extend_query_cache(
     rerank_url_env = os.environ.get("LAB_RAG_RERANKER_URL", "http://127.0.0.1:8401")
     try:
         import httpx as _httpx
+
         with _httpx.Client(timeout=15.0) as cli:
             cli.post(f"{rerank_url_env.rstrip('/')}/unload")
         time.sleep(1.0)
@@ -901,7 +893,9 @@ def _extend_query_cache(
     t0 = time.time()
     for i, row in enumerate(chosen, 1):
         try:
-            q = _gen_question(client, row["text"], list(row.get("section_path") or []), question_model)
+            q = _gen_question(
+                client, row["text"], list(row.get("section_path") or []), question_model
+            )
         except Exception as e:
             console.print(f"[red]q-gen failed[/] {row['chunk_id']}: {e}")
             skipped += 1
@@ -966,8 +960,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
 
     # Detect EXP-004c shape by presence of new per-cell fields.
     is_exp004c = any(
-        ("mode" in c) or ("truncation" in c) or ("rerank_model" in c)
-        for c in cells_cfg
+        ("mode" in c) or ("truncation" in c) or ("rerank_model" in c) for c in cells_cfg
     )
 
     out_summary = REPO_ROOT / cfg["outputs"]["summary"]
@@ -1037,9 +1030,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         if not cache_path.exists():
             console.print(f"[red]KILL[/] query cache missing at {cache_path}")
             return 2
-        rows = [
-            json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()
-        ]
+        rows = [json.loads(line) for line in cache_path.read_text().splitlines() if line.strip()]
         queries = [
             SyntheticQuery(
                 question=r["question"],
@@ -1071,9 +1062,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         return 2
     for q, v in zip(queries, res.vectors, strict=True):
         q.qvec = v
-    console.print(
-        f"[green]embeddings[/] {len(queries)} done ({time.time() - t_emb_start:.1f}s)"
-    )
+    console.print(f"[green]embeddings[/] {len(queries)} done ({time.time() - t_emb_start:.1f}s)")
 
     # If any cell uses the host-side reranker, the embedder + reranker fight
     # for the 12 GB VRAM. The embedding model holds ~8.8 GB; the reranker
@@ -1114,7 +1103,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
             )
         )
 
-    stage1_cache: dict[tuple[str, float | None, int], list[list[tuple[str, float, float, float, dict[str, Any]]]]] = {}
+    stage1_cache: dict[
+        tuple[str, float | None, int], list[list[tuple[str, float, float, float, dict[str, Any]]]]
+    ] = {}
     for key in stage1_keys:
         fusion, alpha, top_k = key
         out_list: list[list[tuple[str, float, float, float, dict[str, Any]]]] = []
@@ -1123,11 +1114,18 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
             assert q.qvec is not None
             try:
                 s1 = _stage1_only(
-                    tbl, all_rows, q.qvec, q.question,
-                    fusion=fusion, alpha=alpha, top_k_stage1=top_k,
+                    tbl,
+                    all_rows,
+                    q.qvec,
+                    q.question,
+                    fusion=fusion,
+                    alpha=alpha,
+                    top_k_stage1=top_k,
                 )
             except Exception as exc:
-                console.print(f"[red]stage-1 err[/] fusion={fusion} alpha={alpha} k={top_k} q={q.question[:40]}: {exc}")
+                console.print(
+                    f"[red]stage-1 err[/] fusion={fusion} alpha={alpha} k={top_k} q={q.question[:40]}: {exc}"
+                )
                 s1 = []
             out_list.append(s1)
         stage1_cache[key] = out_list
@@ -1197,12 +1195,11 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
             and cell_idx > last_rpc_idx
             and rerank_url
         ):
-            already_unloaded = any(
-                pc.get("cell") in inproc_cell_names for pc in per_cell_rows
-            )
+            already_unloaded = any(pc.get("cell") in inproc_cell_names for pc in per_cell_rows)
             if not already_unloaded:
                 try:
                     import httpx as _httpx
+
                     with _httpx.Client(timeout=15.0) as cli:
                         u = cli.post(f"{rerank_url.rstrip('/')}/unload")
                     console.print(
@@ -1289,9 +1286,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                     try:
                         r_inst = _get_inproc(cell_rerank_model)
                         t0_l = time.perf_counter()
-                        hits_local = r_inst.rerank(
-                            q.question, list(candidates), top_n=final_k
-                        )
+                        hits_local = r_inst.rerank(q.question, list(candidates), top_n=final_k)
                         lat_ms = (time.perf_counter() - t0_l) * 1000.0
                         final_hits = hits_local
                         final_ids = [h.get("chunk_id") for h in hits_local]
@@ -1318,9 +1313,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                     final_ids = []
                     final_hits = []
                     if qi < 5 or qi % 50 == 0:
-                        console.print(
-                            f"[red]rerank err[/] cell={name} qi={qi}: {err[:200]}"
-                        )
+                        console.print(f"[red]rerank err[/] cell={name} qi={qi}: {err[:200]}")
             else:
                 final_hits = []
                 final_ids = [c[0] for c in stage1[:final_k]]
@@ -1450,7 +1443,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         "rerank_error_rate": (rerank_err_count / rerank_call_count) if rerank_call_count else 0.0,
         "latency_ms_p50": p50,
         "latency_ms_p95": p95,
-        "latency_ms_mean": (sum(rerank_latencies) / len(rerank_latencies)) if rerank_latencies else 0.0,
+        "latency_ms_mean": (sum(rerank_latencies) / len(rerank_latencies))
+        if rerank_latencies
+        else 0.0,
         "latency_ms_max": max(rerank_latencies) if rerank_latencies else 0.0,
     }
     out_rerank_stats.write_text(json.dumps(stats, indent=2) + "\n")
@@ -1500,8 +1495,13 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
 
         # Paired Wilcoxon p-values for each rerank cell vs B0 (descriptive).
         wilcoxons: dict[str, dict[str, Any]] = {}
-        for cell_name in ("Q1_qwen3_1500c", "Q2_qwen3_2500c", "Q3_qwen3_notrunc",
-                          "Q4_qwen3_1500c_inproc", "B1_bge_1500c_inproc"):
+        for cell_name in (
+            "Q1_qwen3_1500c",
+            "Q2_qwen3_2500c",
+            "Q3_qwen3_notrunc",
+            "Q4_qwen3_1500c_inproc",
+            "B1_bge_1500c_inproc",
+        ):
             if cell_name not in cell_recalls_for_h2:
                 continue
             deltas = [
@@ -1518,7 +1518,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         lines.append(f"# {slug} — reranker validation at higher N — SUMMARY\n")
         lines.append(f"N queries: {len(queries)}  KB: {kb_name}\n")
         lines.append("\n## Per-cell metrics\n")
-        lines.append("| cell | mode | rerank model | trunc | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) | rerank p50 (ms) |")
+        lines.append(
+            "| cell | mode | rerank model | trunc | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) | rerank p50 (ms) |"
+        )
         lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for r in per_cell_rows:
             trunc_s = str(r.get("truncation", "")) if r.get("truncation") else "none"
@@ -1536,9 +1538,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
             f"- **H1** (best reranked ≥ 0.92, +10pp over B0={b0:.3f}): **{h1_verdict}**  "
             f"max(rerank cells) = {best_rerank:.3f}; delta over B0 = {best_rerank - b0:+.3f}"
         )
-        lines.append(
-            f"- **H2** (truncation monotone Q3>Q2>Q1): **{h2_verdict}**  {h2_reason}"
-        )
+        lines.append(f"- **H2** (truncation monotone Q3>Q2>Q1): **{h2_verdict}**  {h2_reason}")
         lines.append(
             f"- **H3** (|Q4-Q1| ≤ 0.02 — RPC overhead): **{h3_verdict}**  "
             f"Q4={q4:.3f}, Q1={q1:.3f}, delta={h3_delta:+.3f}"
@@ -1551,12 +1551,13 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         for cell_name, w in wilcoxons.items():
             ties = len(queries) - w["pos"] - w["neg"]
             lines.append(
-                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; "
-                f"p = {w['p']:.4f}"
+                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; " f"p = {w['p']:.4f}"
             )
         lines.append("\n## Rerank-service stats (RPC cells only)\n")
         lines.append(f"- calls: {stats['rerank_call_count']}")
-        lines.append(f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)")
+        lines.append(
+            f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)"
+        )
         lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
         lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
         lines.append(f"- latency mean: {stats['latency_ms_mean']:.1f} ms")
@@ -1602,8 +1603,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         for cell_name, w in wilcoxons.items():
             ties = len(queries) - w["pos"] - w["neg"]
             vlines.append(
-                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; "
-                f"p = {w['p']:.4f}"
+                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; " f"p = {w['p']:.4f}"
             )
 
         out_verdicts.write_text("\n".join(vlines) + "\n")
@@ -1649,7 +1649,9 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         lines.append(f"# {slug} — reranker validation — SUMMARY\n")
         lines.append(f"N queries: {len(queries)}  KB: {kb_name}  Rerank model: {rerank_model}\n")
         lines.append("\n## Per-cell metrics\n")
-        lines.append("| cell | fusion | alpha | stage-1 top-k | rerank | final-k | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) |")
+        lines.append(
+            "| cell | fusion | alpha | stage-1 top-k | rerank | final-k | recall@5 | MRR@10 | nDCG@10 | gold-in-pool | errors | wall (s) |"
+        )
         lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
         for r in per_cell_rows:
             lines.append(
@@ -1659,15 +1661,23 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
                 f"{r['gold_in_stage1_pool_frac']} | {r['errors']} | {r['wall_sec']} |"
             )
         lines.append("\n## Hypothesis verdicts\n")
-        lines.append(f"- H1 (aggressive, ≥0.92 best reranked): **{h1_verdict}**  "
-                     f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank-c0:+.3f}")
-        lines.append(f"- H2 (rerank always improves, paired Wilcoxon both p<0.05): **{h2_verdict}**  "
-                     f"C2 vs C0 p={p_c2:.4f}; C3 vs C1 p={p_c3:.4f}")
-        lines.append(f"- H3 (informational): delta_alpha (C1-C0)={h3_delta_alpha:+.3f}; "
-                     f"delta_rerank_arm (C3-C2)={h3_delta_rerank_arm:+.3f}")
+        lines.append(
+            f"- H1 (aggressive, ≥0.92 best reranked): **{h1_verdict}**  "
+            f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank-c0:+.3f}"
+        )
+        lines.append(
+            f"- H2 (rerank always improves, paired Wilcoxon both p<0.05): **{h2_verdict}**  "
+            f"C2 vs C0 p={p_c2:.4f}; C3 vs C1 p={p_c3:.4f}"
+        )
+        lines.append(
+            f"- H3 (informational): delta_alpha (C1-C0)={h3_delta_alpha:+.3f}; "
+            f"delta_rerank_arm (C3-C2)={h3_delta_rerank_arm:+.3f}"
+        )
         lines.append("\n## Rerank-service stats\n")
         lines.append(f"- calls: {stats['rerank_call_count']}")
-        lines.append(f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)")
+        lines.append(
+            f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)"
+        )
         lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
         lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
         lines.append(f"- latency mean: {stats['latency_ms_mean']:.1f} ms")
@@ -1687,16 +1697,22 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         vlines.append(f"- max(C2, C3) = {best_rerank:.3f}; threshold = 0.920")
         vlines.append(f"- delta over C0: {best_rerank - c0:+.3f}")
 
-        vlines.append("\n## H2 — rerank always improves (paired Wilcoxon, one-sided, both p<0.05)\n")
+        vlines.append(
+            "\n## H2 — rerank always improves (paired Wilcoxon, one-sided, both p<0.05)\n"
+        )
         vlines.append(f"**Verdict: {h2_verdict}**\n")
         n_pos_c2 = sum(1 for d in deltas_c2_vs_c0 if d > 0)
         n_neg_c2 = sum(1 for d in deltas_c2_vs_c0 if d < 0)
         n_pos_c3 = sum(1 for d in deltas_c3_vs_c1 if d > 0)
         n_neg_c3 = sum(1 for d in deltas_c3_vs_c1 if d < 0)
-        vlines.append(f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries)-n_pos_c2-n_neg_c2}; "
-                      f"Wilcoxon one-sided p = {p_c2:.4f}")
-        vlines.append(f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries)-n_pos_c3-n_neg_c3}; "
-                      f"Wilcoxon one-sided p = {p_c3:.4f}")
+        vlines.append(
+            f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries)-n_pos_c2-n_neg_c2}; "
+            f"Wilcoxon one-sided p = {p_c2:.4f}"
+        )
+        vlines.append(
+            f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries)-n_pos_c3-n_neg_c3}; "
+            f"Wilcoxon one-sided p = {p_c3:.4f}"
+        )
 
         vlines.append("\n## H3 — RRF beats alpha-blend as stage-1 (informational)\n")
         vlines.append(f"- delta_alpha (C1 - C0): {h3_delta_alpha:+.3f}")

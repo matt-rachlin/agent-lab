@@ -178,9 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     # supports add_columns / merge_insert, prefer that.
     if updates:
         try:
-            tbl.merge_insert("chunk_id").when_matched_update_all().when_not_matched_insert_all().execute(
-                updates
-            )
+            tbl.merge_insert(
+                "chunk_id"
+            ).when_matched_update_all().when_not_matched_insert_all().execute(updates)
         except Exception:
             # Fallback: rewrite the table with the new columns populated.
             # We pull all rows, merge updates by chunk_id, and replace the

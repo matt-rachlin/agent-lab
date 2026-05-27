@@ -26,15 +26,9 @@ console = Console()
 
 @app.command()
 def main(
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Refresh even if the cache is fresh."
-    ),
-    db: Path = typer.Option(
-        CACHE_DEFAULT, "--db", help="Path to the DuckDB cache file."
-    ),
-    max_age_min: int = typer.Option(
-        30, "--max-age-min", help="Cache is stale beyond this age."
-    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Refresh even if the cache is fresh."),
+    db: Path = typer.Option(CACHE_DEFAULT, "--db", help="Path to the DuckDB cache file."),
+    max_age_min: int = typer.Option(30, "--max-age-min", help="Cache is stale beyond this age."),
 ) -> None:
     """Refresh the cache. Skips if fresh (unless --force)."""
     db = db.expanduser()

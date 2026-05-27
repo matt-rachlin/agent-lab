@@ -140,9 +140,9 @@ def test_one_task_per_tool_runs_through_harness(tool_name: str, task: Task, tmp_
 
     # The loop made at least one turn (even if the model refused, we
     # still get one turn-entry for the refusal).
-    assert lab_agent.get("actual_turns", 0) >= 1, (
-        f"{task.slug}: zero turns recorded — harness did not run the loop"
-    )
+    assert (
+        lab_agent.get("actual_turns", 0) >= 1
+    ), f"{task.slug}: zero turns recorded — harness did not run the loop"
 
     # Termination is one of the known reasons; a traceback would land here
     # too but `terminated_reason` would not be a sanctioned value.
@@ -151,14 +151,14 @@ def test_one_task_per_tool_runs_through_harness(tool_name: str, task: Task, tmp_
         "budget_exhausted",
         "max_turns_reached",
     }
-    assert lab_agent.get("terminated_reason") in sanctioned, (
-        f"{task.slug}: terminated_reason={lab_agent.get('terminated_reason')!r}"
-    )
+    assert (
+        lab_agent.get("terminated_reason") in sanctioned
+    ), f"{task.slug}: terminated_reason={lab_agent.get('terminated_reason')!r}"
 
     # The adapter wired up at least one scorer (end_state, tool_correctness,
     # or budget_respected — budget_respected is always added).
     scores = sample.scores or {}
     assert scores, f"{task.slug}: no scorers populated"
-    assert "budget_respected" in scores, (
-        f"{task.slug}: budget_respected scorer missing — adapter may be broken"
-    )
+    assert (
+        "budget_respected" in scores
+    ), f"{task.slug}: budget_respected scorer missing — adapter may be broken"

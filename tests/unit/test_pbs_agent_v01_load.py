@@ -61,18 +61,20 @@ def test_slugs_are_unique() -> None:
 
 def test_difficulty_set_on_every_task() -> None:
     for task in _all_tasks():
-        assert task.difficulty in {"easy", "medium", "hard"}, (
-            f"{task.slug} difficulty={task.difficulty!r}"
-        )
+        assert task.difficulty in {
+            "easy",
+            "medium",
+            "hard",
+        }, f"{task.slug} difficulty={task.difficulty!r}"
 
 
 def test_every_referenced_tool_exists() -> None:
     for task in _all_tasks():
         for spec in task.tools or []:
             name = spec.get("name")
-            assert name in TOOL_SERVERS, (
-                f"{task.slug} references unknown tool {name!r}; known: {sorted(TOOL_SERVERS)}"
-            )
+            assert (
+                name in TOOL_SERVERS
+            ), f"{task.slug} references unknown tool {name!r}; known: {sorted(TOOL_SERVERS)}"
 
 
 def test_every_tool_is_touched_by_some_task() -> None:
@@ -114,9 +116,9 @@ def test_success_predicate_shape() -> None:
     for task in _all_tasks():
         sp = task.success_predicate
         assert sp is not None, f"{task.slug} missing success_predicate"
-        assert sp.get("type") in valid_types, (
-            f"{task.slug} predicate type {sp.get('type')!r} not in {valid_types}"
-        )
+        assert (
+            sp.get("type") in valid_types
+        ), f"{task.slug} predicate type {sp.get('type')!r} not in {valid_types}"
 
 
 def test_at_least_one_db_query_predicate() -> None:
@@ -135,9 +137,9 @@ def test_tool_call_rubrics_have_target_tool() -> None:
             assert task.rubric.target_tool, f"{task.slug} tool_call rubric missing target_tool"
             # target_tool must be in the task's allowed tools list
             allowed = {spec.get("name") for spec in (task.tools or [])}
-            assert task.rubric.target_tool in allowed, (
-                f"{task.slug} target_tool {task.rubric.target_tool!r} not in tools={allowed}"
-            )
+            assert (
+                task.rubric.target_tool in allowed
+            ), f"{task.slug} target_tool {task.rubric.target_tool!r} not in tools={allowed}"
 
 
 def test_http_tasks_use_fixture_dir() -> None:
@@ -149,17 +151,17 @@ def test_http_tasks_use_fixture_dir() -> None:
             continue
         sb = task.sandbox or {}
         env = sb.get("env") or {}
-        assert env.get("LAB_HTTP_FIXTURE_DIR"), (
-            f"{task.slug} uses http_fetch but no LAB_HTTP_FIXTURE_DIR in sandbox.env"
-        )
+        assert env.get(
+            "LAB_HTTP_FIXTURE_DIR"
+        ), f"{task.slug} uses http_fetch but no LAB_HTTP_FIXTURE_DIR in sandbox.env"
         # Must also have the http allow-list and a network list.
-        assert env.get("LAB_HTTP_ALLOWLIST"), (
-            f"{task.slug} uses http_fetch but no LAB_HTTP_ALLOWLIST in sandbox.env"
-        )
+        assert env.get(
+            "LAB_HTTP_ALLOWLIST"
+        ), f"{task.slug} uses http_fetch but no LAB_HTTP_ALLOWLIST in sandbox.env"
         network = sb.get("network")
-        assert isinstance(network, list), (
-            f"{task.slug} uses http_fetch but sandbox.network is not a list"
-        )
+        assert isinstance(
+            network, list
+        ), f"{task.slug} uses http_fetch but sandbox.network is not a list"
         assert network, f"{task.slug} uses http_fetch but sandbox.network is empty"
 
 

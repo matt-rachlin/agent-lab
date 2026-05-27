@@ -154,7 +154,9 @@ def mean(xs: list[float]) -> float:
     return sum(xs) / len(xs) if xs else float("nan")
 
 
-def bootstrap_ci(xs: list[float], n_resamples: int = 2000, alpha: float = 0.05) -> tuple[float, float]:
+def bootstrap_ci(
+    xs: list[float], n_resamples: int = 2000, alpha: float = 0.05
+) -> tuple[float, float]:
     if not xs:
         return (float("nan"), float("nan"))
     import random
@@ -183,23 +185,49 @@ def write_per_cell_runs(cells: list[Cell], path: Path) -> None:
         w = csv.writer(f)
         w.writerow(
             [
-                "model", "task", "condition", "seed", "status",
-                "end_state", "tool_correctness", "budget_respected",
-                "recall_at_k", "mrr", "ndcg", "attribution",
-                "faithfulness", "trajectory_judge",
-                "actual_turns", "tool_call_count", "kb_query_calls",
-                "predicate_type", "error",
+                "model",
+                "task",
+                "condition",
+                "seed",
+                "status",
+                "end_state",
+                "tool_correctness",
+                "budget_respected",
+                "recall_at_k",
+                "mrr",
+                "ndcg",
+                "attribution",
+                "faithfulness",
+                "trajectory_judge",
+                "actual_turns",
+                "tool_call_count",
+                "kb_query_calls",
+                "predicate_type",
+                "error",
             ]
         )
         for c in cells:
             w.writerow(
                 [
-                    c.model, c.task, c.condition, c.seed, c.status,
-                    c.end_state, c.tool_correctness, c.budget_respected,
-                    c.recall_at_k, c.mrr, c.ndcg, c.attribution,
-                    c.faithfulness, c.trajectory_judge,
-                    c.actual_turns, c.tool_call_count, c.kb_query_calls,
-                    c.predicate_type, (c.error or "")[:200],
+                    c.model,
+                    c.task,
+                    c.condition,
+                    c.seed,
+                    c.status,
+                    c.end_state,
+                    c.tool_correctness,
+                    c.budget_respected,
+                    c.recall_at_k,
+                    c.mrr,
+                    c.ndcg,
+                    c.attribution,
+                    c.faithfulness,
+                    c.trajectory_judge,
+                    c.actual_turns,
+                    c.tool_call_count,
+                    c.kb_query_calls,
+                    c.predicate_type,
+                    (c.error or "")[:200],
                 ]
             )
 
@@ -221,12 +249,19 @@ def write_per_model_condition(cells: list[Cell], path: Path) -> None:
             kb_calls = [c.kb_query_calls for c in mc_cells]
             rows.append(
                 [
-                    m, cond, len(mc_cells),
-                    f"{mean(es):.3f}", len(es),
-                    f"{mean(tc):.3f}", len(tc),
-                    f"{mean(faith):.3f}", len(faith),
-                    f"{mean(rec):.3f}", len(rec),
-                    f"{mean(attr):.3f}", len(attr),
+                    m,
+                    cond,
+                    len(mc_cells),
+                    f"{mean(es):.3f}",
+                    len(es),
+                    f"{mean(tc):.3f}",
+                    len(tc),
+                    f"{mean(faith):.3f}",
+                    len(faith),
+                    f"{mean(rec):.3f}",
+                    len(rec),
+                    f"{mean(attr):.3f}",
+                    len(attr),
                     f"{mean([float(x) for x in kb_calls]):.2f}",
                 ]
             )
@@ -234,12 +269,19 @@ def write_per_model_condition(cells: list[Cell], path: Path) -> None:
         w = csv.writer(f)
         w.writerow(
             [
-                "model", "condition", "n_cells",
-                "end_state_mean", "n_end_state",
-                "tool_correctness_mean", "n_tool_correctness",
-                "faithfulness_mean", "n_faithfulness",
-                "recall_at_k_mean", "n_recall",
-                "attribution_mean", "n_attribution",
+                "model",
+                "condition",
+                "n_cells",
+                "end_state_mean",
+                "n_end_state",
+                "tool_correctness_mean",
+                "n_tool_correctness",
+                "faithfulness_mean",
+                "n_faithfulness",
+                "recall_at_k_mean",
+                "n_recall",
+                "attribution_mean",
+                "n_attribution",
                 "mean_kb_query_calls",
             ]
         )
@@ -254,7 +296,9 @@ def write_faithfulness_slice(cells: list[Cell], path: Path) -> None:
         w = csv.writer(f)
         w.writerow(["model", "condition", "seed", "faithfulness", "end_state", "kb_query_calls"])
         for c in rows:
-            w.writerow([c.model, c.condition, c.seed, c.faithfulness, c.end_state, c.kb_query_calls])
+            w.writerow(
+                [c.model, c.condition, c.seed, c.faithfulness, c.end_state, c.kb_query_calls]
+            )
 
 
 def write_kb_query_invocations(cells: list[Cell], path: Path) -> None:
@@ -262,18 +306,25 @@ def write_kb_query_invocations(cells: list[Cell], path: Path) -> None:
     # mean(kb_query_calls) per (model, task) over the WITH condition
     with path.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["model", "task", "condition", "n_cells", "mean_kb_query_calls", "min_kb_query_calls"])
+        w.writerow(
+            ["model", "task", "condition", "n_cells", "mean_kb_query_calls", "min_kb_query_calls"]
+        )
         for m in ALL_MODELS:
             tasks = sorted({c.task for c in cells if c.model == m})
             for t in tasks:
                 for cond in CONDITIONS:
-                    mt_cells = [c for c in cells if c.model == m and c.task == t and c.condition == cond]
+                    mt_cells = [
+                        c for c in cells if c.model == m and c.task == t and c.condition == cond
+                    ]
                     if not mt_cells:
                         continue
                     calls = [c.kb_query_calls for c in mt_cells]
                     w.writerow(
                         [
-                            m, t, cond, len(mt_cells),
+                            m,
+                            t,
+                            cond,
+                            len(mt_cells),
                             f"{mean([float(x) for x in calls]):.2f}",
                             min(calls) if calls else 0,
                         ]
@@ -287,13 +338,16 @@ def write_kb_query_invocations(cells: list[Cell], path: Path) -> None:
 
 def compute_h1(cells: list[Cell]) -> dict[str, Any]:
     """H1 -- delta_local - delta_cloud >= 0.10 on end_state."""
+
     def class_delta(class_models: list[str]) -> tuple[float, float, float, int]:
         with_es = [
-            float(c.end_state) for c in cells
+            float(c.end_state)
+            for c in cells
             if c.model in class_models and c.condition == "with-kb" and c.end_state is not None
         ]
         without_es = [
-            float(c.end_state) for c in cells
+            float(c.end_state)
+            for c in cells
             if c.model in class_models and c.condition == "without-kb" and c.end_state is not None
         ]
         w = mean(with_es)
@@ -303,20 +357,23 @@ def compute_h1(cells: list[Cell]) -> dict[str, Any]:
 
     w_local, wo_local, delta_local, n_local = class_delta(LOCAL_MODELS)
     w_cloud, wo_cloud, delta_cloud, n_cloud = class_delta(CLOUD_MODELS)
-    diff = delta_local - delta_cloud if not (math.isnan(delta_local) or math.isnan(delta_cloud)) else float("nan")
-    verdict = (
-        "UNDEFINED" if math.isnan(diff)
-        else "CONFIRMED" if diff >= 0.10
-        else "REFUTED"
+    diff = (
+        delta_local - delta_cloud
+        if not (math.isnan(delta_local) or math.isnan(delta_cloud))
+        else float("nan")
     )
+    verdict = "UNDEFINED" if math.isnan(diff) else "CONFIRMED" if diff >= 0.10 else "REFUTED"
     return {
         "verdict": verdict,
         "delta_local": delta_local,
         "delta_cloud": delta_cloud,
         "delta_local_minus_cloud": diff,
-        "with_local": w_local, "without_local": wo_local,
-        "with_cloud": w_cloud, "without_cloud": wo_cloud,
-        "n_local_runs": n_local, "n_cloud_runs": n_cloud,
+        "with_local": w_local,
+        "without_local": wo_local,
+        "with_cloud": w_cloud,
+        "without_cloud": wo_cloud,
+        "n_local_runs": n_local,
+        "n_cloud_runs": n_cloud,
     }
 
 
@@ -341,24 +398,33 @@ def compute_h2(cells: list[Cell]) -> dict[str, Any]:
 def compute_h3(cells: list[Cell]) -> dict[str, Any]:
     """H3 — faithfulness with-kb - without-kb ≥ 0.10 on task 6."""
     with_f = [
-        float(c.faithfulness) for c in cells
+        float(c.faithfulness)
+        for c in cells
         if c.task == FAITHFULNESS_TASK and c.condition == "with-kb" and c.faithfulness is not None
     ]
     without_f = [
-        float(c.faithfulness) for c in cells
-        if c.task == FAITHFULNESS_TASK and c.condition == "without-kb" and c.faithfulness is not None
+        float(c.faithfulness)
+        for c in cells
+        if c.task == FAITHFULNESS_TASK
+        and c.condition == "without-kb"
+        and c.faithfulness is not None
     ]
     m_with = mean(with_f)
     m_without = mean(without_f)
-    delta = m_with - m_without if not (math.isnan(m_with) or math.isnan(m_without)) else float("nan")
+    delta = (
+        m_with - m_without if not (math.isnan(m_with) or math.isnan(m_without)) else float("nan")
+    )
     if math.isnan(delta) or not with_f or not without_f:
         verdict = "UNDEFINED"
     else:
         verdict = "CONFIRMED" if delta >= 0.10 else "REFUTED"
     return {
-        "verdict": verdict, "delta": delta,
-        "with_mean": m_with, "without_mean": m_without,
-        "n_with": len(with_f), "n_without": len(without_f),
+        "verdict": verdict,
+        "delta": delta,
+        "with_mean": m_with,
+        "without_mean": m_without,
+        "n_with": len(with_f),
+        "n_without": len(without_f),
     }
 
 
@@ -372,9 +438,13 @@ def compute_h4(cells: list[Cell]) -> dict[str, Any]:
         tasks = sorted({c.task for c in cells if c.model == m})
         for t in tasks:
             mt = [
-                c for c in cells
-                if c.model == m and c.task == t and c.condition == "without-kb"
-                and c.predicate_type in eligible_predicates and c.end_state is not None
+                c
+                for c in cells
+                if c.model == m
+                and c.task == t
+                and c.condition == "without-kb"
+                and c.predicate_type in eligible_predicates
+                and c.end_state is not None
             ]
             if not mt:
                 continue
@@ -386,7 +456,12 @@ def compute_h4(cells: list[Cell]) -> dict[str, Any]:
 
 
 def write_verdicts_md(
-    cells: list[Cell], h1: dict[str, Any], h2: dict[str, Any], h3: dict[str, Any], h4: dict[str, Any], path: Path
+    cells: list[Cell],
+    h1: dict[str, Any],
+    h2: dict[str, Any],
+    h3: dict[str, Any],
+    h4: dict[str, Any],
+    path: Path,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
@@ -396,16 +471,24 @@ def write_verdicts_md(
     lines.append(f"# EXP-003b verdicts — {n} cells ({n_done} done, {n_err} error)\n")
 
     # H1
-    lines.append("## H1 — Locals gain more from kb_query than cloud (delta_local - delta_cloud >= 0.10)\n")
-    lines.append(f"- delta_local  (local with - local without):   **{h1['delta_local']:.3f}**  "
-                 f"(with={h1['with_local']:.3f}, without={h1['without_local']:.3f}, n={h1['n_local_runs']})")
-    lines.append(f"- delta_cloud  (cloud with - cloud without):   **{h1['delta_cloud']:.3f}**  "
-                 f"(with={h1['with_cloud']:.3f}, without={h1['without_cloud']:.3f}, n={h1['n_cloud_runs']})")
+    lines.append(
+        "## H1 — Locals gain more from kb_query than cloud (delta_local - delta_cloud >= 0.10)\n"
+    )
+    lines.append(
+        f"- delta_local  (local with - local without):   **{h1['delta_local']:.3f}**  "
+        f"(with={h1['with_local']:.3f}, without={h1['without_local']:.3f}, n={h1['n_local_runs']})"
+    )
+    lines.append(
+        f"- delta_cloud  (cloud with - cloud without):   **{h1['delta_cloud']:.3f}**  "
+        f"(with={h1['with_cloud']:.3f}, without={h1['without_cloud']:.3f}, n={h1['n_cloud_runs']})"
+    )
     lines.append(f"- difference: **{h1['delta_local_minus_cloud']:.3f}**  (threshold 0.100)")
     lines.append(f"- **H1: {h1['verdict']}**\n")
 
     # H2
-    lines.append("## H2 — Models actually call kb_query when available (mean >= 1.0 per (model, task) with-kb cell)\n")
+    lines.append(
+        "## H2 — Models actually call kb_query when available (mean >= 1.0 per (model, task) with-kb cell)\n"
+    )
     lines.append(f"- (model, task) cells checked: {h2['n_cells_checked']}")
     if h2["failures"]:
         lines.append("- FAILING cells (mean kb_query calls < 1.0):")
@@ -416,14 +499,20 @@ def write_verdicts_md(
     lines.append(f"- **H2: {h2['verdict']}**\n")
 
     # H3
-    lines.append(f"## H3 — Faithfulness improves with kb_query on {FAITHFULNESS_TASK} (delta >= 0.10)\n")
+    lines.append(
+        f"## H3 — Faithfulness improves with kb_query on {FAITHFULNESS_TASK} (delta >= 0.10)\n"
+    )
     lines.append(f"- with-kb mean faithfulness:   **{h3['with_mean']:.3f}** (n={h3['n_with']})")
-    lines.append(f"- without-kb mean faithfulness: **{h3['without_mean']:.3f}** (n={h3['n_without']})")
+    lines.append(
+        f"- without-kb mean faithfulness: **{h3['without_mean']:.3f}** (n={h3['n_without']})"
+    )
     lines.append(f"- delta: **{h3['delta']:.3f}**  (threshold 0.100)")
     lines.append(f"- **H3: {h3['verdict']}**\n")
 
     # H4
-    lines.append("## H4 — At least one (model, task) cell in without-kb with mean(end_state) <= 0.25 on a KB task\n")
+    lines.append(
+        "## H4 — At least one (model, task) cell in without-kb with mean(end_state) <= 0.25 on a KB task\n"
+    )
     if h4["failing_cells"]:
         lines.append("- Failing (model, task) cells in without-kb:")
         for m, t, es, nc in h4["failing_cells"]:
@@ -436,7 +525,12 @@ def write_verdicts_md(
 
 
 def write_summary_md(
-    cells: list[Cell], h1: dict[str, Any], h2: dict[str, Any], h3: dict[str, Any], h4: dict[str, Any], path: Path
+    cells: list[Cell],
+    h1: dict[str, Any],
+    h2: dict[str, Any],
+    h3: dict[str, Any],
+    h4: dict[str, Any],
+    path: Path,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
@@ -450,18 +544,36 @@ def write_summary_md(
     lines.append("| model | with-kb | without-kb | delta |")
     lines.append("|---|---|---|---|")
     for m in ALL_MODELS:
-        w_vals = [float(c.end_state) for c in cells if c.model == m and c.condition == "with-kb" and c.end_state is not None]
-        wo_vals = [float(c.end_state) for c in cells if c.model == m and c.condition == "without-kb" and c.end_state is not None]
+        w_vals = [
+            float(c.end_state)
+            for c in cells
+            if c.model == m and c.condition == "with-kb" and c.end_state is not None
+        ]
+        wo_vals = [
+            float(c.end_state)
+            for c in cells
+            if c.model == m and c.condition == "without-kb" and c.end_state is not None
+        ]
         wm = mean(w_vals)
         wo = mean(wo_vals)
         d = wm - wo if not (math.isnan(wm) or math.isnan(wo)) else float("nan")
-        lines.append(f"| {m} | {wm:.3f} (n={len(w_vals)}) | {wo:.3f} (n={len(wo_vals)}) | {d:+.3f} |")
+        lines.append(
+            f"| {m} | {wm:.3f} (n={len(w_vals)}) | {wo:.3f} (n={len(wo_vals)}) | {d:+.3f} |"
+        )
 
     lines.append("\n## Verdicts\n")
-    lines.append(f"- **H1** (locals gain more): **{h1['verdict']}** (delta_local - delta_cloud = {h1['delta_local_minus_cloud']:+.3f})")
-    lines.append(f"- **H2** (models call kb_query): **{h2['verdict']}** ({len(h2['failures'])} failing cells)")
-    lines.append(f"- **H3** (faithfulness improves with KB): **{h3['verdict']}** (delta = {h3['delta']:+.3f})")
-    lines.append(f"- **H4** (catastrophic without-KB on KB task): **{h4['verdict']}** ({len(h4['failing_cells'])} failing cells)")
+    lines.append(
+        f"- **H1** (locals gain more): **{h1['verdict']}** (delta_local - delta_cloud = {h1['delta_local_minus_cloud']:+.3f})"
+    )
+    lines.append(
+        f"- **H2** (models call kb_query): **{h2['verdict']}** ({len(h2['failures'])} failing cells)"
+    )
+    lines.append(
+        f"- **H3** (faithfulness improves with KB): **{h3['verdict']}** (delta = {h3['delta']:+.3f})"
+    )
+    lines.append(
+        f"- **H4** (catastrophic without-KB on KB task): **{h4['verdict']}** ({len(h4['failing_cells'])} failing cells)"
+    )
 
     path.write_text("\n".join(lines) + "\n")
 

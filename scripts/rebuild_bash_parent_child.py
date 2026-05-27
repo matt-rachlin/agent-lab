@@ -268,7 +268,9 @@ def main() -> int:
 
     t0 = time.time()
     src_manifest = load_manifest(src_kb / "manifest.yaml")
-    _eprint(f"[1/6] loaded v1 manifest: {len(src_manifest.sources)} sources, status={src_manifest.status}")
+    _eprint(
+        f"[1/6] loaded v1 manifest: {len(src_manifest.sources)} sources, status={src_manifest.status}"
+    )
 
     sources = _load_sources(src_kb, src_manifest)
     _eprint(f"[2/6] loaded {len(sources)} normalized source files")
@@ -302,14 +304,18 @@ def main() -> int:
                 first_parent = ch
                 break
         if first_parent is not None:
-            _eprint(f"first parent ({first_parent.tokens} toks, section={first_parent.section_path}):")
+            _eprint(
+                f"first parent ({first_parent.tokens} toks, section={first_parent.section_path}):"
+            )
             _eprint(f"  {first_parent.text[:200]!r} ...")
         return 0
 
     # --- Build path: prepare dest, write a v2 manifest in 'chunking_done' state ---
     dst_kb.mkdir(parents=True, exist_ok=True)
     (dst_kb / "index").mkdir(exist_ok=True)
-    v2 = _v2_manifest(src_manifest, parent_target=args.parent_target, child_target=args.child_target)
+    v2 = _v2_manifest(
+        src_manifest, parent_target=args.parent_target, child_target=args.child_target
+    )
     v2.stats.chunk_count = n_total
     _advance_status(dst_kb, v2, "chunking_done")
     _eprint(f"[3/6] wrote v2 manifest skeleton at {dst_kb / 'manifest.yaml'}")
@@ -318,7 +324,9 @@ def main() -> int:
 
     # --- Embed ---
     _advance_status(dst_kb, v2, "embedding_pending")
-    _eprint(f"[4/6] embedding {len(embed_inputs)} chunks via {DEFAULT_EMBED_MODEL} (batch={args.embed_batch})...")
+    _eprint(
+        f"[4/6] embedding {len(embed_inputs)} chunks via {DEFAULT_EMBED_MODEL} (batch={args.embed_batch})..."
+    )
     t_emb0 = time.time()
 
     progress_last = [0]
@@ -348,9 +356,7 @@ def main() -> int:
         v2.models.embedding.quantization = "Q8_0" if "q8" in er.model else ""
 
     if len(er.vectors) != len(rows):
-        _eprint(
-            f"ERROR: embed count mismatch — {len(er.vectors)} vectors vs {len(rows)} rows"
-        )
+        _eprint(f"ERROR: embed count mismatch — {len(er.vectors)} vectors vs {len(rows)} rows")
         v2.status = "failed"
         write_manifest(dst_kb / "manifest.yaml", v2)
         return 3

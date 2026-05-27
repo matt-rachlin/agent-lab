@@ -65,9 +65,7 @@ class RefreshReport:
     db_path: Path
     table_counts: dict[str, int] = field(default_factory=dict)
     wall_time_sec: float = 0.0
-    refreshed_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=UTC)
-    )
+    refreshed_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
 
     def __str__(self) -> str:
         lines = [f"refreshed {self.db_path} in {self.wall_time_sec:.2f}s"]
@@ -138,9 +136,7 @@ def is_stale(*, max_age_min: int = 30, db_path: Path = CACHE_DEFAULT) -> bool:
     try:
         con = duckdb.connect(str(db_path), read_only=True)
         try:
-            row = con.execute(
-                "SELECT (now() - refreshed_at) AS age FROM _meta LIMIT 1"
-            ).fetchone()
+            row = con.execute("SELECT (now() - refreshed_at) AS age FROM _meta LIMIT 1").fetchone()
         finally:
             con.close()
     except duckdb.Error:
@@ -159,9 +155,7 @@ def query(sql: str, *, db_path: Path = CACHE_DEFAULT) -> pd.DataFrame:
     Raises FileNotFoundError if the cache file doesn't exist.
     """
     if not db_path.exists():
-        raise FileNotFoundError(
-            f"analytics cache not found at {db_path} — run `refresh()` first"
-        )
+        raise FileNotFoundError(f"analytics cache not found at {db_path} — run `refresh()` first")
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         return con.execute(sql).df()

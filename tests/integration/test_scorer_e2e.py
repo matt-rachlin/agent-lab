@@ -121,15 +121,15 @@ def test_scorers_fire_e2e_workspace_predicate(pg: Any, tmp_path: Any) -> None:
     # value.
     scores = sample.scores or {}
     score_names = list(scores.keys())
-    assert any("end_state" in n for n in score_names), (
-        f"end_state missing from scores: {score_names}"
-    )
-    assert any("tool_correctness" in n for n in score_names), (
-        f"tool_correctness missing from scores: {score_names}"
-    )
-    assert any("budget_respected" in n for n in score_names), (
-        f"budget_respected missing from scores: {score_names}"
-    )
+    assert any(
+        "end_state" in n for n in score_names
+    ), f"end_state missing from scores: {score_names}"
+    assert any(
+        "tool_correctness" in n for n in score_names
+    ), f"tool_correctness missing from scores: {score_names}"
+    assert any(
+        "budget_respected" in n for n in score_names
+    ), f"budget_respected missing from scores: {score_names}"
 
     # At least one scorer must have produced a numeric value (not NOANSWER).
     numeric_seen = False

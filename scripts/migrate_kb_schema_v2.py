@@ -134,9 +134,13 @@ def migrate(kb_dir: Path, *, dry_run: bool) -> dict[str, object]:
     before_version, before_cols = _detect_schema_version(kb_dir)
     rows_touched, added_cols = _add_columns(kb_dir, dry_run=dry_run)
     manifest_old, manifest_new = _bump_manifest(kb_dir, dry_run=dry_run)
-    after_version, _after_cols = _detect_schema_version(kb_dir) if not dry_run else (
-        2 if added_cols else before_version,
-        before_cols | added_cols,
+    after_version, _after_cols = (
+        _detect_schema_version(kb_dir)
+        if not dry_run
+        else (
+            2 if added_cols else before_version,
+            before_cols | added_cols,
+        )
     )
 
     return {

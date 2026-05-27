@@ -42,6 +42,7 @@ LOCAL_MODELS = ["qwen3-14b-q4", "llama3.1-8b-q4"]
 CLOUD_MODELS = ["gpt-oss-20b-cloud", "glm-5.1-cloud", "gpt-oss-120b-cloud"]
 ALL_MODELS = LOCAL_MODELS + CLOUD_MODELS
 
+
 # Per-(model, task, seed) cell.
 @dataclass
 class Cell:
@@ -279,9 +280,7 @@ def per_model_scorer_mean(
     return (m, len(vals), lo, hi)
 
 
-def per_model_task_pass_at_1(
-    cells: list[Cell], model: str, scorer: str
-) -> dict[str, float]:
+def per_model_task_pass_at_1(cells: list[Cell], model: str, scorer: str) -> dict[str, float]:
     """pass@1 = mean of scorer across seeds for each task."""
     bucket: dict[str, list[float]] = {}
     for c in cells:
@@ -294,9 +293,7 @@ def per_model_task_pass_at_1(
     return {t: sum(vs) / len(vs) for t, vs in bucket.items() if vs}
 
 
-def per_model_task_pass_pow_n(
-    cells: list[Cell], model: str, scorer: str
-) -> dict[str, float]:
+def per_model_task_pass_pow_n(cells: list[Cell], model: str, scorer: str) -> dict[str, float]:
     """pass^N = fraction of N-seed cells where ALL seeds scored >= 1.0.
 
     Per pre-reg: pass^8 = 1.0 iff every one of the 8 seeds scored 1.0.
@@ -444,7 +441,9 @@ def main() -> None:
     out.append(f"- **H2: {'CONFIRMED' if h2_pass else 'REFUTED'}**\n")
 
     # ---------- H3 ----------
-    out.append("## H3 — Multi-turn reliability cliff (∃ local L with mean pass^8/pass^1 < 0.70 on end_state)\n")
+    out.append(
+        "## H3 — Multi-turn reliability cliff (∃ local L with mean pass^8/pass^1 < 0.70 on end_state)\n"
+    )
     out.append("| local model | reliability_ratio | n_tasks_with_p1>0 | verdict |")
     out.append("|---|---|---|---|")
     h3_confirmed = False
@@ -476,14 +475,16 @@ def main() -> None:
     cost_ratio = (c120 / c20) if (c20 and not math.isnan(c20) and c20 != 0) else float("nan")
     lat_ratio = (l120 / l20) if (l20 and not math.isnan(l20) and l20 != 0) else float("nan")
     rule_rhs = 1.5 * lat_ratio if not math.isnan(lat_ratio) else float("nan")
-    h4_pass = (
-        not math.isnan(cost_ratio)
-        and not math.isnan(rule_rhs)
-        and cost_ratio >= rule_rhs
+    h4_pass = not math.isnan(cost_ratio) and not math.isnan(rule_rhs) and cost_ratio >= rule_rhs
+    out.append(
+        f"- gpt-oss-20b-cloud: cost/turn weight = {c20:.3f}, latency/turn = {l20:.1f} ms (n={n20})"
     )
-    out.append(f"- gpt-oss-20b-cloud: cost/turn weight = {c20:.3f}, latency/turn = {l20:.1f} ms (n={n20})")
-    out.append(f"- gpt-oss-120b-cloud: cost/turn weight = {c120:.3f}, latency/turn = {l120:.1f} ms (n={n120})")
-    out.append(f"- cost_ratio = {fmt_pct(cost_ratio)}, latency_ratio = {fmt_pct(lat_ratio)}, 1.5×latency_ratio = {fmt_pct(rule_rhs)}")
+    out.append(
+        f"- gpt-oss-120b-cloud: cost/turn weight = {c120:.3f}, latency/turn = {l120:.1f} ms (n={n120})"
+    )
+    out.append(
+        f"- cost_ratio = {fmt_pct(cost_ratio)}, latency_ratio = {fmt_pct(lat_ratio)}, 1.5×latency_ratio = {fmt_pct(rule_rhs)}"
+    )
     out.append("- rule: cost_ratio ≥ 1.5 × latency_ratio")
     out.append(f"- **H4: {'CONFIRMED' if h4_pass else 'REFUTED'}**\n")
 
@@ -495,7 +496,7 @@ def main() -> None:
         if not c.turns_payload:
             continue
         for t in c.turns_payload:
-            for tc in (t.get("tools") or []):
+            for tc in t.get("tools") or []:
                 name = tc.get("tool") or "<unknown>"
                 tool_attempts[name] = tool_attempts.get(name, 0) + 1
                 if tc.get("error"):
@@ -514,7 +515,9 @@ def main() -> None:
 
     # ---------- Per-model trajectory patterns ----------
     out.append("## Per-model trajectory patterns\n")
-    out.append("| model | done | error | budget_exhausted | max_turns_reached | litellm_error | model_finished | over-budget | hallucinated tools | never invoked |")
+    out.append(
+        "| model | done | error | budget_exhausted | max_turns_reached | litellm_error | model_finished | over-budget | hallucinated tools | never invoked |"
+    )
     out.append("|---|---|---|---|---|---|---|---|---|---|")
     for m in ALL_MODELS:
         reasons: dict[str, int] = {}
@@ -540,8 +543,8 @@ def main() -> None:
             if (c.tool_call_count == 0) and (c.actual_turns or 0) > 0:
                 never_invoked += 1
             # hallucinated tools: turn-level "unknown tool" errors
-            for t in (c.turns_payload or []):
-                for tc in (t.get("tools") or []):
+            for t in c.turns_payload or []:
+                for tc in t.get("tools") or []:
                     if tc.get("error") and "unknown tool" in str(tc.get("error", "")):
                         halluc += 1
         out.append(
@@ -582,20 +585,47 @@ def main() -> None:
     per_cell = analysis_dir / "per_cell_runs.csv"
     with per_cell.open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow([
-            "model", "task", "seed", "status",
-            "end_state", "tool_correctness", "budget_respected", "trajectory_judge",
-            "latency_ms", "tokens_in", "tokens_out", "cost_usd",
-            "actual_turns", "tool_call_count", "terminated_reason", "error",
-        ])
+        w.writerow(
+            [
+                "model",
+                "task",
+                "seed",
+                "status",
+                "end_state",
+                "tool_correctness",
+                "budget_respected",
+                "trajectory_judge",
+                "latency_ms",
+                "tokens_in",
+                "tokens_out",
+                "cost_usd",
+                "actual_turns",
+                "tool_call_count",
+                "terminated_reason",
+                "error",
+            ]
+        )
         for c in cells:
-            w.writerow([
-                c.model, c.task, c.seed, c.status,
-                c.end_state, c.tool_correctness, c.budget_respected, c.trajectory_judge,
-                c.latency_ms, c.tokens_in, c.tokens_out, c.cost_usd,
-                c.actual_turns, c.tool_call_count, c.terminated_reason,
-                (c.error or "")[:200],
-            ])
+            w.writerow(
+                [
+                    c.model,
+                    c.task,
+                    c.seed,
+                    c.status,
+                    c.end_state,
+                    c.tool_correctness,
+                    c.budget_respected,
+                    c.trajectory_judge,
+                    c.latency_ms,
+                    c.tokens_in,
+                    c.tokens_out,
+                    c.cost_usd,
+                    c.actual_turns,
+                    c.tool_call_count,
+                    c.terminated_reason,
+                    (c.error or "")[:200],
+                ]
+            )
 
     # ---------- CSV: per_model_scorer.csv ----------
     with (analysis_dir / "per_model_scorer.csv").open("w", newline="") as fh:
@@ -622,11 +652,19 @@ def main() -> None:
     # ---------- CSV: per_model_task_turns_tools.csv ----------
     with (analysis_dir / "per_model_task_turns_tools.csv").open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow([
-            "model", "task", "n_cells",
-            "mean_turns", "mean_tool_calls",
-            "mean_latency_ms", "mean_tokens_in", "mean_tokens_out", "mean_cost_usd",
-        ])
+        w.writerow(
+            [
+                "model",
+                "task",
+                "n_cells",
+                "mean_turns",
+                "mean_tool_calls",
+                "mean_latency_ms",
+                "mean_tokens_in",
+                "mean_tokens_out",
+                "mean_cost_usd",
+            ]
+        )
         # group by (model, task)
         groups: dict[tuple[str, str], list[Cell]] = {}
         for c in cells:
@@ -643,24 +681,35 @@ def main() -> None:
             ti = [c.tokens_in for c in done if c.tokens_in is not None]
             to_ = [c.tokens_out for c in done if c.tokens_out is not None]
             costs = [c.cost_usd for c in done if c.cost_usd is not None]
-            w.writerow([
-                m, t, n,
-                f"{mean([float(x) for x in turns]):.3f}" if turns else "",
-                f"{mean([float(x) for x in tcs]):.3f}" if tcs else "",
-                f"{mean([float(x) for x in lat]):.1f}" if lat else "",
-                f"{mean([float(x) for x in ti]):.1f}" if ti else "",
-                f"{mean([float(x) for x in to_]):.1f}" if to_ else "",
-                f"{mean(costs):.6f}" if costs else "",
-            ])
+            w.writerow(
+                [
+                    m,
+                    t,
+                    n,
+                    f"{mean([float(x) for x in turns]):.3f}" if turns else "",
+                    f"{mean([float(x) for x in tcs]):.3f}" if tcs else "",
+                    f"{mean([float(x) for x in lat]):.1f}" if lat else "",
+                    f"{mean([float(x) for x in ti]):.1f}" if ti else "",
+                    f"{mean([float(x) for x in to_]):.1f}" if to_ else "",
+                    f"{mean(costs):.6f}" if costs else "",
+                ]
+            )
 
     # ---------- CSV: per_model_termination.csv ----------
     with (analysis_dir / "per_model_termination.csv").open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow([
-            "model", "n_done", "n_error",
-            "model_finished", "budget_exhausted", "max_turns_reached",
-            "litellm_error", "other_unknown",
-        ])
+        w.writerow(
+            [
+                "model",
+                "n_done",
+                "n_error",
+                "model_finished",
+                "budget_exhausted",
+                "max_turns_reached",
+                "litellm_error",
+                "other_unknown",
+            ]
+        )
         for m in ALL_MODELS:
             n_done = sum(1 for c in cells if c.model == m and c.status == "done")
             n_err = sum(1 for c in cells if c.model == m and c.status == "error")
@@ -671,17 +720,23 @@ def main() -> None:
                 r = c.terminated_reason or "unknown"
                 counts[r] = counts.get(r, 0) + 1
             other_unknown = sum(
-                v for k, v in counts.items()
-                if k not in {"model_finished", "budget_exhausted", "max_turns_reached", "litellm_error"}
+                v
+                for k, v in counts.items()
+                if k
+                not in {"model_finished", "budget_exhausted", "max_turns_reached", "litellm_error"}
             )
-            w.writerow([
-                m, n_done, n_err,
-                counts.get("model_finished", 0),
-                counts.get("budget_exhausted", 0),
-                counts.get("max_turns_reached", 0),
-                counts.get("litellm_error", 0),
-                other_unknown,
-            ])
+            w.writerow(
+                [
+                    m,
+                    n_done,
+                    n_err,
+                    counts.get("model_finished", 0),
+                    counts.get("budget_exhausted", 0),
+                    counts.get("max_turns_reached", 0),
+                    counts.get("litellm_error", 0),
+                    other_unknown,
+                ]
+            )
 
     # ---------- CSV: per_tool_success.csv (overall + per model) ----------
     with (analysis_dir / "per_tool_success.csv").open("w", newline="") as fh:
@@ -698,7 +753,7 @@ def main() -> None:
             per_model_tool_attempts.setdefault(c.model, {})
             per_model_tool_errors.setdefault(c.model, {})
             for tn in c.turns_payload:
-                for tc in (tn.get("tools") or []):
+                for tc in tn.get("tools") or []:
                     name = tc.get("tool") or "<unknown>"
                     overall_a[name] = overall_a.get(name, 0) + 1
                     per_model_tool_attempts[c.model][name] = (
@@ -737,11 +792,13 @@ def main() -> None:
 
     # ---------- Welch p-values for hypothesis context ----------
     cloud_tool = [
-        float(c.tool_correctness) for c in cells
+        float(c.tool_correctness)
+        for c in cells
         if c.model in CLOUD_MODELS and c.tool_correctness is not None
     ]
     local_tool = [
-        float(c.tool_correctness) for c in cells
+        float(c.tool_correctness)
+        for c in cells
         if c.model in LOCAL_MODELS and c.tool_correctness is not None
     ]
     welch_cloud_vs_local = welch_t_p(cloud_tool, local_tool)
@@ -752,7 +809,9 @@ def main() -> None:
     summary: list[str] = []
     summary.append("# EXP-002 Summary — 12 GB Agent v0.2, first tool-use characterization\n")
     summary.append(f"- Cells: {n_total} ({n_done_total} done, {n_err_total} error)")
-    summary.append("- Models: 5 (2 local, 3 cloud) | Tasks: 12 (PBS-Agent v0.1) | Seeds: 8 | Config: greedy-1024")
+    summary.append(
+        "- Models: 5 (2 local, 3 cloud) | Tasks: 12 (PBS-Agent v0.1) | Seeds: 8 | Config: greedy-1024"
+    )
     summary.append("")
     summary.append("## Per-hypothesis verdicts\n")
     summary.append("| H | Rule | Value | Verdict |")
@@ -787,29 +846,29 @@ def main() -> None:
     cost_ratio = (c120 / c20) if (c20 and not math.isnan(c20) and c20 != 0) else float("nan")
     lat_ratio = (l120 / l20) if (l20 and not math.isnan(l20) and l20 != 0) else float("nan")
     rule_rhs = 1.5 * lat_ratio if not math.isnan(lat_ratio) else float("nan")
-    h4_pass = (
-        not math.isnan(cost_ratio)
-        and not math.isnan(rule_rhs)
-        and cost_ratio >= rule_rhs
-    )
+    h4_pass = not math.isnan(cost_ratio) and not math.isnan(rule_rhs) and cost_ratio >= rule_rhs
     summary.append(
         f"| H4 | cost_ratio(120b/20b) ≥ 1.5×latency_ratio | "
         f"cost={cost_ratio:.3f}, 1.5×lat={rule_rhs:.3f} | **{'CONFIRMED' if h4_pass else 'REFUTED'}** |"
     )
     summary.append("")
     summary.append("## Headline numbers — per-model means (deterministic scorers)\n")
-    summary.append("| model | end_state | tool_correctness | budget_respected | mean_turns | mean_tool_calls |")
+    summary.append(
+        "| model | end_state | tool_correctness | budget_respected | mean_turns | mean_tool_calls |"
+    )
     summary.append("|---|---|---|---|---|---|")
     for m in ALL_MODELS:
         es_m, _, _, _ = per_model_scorer_mean(cells, m, "end_state")
         tc_m, _, _, _ = per_model_scorer_mean(cells, m, "tool_correctness")
         br_m, _, _, _ = per_model_scorer_mean(cells, m, "budget_respected")
         turns = [
-            float(c.actual_turns) for c in cells
+            float(c.actual_turns)
+            for c in cells
             if c.model == m and c.status == "done" and c.actual_turns is not None
         ]
         tcs = [
-            float(c.tool_call_count) for c in cells
+            float(c.tool_call_count)
+            for c in cells
             if c.model == m and c.status == "done" and c.tool_call_count is not None
         ]
         summary.append(
@@ -833,7 +892,9 @@ def main() -> None:
         pct = (n_nn / n_total) * 100 if n_total else 0.0
         summary.append(f"| {s} | {n_nn} | {n_total - n_nn} | {pct:.1f}% |")
     summary.append("")
-    summary.append("Generated by `scripts/analyze_exp002.py`. Detail in `verdicts.md` and CSVs alongside.")
+    summary.append(
+        "Generated by `scripts/analyze_exp002.py`. Detail in `verdicts.md` and CSVs alongside."
+    )
 
     (analysis_dir / "SUMMARY.md").write_text("\n".join(summary) + "\n")
 

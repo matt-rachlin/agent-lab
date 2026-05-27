@@ -26,9 +26,11 @@ def _seed_cache(db_path: Path, *, row_count: int = 3) -> None:
     try:
         for t in duckdb_cache.MIRRORED_TABLES:
             # Each table just gets an id column + a sentinel
-            con.execute(f"CREATE OR REPLACE TABLE {t} AS SELECT * FROM (VALUES " +
-                        ", ".join(f"({i}, '{t}')" for i in range(row_count)) +
-                        ") AS t(id, src);")
+            con.execute(
+                f"CREATE OR REPLACE TABLE {t} AS SELECT * FROM (VALUES "
+                + ", ".join(f"({i}, '{t}')" for i in range(row_count))
+                + ") AS t(id, src);"
+            )
         con.execute("CREATE OR REPLACE TABLE _meta(refreshed_at TIMESTAMPTZ);")
         con.execute("INSERT INTO _meta VALUES (now());")
     finally:
@@ -79,9 +81,7 @@ def test_query_returns_dataframe(tmp_path: Path) -> None:
     assert df.iloc[0]["n"] == 5
 
 
-def test_refresh_writes_expected_tables(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_refresh_writes_expected_tables(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """refresh() creates one local DuckDB table per MIRRORED_TABLES entry.
 
     We swap the ATTACH-postgres path for an in-process DuckDB schema so the
@@ -145,9 +145,7 @@ def test_fast_query_prefers_cache(tmp_path: Path) -> None:
     """fast_query reads from the cache when it's fresh."""
     db = tmp_path / "cache.duckdb"
     _seed_cache(db, row_count=4)
-    df = duckdb_cache.fast_query(
-        "SELECT COUNT(*) AS n FROM experiment_runs", db_path=db
-    )
+    df = duckdb_cache.fast_query("SELECT COUNT(*) AS n FROM experiment_runs", db_path=db)
     assert df.iloc[0]["n"] == 4
 
 
