@@ -135,3 +135,9 @@ omit = ["*/tests/*"]
 precision = 1
 show_missing = true
 exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if TYPE_CHECKING:"]
+
+[dependency-groups]
+dev = [
+    "dvc>=3.67.1",
+    "dvc-s3>=3.3.0",
+]
