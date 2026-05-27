@@ -180,6 +180,31 @@ curl -s -X POST http://localhost:8080/api/unload-all
   `[ERROR] failed reading from gpuCh - stopping read goroutine` when the
   NVIDIA driver isn't loaded. Cosmetic — it doesn't affect routing.
 
+## Qwen3 MoE — reasoning OFF for tool-call parity
+
+F-009 (2026-05-27) found `qwen3-30b-a3b-moe` fires **zero tool calls on
+40/96 PBS-Agent cells**. Root cause: Qwen3's Jinja chat template defaults
+to `enable_thinking=true`, so the model produces a long `<think>` block
+before emitting tool calls. On tool-heavy turns the reasoning_content
+eats most of the `max_tokens=1024` budget and the model either never gets
+to the tool call or emits a single one then runs out.
+
+Fix: launch the server with `--chat-template-kwargs '{"enable_thinking":false}'`
+so the rendered prompt suppresses the `<think>` block by default. This
+matches the dense `qwen3-14b-q4` arm which already runs with `think:false`
+via Ollama (see `conf/litellm-config.yaml`).
+
+Smoke (F-009 repro task, `http-fetch-and-extract` / seed=1):
+
+| Reasoning | tokens out | tool calls | end_state |
+|-----------|-----------|------------|-----------|
+| ON  (default Qwen3) | 223 reasoning tokens before first call | 0–1 (depends on max_tokens budget) | 0.0 in F-009 |
+| OFF (this fix) | 25 total tokens, immediate tool call | 2 across 3 turns | **1.0** |
+
+To re-enable reasoning for an ablation, pass
+`chat_template_kwargs={"enable_thinking": true}` in the request body —
+that takes precedence over the server-side default.
+
 ## llama.cpp CUDA build (Phase 19d, 2026-05-27)
 
 Phase 19a smokes pushed us off the Vulkan build — on the 3080 Ti, Vulkan

@@ -66,16 +66,41 @@ macros:
 models:
   # ---- Phase 19a additions, llama-server backend (GGUFs on disk today) ----
 
+  # Reasoning is DISABLED on this model server-side via
+  # `--chat-template-kwargs '{"enable_thinking":false}'`.
+  #
+  # Why: F-009 (2026-05-27) found qwen3-30b-a3b-moe fires zero tool calls
+  # on 40/96 PBS-Agent cells. Root cause: Qwen3's Jinja chat template
+  # defaults `enable_thinking=true`, so the model produces a long
+  # `<think>` block before emitting tool calls. On tool-heavy turns
+  # the reasoning_content eats most of the max_tokens=1024 budget and
+  # the model either never gets to the tool call or emits a single one
+  # then runs out — the F-005 "narrate instead of call" pattern, here
+  # caused by thinking-budget overrun rather than a template mis-parse.
+  #
+  # Smoke (F-009 repro task, http-fetch-and-extract / seed=1):
+  #   thinking ON  → 223 reasoning tokens before first tool call,
+  #                  trajectory hits max_tokens / model_finished with
+  #                  tool_calls=0 on harder tasks.
+  #   thinking OFF → 25 total tokens, tool call emitted immediately.
+  #
+  # This mirrors the dense `qwen3-14b-q4` arm which already runs with
+  # `think:false` via Ollama (conf/litellm-config.yaml). The MoE arm
+  # had no such override — fixed here. To re-enable reasoning for an
+  # ablation, pass `chat_template_kwargs={"enable_thinking": true}` in
+  # the request body; setParams here sets the default but the request
+  # body wins.
   "qwen3-30b-a3b-moe":
     cmd: |
       ${LLAMA_SERVER}
       ${default_args_moe_30b}
       --model ${MODELS_DIR}/qwen3-30b-a3b-moe/Qwen3-30B-A3B-Q4_K_M.gguf
       --jinja
+      --chat-template-kwargs '{"enable_thinking":false}'
     env:
       - "LD_LIBRARY_PATH=${LD_LIB}"
     name: "Qwen3-30B-A3B (MoE, 3B active)"
-    description: "Local headline model. Q4_K_M MoE with experts on CPU."
+    description: "Local headline model. Q4_K_M MoE with experts on CPU. Reasoning OFF for tool-use parity with dense arm."
     ttl: 600
 
   "gpt-oss-20b-local":

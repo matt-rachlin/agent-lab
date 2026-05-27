@@ -96,4 +96,10 @@ verified; llama-cli load test pending GPU availability.
   posts; Phase 19a pilot SHOULD confirm before EXP-006 dispatches with 288 cells.
 - imatrix variants may differ in tool-call fidelity vs the base unsloth GGUF;
   treat this as one quant choice, not the only one.
+- **Reasoning ON eats the tool-call budget** — F-009 (2026-05-27) found
+  this model fires zero tool calls on 40/96 PBS-Agent cells when reasoning
+  is left at the Jinja default (`enable_thinking=true`). The lab serves
+  it with `--chat-template-kwargs '{"enable_thinking":false}'` for tool
+  parity with the dense arm. See runbook §"Qwen3 MoE — reasoning OFF for
+  tool-call parity" and `conf/llama-swap.yaml`.
 <!-- END HAND -->
