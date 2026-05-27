@@ -1,0 +1,36 @@
+{
+  "captured_at": "2026-05-27T06:33:06Z",
+  "config_hash": "117f5423a0636e46",
+  "model": "llama3.1-8b-q4",
+  "response_text": "done.",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 0.0,
+    "trajectory_judge": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "code-read-and-explain",
+  "tool_calls": [
+    {
+      "args": {
+        "max_bytes": 65536,
+        "path": "/workspace/fizzbuzz.py"
+      },
+      "tool": "fs_read"
+    },
+    {
+      "args": {
+        "content": "This function reads the contents of a file.",
+        "mode": "create",
+        "path": "/workspace/explanation.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 2,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 2
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-05-27T06:18:14Z",
+  "config_hash": "c8636515abf0d2c0",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scorer_outcomes": {
+    "exact_match": 1.0
+  },
+  "suite": "pbs-v0.1",
+  "task_slug": "fmt-004",
+  "tool_calls": [],
+  "trajectory_summary": {
+    "actual_turns": 1,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 0
+  }
+}

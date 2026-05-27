@@ -1,0 +1,34 @@
+{
+  "captured_at": "2026-05-27T06:21:49Z",
+  "config_hash": "de37b70cd95cbe8a",
+  "model": "glm-5.1-cloud",
+  "response_text": "The KB returned empty results, but I have sufficient knowledge to write the comparison. Let me create the file now.",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 0.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-rag-v0.1",
+  "task_slug": "rag-bash-compare-test-bracket",
+  "tool_calls": [
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "bash [ ] test command"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "bash [[ ]] conditional construct"
+      },
+      "tool": "kb_query"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 2,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 2
+  }
+}

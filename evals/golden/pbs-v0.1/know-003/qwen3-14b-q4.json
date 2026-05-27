@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-05-27T06:29:43Z",
+  "config_hash": "f271d069af4c6784",
+  "model": "qwen3-14b-q4",
+  "response_text": "Jupiter",
+  "scorer_outcomes": {
+    "regex_match": 1.0
+  },
+  "suite": "pbs-v0.1",
+  "task_slug": "know-003",
+  "tool_calls": [],
+  "trajectory_summary": {
+    "actual_turns": 1,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 0
+  }
+}

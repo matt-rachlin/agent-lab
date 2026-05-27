@@ -1,0 +1,36 @@
+{
+  "captured_at": "2026-05-27T06:19:10Z",
+  "config_hash": "ffa210b15aaf3d87",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0,
+    "trajectory_judge": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "code-read-and-explain",
+  "tool_calls": [
+    {
+      "args": {
+        "max_bytes": 65536,
+        "path": "fizzbuzz.py"
+      },
+      "tool": "fs_read"
+    },
+    {
+      "args": {
+        "content": "The function returns \"fizzbuzz\" for numbers divisible by both 3 and 5, \"fizz\" for multiples of 3, \"buzz\" for multiples of 5, and otherwise returns the number itself as a string.",
+        "mode": "create",
+        "path": "explanation.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 3,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 2
+  }
+}

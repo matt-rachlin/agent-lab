@@ -1,0 +1,57 @@
+{
+  "captured_at": "2026-05-27T06:21:32Z",
+  "config_hash": "de37b70cd95cbe8a",
+  "model": "glm-5.1-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0,
+    "trajectory_judge": 1.0
+  },
+  "suite": "pbs-agent-rag-v0.1",
+  "task_slug": "rag-bash-param-expansion-forms",
+  "tool_calls": [
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "parameter expansion default value"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "parameter expansion substring length"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "bash parameter expansion syntax"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "bash variable expansion operators colon dash equals"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "content": "# Bash Parameter Expansion \u2014 Summary\n\nBash provides several powerful parameter-expansion forms that let you manipulate and test variables without spawning subshells. Below are four commonly used forms:\n\n1. **`${parameter:-word}`** \u2014 *Use default value.* If `parameter` is unset or null, the expansion substitutes `word`; otherwise it substitutes the value of `parameter`. The variable itself is **not** modified.\n\n2. **`${parameter:=word}`** \u2014 *Assign default value.* If `parameter` is unset or null, `word` is assigned to `parameter` and then substituted. Unlike `:-`, this form **modifies** the variable when it is unset or null.\n\n3. **`${#parameter}`** \u2014 *String length.* Expands to the number of characters in the value of `parameter`. For example, if `x=hello`, then `${#x}` yields `5`.\n\n4. **`${parameter:offset:length}`** \u2014 *Substring extraction.* Extracts a substring starting at `offset` (0-based) with the given `length`. If `length` is omitted, the rest of the string from `offset` is returned. Negative offsets count from the end (and must be preceded by a space or parenthesised to avoid confusion with `:-`).\n\nThese forms are essential for robust shell scripting, allowing concise default-value handling, length checks, and substring operations entirely within the shell.",
+        "mode": "create",
+        "path": "/workspace/summary.md"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 4,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 5
+  }
+}

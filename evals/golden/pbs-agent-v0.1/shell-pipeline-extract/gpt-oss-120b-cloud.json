@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-05-27T06:21:03Z",
+  "config_hash": "ffa210b15aaf3d87",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "shell-pipeline-extract",
+  "tool_calls": [
+    {
+      "args": {
+        "command": "cut -d'|' -f2 /workspace/events.log | sort -u",
+        "timeout_sec": 120
+      },
+      "tool": "shell_exec"
+    },
+    {
+      "args": {
+        "content": "ERROR\nINFO\nWARN\n",
+        "mode": "create",
+        "path": "/workspace/levels.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 3,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 2
+  }
+}

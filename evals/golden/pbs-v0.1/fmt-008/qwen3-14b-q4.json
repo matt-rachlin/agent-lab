@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-05-27T06:28:19Z",
+  "config_hash": "f271d069af4c6784",
+  "model": "qwen3-14b-q4",
+  "response_text": "| name     | year   | language |\n|----------|--------|----------|\n| Python   | 1991   | Python   |\n| Java     | 1995   | Java     |\n| JavaScript | 1995 | JavaScript |\n| C        | 1972   | C        |",
+  "scorer_outcomes": {
+    "regex_match": 0.0
+  },
+  "suite": "pbs-v0.1",
+  "task_slug": "fmt-008",
+  "tool_calls": [],
+  "trajectory_summary": {
+    "actual_turns": 1,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 0
+  }
+}

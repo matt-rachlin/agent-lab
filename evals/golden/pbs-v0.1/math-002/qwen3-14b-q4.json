@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-05-27T06:13:00Z",
+  "config_hash": "f271d069af4c6784",
+  "model": "qwen3-14b-q4",
+  "response_text": "The train departs at 13:45 and takes 2 hours 37 minutes. Adding 2 hours to 13:45 gives 15:45. Adding 37 minutes to 15:45:  \n- 15:45 + 15 minutes = 16:00  \n- 16:00 + 22 minutes = **16:22**  \n\n**Answer:** 16:22",
+  "scorer_outcomes": {
+    "exact_match": 1.0
+  },
+  "suite": "pbs-v0.1",
+  "task_slug": "math-002",
+  "tool_calls": [],
+  "trajectory_summary": {
+    "actual_turns": 1,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 0
+  }
+}

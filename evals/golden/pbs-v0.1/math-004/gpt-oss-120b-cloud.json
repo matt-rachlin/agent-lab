@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-05-27T06:09:44Z",
+  "config_hash": "c8636515abf0d2c0",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "The total number of possible outcomes when rolling three six\u2011sided dice is  \n\n\\[\n6^3 = 216 .\n\\]\n\nTo have exactly two dice showing the same value (a \u201cpair\u201d) and the third die showing a different value:\n\n1. Choose the value that appears twice: \\(6\\) ways.  \n2. Choose which two of the three dice show this value: \\(\\binom{3}{2}=3\\) ways.  \n3. Choose the value for the remaining die, which must differ from the pair\u2019s value: \\(5\\) ways.\n\n\\[\n\\text{Favorable outcomes}=6 \\times 3 \\times 5 = 90 .\n\\]\n\nThus the probability is  \n\n\\[\n\\frac{90}{216} = \\frac{5}{12}.\n\\]\n\n\\[\n\\boxed{\\frac{5}{12}}\n\\]",
+  "scorer_outcomes": {
+    "regex_match": 0.0
+  },
+  "suite": "pbs-v0.1",
+  "task_slug": "math-004",
+  "tool_calls": [],
+  "trajectory_summary": {
+    "actual_turns": 1,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 0
+  }
+}

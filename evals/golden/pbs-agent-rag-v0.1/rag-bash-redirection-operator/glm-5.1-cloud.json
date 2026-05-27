@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-05-27T06:08:34Z",
+  "config_hash": "de37b70cd95cbe8a",
+  "model": "glm-5.1-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-rag-v0.1",
+  "task_slug": "rag-bash-redirection-operator",
+  "tool_calls": [
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "redirection operator that merges stderr into stdout"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "2>&1 stderr stdout redirect merge"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "content": "2>&1",
+        "mode": "create",
+        "path": "operator.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 4,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 3
+  }
+}

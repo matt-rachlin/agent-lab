@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-05-27T06:25:58Z",
+  "config_hash": "f271d069af4c6784",
+  "model": "qwen3-14b-q4",
+  "response_text": "[2,3,5,7,11,13]",
+  "scorer_outcomes": {
+    "regex_match": 1.0
+  },
+  "suite": "pbs-v0.1",
+  "task_slug": "fmt-005",
+  "tool_calls": [],
+  "trajectory_summary": {
+    "actual_turns": 1,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "captured_at": "2026-05-27T06:19:55Z",
+  "config_hash": "ffa210b15aaf3d87",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "fs-grep-extract-and-write",
+  "tool_calls": [
+    {
+      "args": {},
+      "tool": "fs_grep"
+    },
+    {
+      "args": {
+        "glob": null,
+        "max_results": 20,
+        "path": ".",
+        "pattern": "SECRET_VALUE="
+      },
+      "tool": "fs_grep"
+    },
+    {
+      "args": {
+        "content": "SECRET_VALUE=alpaca-orbit-42",
+        "mode": "create",
+        "path": "secret.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 4,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 3
+  }
+}

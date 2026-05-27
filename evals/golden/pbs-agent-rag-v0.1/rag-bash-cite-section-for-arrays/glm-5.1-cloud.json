@@ -1,0 +1,50 @@
+{
+  "captured_at": "2026-05-27T06:22:04Z",
+  "config_hash": "de37b70cd95cbe8a",
+  "model": "glm-5.1-cloud",
+  "response_text": "",
+  "scorer_outcomes": {
+    "budget_respected": 0.0,
+    "end_state": 0.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-rag-v0.1",
+  "task_slug": "rag-bash-cite-section-for-arrays",
+  "tool_calls": [
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "declare bash array"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "kb_name": "bash",
+        "question": "bash arrays"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "k": 10,
+        "kb_name": "bash",
+        "question": "array declaration syntax"
+      },
+      "tool": "kb_query"
+    },
+    {
+      "args": {
+        "k": 50,
+        "kb_name": "bash",
+        "question": "arrays"
+      },
+      "tool": "kb_query"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 4,
+    "terminated_reason": "max_turns_reached",
+    "tool_call_count": 4
+  }
+}

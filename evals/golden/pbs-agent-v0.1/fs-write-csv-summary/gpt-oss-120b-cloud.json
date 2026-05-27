@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-05-27T06:20:06Z",
+  "config_hash": "ffa210b15aaf3d87",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "fs-write-csv-summary",
+  "tool_calls": [
+    {
+      "args": {
+        "max_bytes": 65536,
+        "path": "numbers.txt"
+      },
+      "tool": "fs_read"
+    },
+    {
+      "args": {
+        "content": "metric,value\nsum,150\n",
+        "mode": "create",
+        "path": "summary.csv"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 3,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 2
+  }
+}

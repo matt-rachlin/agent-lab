@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-05-27T06:36:26Z",
+  "config_hash": "117f5423a0636e46",
+  "model": "llama3.1-8b-q4",
+  "response_text": "done.",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 0.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "http-fetch-and-extract",
+  "tool_calls": [
+    {
+      "args": {
+        "max_bytes": 1048576,
+        "url": "http://example.com/status.json"
+      },
+      "tool": "http_fetch"
+    },
+    {
+      "args": {
+        "content": "12345",
+        "mode": "create",
+        "path": "/workspace/uptime.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 2,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 2
+  }
+}

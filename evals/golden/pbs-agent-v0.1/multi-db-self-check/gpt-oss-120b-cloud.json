@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-05-27T06:20:52Z",
+  "config_hash": "ffa210b15aaf3d87",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "The arithmetic mean is **6.0**.",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "multi-db-self-check",
+  "tool_calls": [
+    {
+      "args": {
+        "max_bytes": 65536,
+        "path": "nums.csv"
+      },
+      "tool": "fs_read"
+    },
+    {
+      "args": {
+        "content": "6.0",
+        "mode": "create",
+        "path": "mean.txt"
+      },
+      "tool": "fs_write"
+    },
+    {
+      "args": {
+        "code": "data='2,4,6,8,10'\nxs=[int(x) for x in data.split(',')]\nprint(sum(xs)/len(xs))",
+        "timeout_sec": 30
+      },
+      "tool": "python_eval"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 4,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 3
+  }
+}

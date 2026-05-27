@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-05-27T06:20:40Z",
+  "config_hash": "ffa210b15aaf3d87",
+  "model": "gpt-oss-120b-cloud",
+  "response_text": "done",
+  "scorer_outcomes": {
+    "budget_respected": 1.0,
+    "end_state": 1.0,
+    "tool_correctness": 1.0
+  },
+  "suite": "pbs-agent-v0.1",
+  "task_slug": "multi-words-and-hash",
+  "tool_calls": [
+    {
+      "args": {
+        "max_bytes": 65536,
+        "path": "message.txt"
+      },
+      "tool": "fs_read"
+    },
+    {
+      "args": {
+        "code": "import hashlib, sys\nwith open('/workspace/message.txt','rb') as f:\n    data=f.read()\nprint(hashlib.sha256(data).hexdigest())",
+        "timeout_sec": 30
+      },
+      "tool": "python_eval"
+    },
+    {
+      "args": {
+        "content": "d20bc21bb3c7736d8d03ade3ddb4c68b665cdfbca6f6df0f7fdd192f37f59060",
+        "mode": "create",
+        "path": "hash.txt"
+      },
+      "tool": "fs_write"
+    }
+  ],
+  "trajectory_summary": {
+    "actual_turns": 4,
+    "terminated_reason": "model_finished",
+    "tool_call_count": 3
+  }
+}
