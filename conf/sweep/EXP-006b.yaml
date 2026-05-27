@@ -1,0 +1,53 @@
+# EXP-006b — Qwen3-30B-A3B (MoE) vs qwen3-14b-q4 (dense) on PBS-Agent v0.1
+#            re-anchored after F-009 follow-up fixes.
+# Plan: docs/exp/EXP-006b-qwen3-30b-moe-re-anchored.md
+# Parent: F-009 (EXP-006 — H1-fail INVALID); F-005 anchor (0.750) superseded.
+# 12 tasks × 3 models × 1 config × 8 seeds = 288 cells.
+# Estimated wall time: ~2 hr (per plan).
+
+experiment:
+  slug: EXP-006b
+  title: "Qwen3-30B-A3B (MoE) vs qwen3-14b-q4 (dense) on PBS-Agent v0.1 — re-anchored after F-009 follow-up fixes"
+  hypothesis: "H1 baseline: report qwen3-14b-q4.end_state with 95% CI (no gate). H2 (promotion gate): lower_95_CI(MoE.end_state) >= dense.end_state + 0.10. H3 (promotion gate): gap_closure_pe := (moe - dense) / (cloud - dense) >= 0.50. H4 (promotion gate, relaxed): lower_95_CI(MoE.tool_correctness) >= 0.90. Promote MoE iff H2 AND H3 pass; H4 fail allowed but recorded as quality caveat."
+  plan_path: docs/exp/EXP-006b-qwen3-30b-moe-re-anchored.md
+
+tasks:
+  suite: pbs-agent-v0.1
+  # No slugs filter — full 12-task PBS-Agent v0.1 suite, same as EXP-006.
+
+# Models in declared order. Outer-loop-by-model so each model warms once.
+# Phase 19c model_pool handles llama-swap pre-flight + eviction for the
+# qwen3-30b-a3b-moe arm. MoE template fix (`1141dc1`) is applied at the
+# llama-swap layer in `conf/llama-swap.yaml`; nothing in this sweep YAML
+# carries it because it's a serve-time flag, not a per-call extra.
+models:
+  - qwen3-14b-q4
+  - qwen3-30b-a3b-moe
+  - gpt-oss-120b-cloud
+
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+    # Runner dispatches to the agent path automatically when
+    # task.max_turns > 1, which is true for all 12 PBS-Agent v0.1 tasks.
+
+# Per-model overrides. The dense baseline arm matches EXP-002 / EXP-006 /
+# F-005 configuration (reasoning OFF) for measurement continuity. The MoE
+# arm uses stock defaults plus the serve-side `--chat-template-kwargs
+# enable_thinking=false` flag (commit 1141dc1, applied in llama-swap.yaml).
+#
+# `keep_alive: 0` on the qwen3-14b-q4 arm is carried over from EXP-006 —
+# non-semantic VRAM-residency knob; see EXP-006 § Per-model overrides.
+model_defaults:
+  qwen3-14b-q4:
+    extra:
+      think: false
+      keep_alive: 0
+
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]
+
+max_concurrency: 1
+request_timeout_sec: 600
