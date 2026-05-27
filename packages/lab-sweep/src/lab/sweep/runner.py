@@ -564,6 +564,23 @@ def _is_agent_cell(task_payload: dict[str, Any]) -> bool:
     return max_turns > 1 or tool_budget > 0
 
 
+def _is_bfcl_cell(task_payload: dict[str, Any]) -> bool:
+    """True if the task uses the BFCL AST grader (Phase 17.5).
+
+    BFCL cells bypass our MCP / sandbox machinery — the model is asked
+    for a function call against a *published* schema, not invoked against
+    any of our tool servers. The runner dispatches such cells to a
+    dedicated lane that issues a single LiteLLM ``chat.completions``
+    request with the example's tools list, then grades inline via the
+    vendored AST checker.
+    """
+
+    rubric = task_payload.get("rubric") or {}
+    if not isinstance(rubric, dict):
+        return False
+    return rubric.get("type") == "bfcl_ast" or rubric.get("bfcl_category") is not None
+
+
 def execute_cell(
     cell: Cell,
     *,
@@ -588,7 +605,8 @@ def execute_cell(
     inference call below will trigger its own load if pre-flight no-op'd.
     """
 
-    is_agent = _is_agent_cell(cell.task_payload)
+    is_bfcl = _is_bfcl_cell(cell.task_payload)
+    is_agent = (not is_bfcl) and _is_agent_cell(cell.task_payload)
 
     # Phase 19c — declare per-cell pipeline plan so llama-swap pre-flights
     # the model into the page cache and we get explicit eviction at
@@ -599,7 +617,7 @@ def execute_cell(
             plan = plan_for_cell(
                 pipeline_id=cell.run_id,
                 model_id=cell.model_litellm_id,
-                tools=cell.task_payload.get("tools") if is_agent else None,
+                tools=(cell.task_payload.get("tools") if (is_agent or is_bfcl) else None),
             )
             model_pool.declare(plan)
             model_pool.step_start("cell")
@@ -628,10 +646,13 @@ def execute_cell(
                 "lab.task": cell.task_slug,
                 "lab.seed": cell.seed,
                 "lab.config_hash": cell.config_hash,
-                "lab.path": "agent" if is_agent else "single_turn",
+                "lab.path": ("bfcl" if is_bfcl else ("agent" if is_agent else "single_turn")),
             },
         ):
-            log.info("sweep_cell_started", path="agent" if is_agent else "single_turn")
+            log.info(
+                "sweep_cell_started",
+                path="bfcl" if is_bfcl else ("agent" if is_agent else "single_turn"),
+            )
             with span("manifest_capture"):
                 manifest = capture_manifest(
                     extra={
@@ -645,7 +666,15 @@ def execute_cell(
                     }
                 )
 
-            if is_agent:
+            if is_bfcl:
+                result = _execute_bfcl_cell(
+                    cell=cell,
+                    litellm_key=litellm_key,
+                    timeout=timeout,
+                    manifest_sha=manifest.sha,
+                    model_default_extra=model_default_extra,
+                )
+            elif is_agent:
                 result = _execute_agent_cell(
                     cell=cell,
                     manifest_sha=manifest.sha,
@@ -819,6 +848,232 @@ def _execute_single_turn(
 
     _insert_run(cell=cell, result=result, manifest_sha=manifest_sha, trace_path=trace_path)
     return result
+
+
+def _execute_bfcl_cell(
+    *,
+    cell: Cell,
+    litellm_key: str,
+    timeout: int,
+    manifest_sha: str,
+    model_default_extra: dict[str, Any] | None = None,
+) -> CellResult:
+    """Phase 17.5 path: one tool-calling LiteLLM request, vendored AST grader.
+
+    BFCL examples carry their own tool schema (in ``task.tools``); the
+    model is asked to emit a function call matching the published
+    ground truth. We grade inline so the score lands in ``eval_results``
+    immediately (no second pass needed). The AST grade is also stashed
+    in the trace JSON for post-hoc debugging.
+    """
+
+    from lab.eval.external.bfcl import grade_bfcl_response
+
+    settings = get_settings()
+    payload = cell.task_payload
+    rubric = payload.get("rubric") or {}
+
+    config_system = cell.config.extra.get("system_prompt") if cell.config.extra else None
+    if config_system is None:
+        config_system = getattr(cell.config, "system_prompt", None)
+    messages = _build_messages(
+        payload,
+        config_system=config_system,
+        model_default_system=None,
+    )
+
+    merged_extra: dict[str, Any] = {}
+    if cell.config.extra:
+        merged_extra.update(cell.config.extra)
+    if model_default_extra:
+        merged_extra.update(model_default_extra)
+    # tool_choice="auto" is the only stable setting across LiteLLM
+    # backends; "required" is rejected by Ollama. Provided as an extra
+    # so per-model overrides can still pin it.
+    merged_extra.setdefault("tool_choice", "auto")
+    tools = payload.get("tools") or []
+
+    cell_config_for_call = cell.config.model_copy(update={"extra": merged_extra})
+
+    result: CellResult
+    bfcl_grade: dict[str, Any] | None = None
+    try:
+        if _is_local_backend(cell.model_backend):
+            with (
+                span("gpu_lease_acquire", **{"lab.model": cell.model_litellm_id}),
+                gpu_lease(
+                    f"sweep:{cell.experiment_slug}:{cell.model_litellm_id}",
+                    ttl_sec=timeout + 60,
+                ),
+                span("litellm_call", **{"lab.model": cell.model_litellm_id}),
+            ):
+                resp_json, latency_ms = _call_litellm_with_tools(
+                    settings=settings,
+                    litellm_key=litellm_key,
+                    model=cell.model_litellm_id,
+                    messages=messages,
+                    config=cell_config_for_call,
+                    tools=tools,
+                    timeout=timeout,
+                )
+                current_span_attrs(**{"lab.latency_ms": latency_ms})
+        else:
+            with span("litellm_call", **{"lab.model": cell.model_litellm_id}):
+                resp_json, latency_ms = _call_litellm_with_tools(
+                    settings=settings,
+                    litellm_key=litellm_key,
+                    model=cell.model_litellm_id,
+                    messages=messages,
+                    config=cell_config_for_call,
+                    tools=tools,
+                    timeout=timeout,
+                )
+                current_span_attrs(**{"lab.latency_ms": latency_ms})
+
+        usage = resp_json.get("usage") or {}
+        message = ((resp_json.get("choices") or [{}])[0]).get("message") or {}
+        text = message.get("content") or ""
+        tool_calls = message.get("tool_calls") or []
+
+        # Inline AST grading.
+        raw_functions = rubric.get("raw_functions") or []
+        ground_truth = rubric.get("ground_truth") or []
+        category = rubric.get("bfcl_category") or "simple"
+        bfcl_grade = grade_bfcl_response(
+            raw_functions=raw_functions,
+            ground_truth=ground_truth,
+            tool_calls=tool_calls,
+            category=str(category),
+        )
+
+        result = CellResult(
+            run_id=cell.run_id,
+            status="done",
+            tokens_in=usage.get("prompt_tokens"),
+            tokens_out=usage.get("completion_tokens"),
+            latency_ms=latency_ms,
+            cost_usd=None,
+            error=None,
+            response_text=text,
+            raw_response=resp_json,
+        )
+    except Exception as exc:
+        log.error("bfcl_cell_error", error=f"{type(exc).__name__}: {exc}")
+        result = CellResult(
+            run_id=cell.run_id,
+            status="error",
+            tokens_in=None,
+            tokens_out=None,
+            latency_ms=0,
+            cost_usd=None,
+            error=f"{type(exc).__name__}: {exc}",
+            response_text=None,
+            raw_response=None,
+        )
+
+    trace_path: str | None = None
+    if result.raw_response is not None:
+        with span("persist"):
+            try:
+                trace_path = _persist_trace(
+                    run_id_=cell.run_id,
+                    payload={
+                        "run_id": cell.run_id,
+                        "experiment_slug": cell.experiment_slug,
+                        "manifest_sha": manifest_sha,
+                        "model": cell.model_litellm_id,
+                        "task_slug": cell.task_slug,
+                        "config": cell.config.model_dump(),
+                        "seed": cell.seed,
+                        "input_messages": messages,
+                        "response_text": result.response_text,
+                        "raw_response": result.raw_response,
+                        "latency_ms": result.latency_ms,
+                        "bfcl_grade": bfcl_grade,
+                    },
+                )
+            except Exception as exc:
+                log.warning("trace_upload_failed", run_id=cell.run_id, error=str(exc))
+
+    _insert_run(cell=cell, result=result, manifest_sha=manifest_sha, trace_path=trace_path)
+    # Write the AST score directly into eval_results (deterministic, ground-
+    # truth-bearing — there is no point in re-grading via `lab eval apply`).
+    if bfcl_grade is not None and result.status == "done":
+        _persist_bfcl_eval_result(run_id=cell.run_id, grade=bfcl_grade)
+    return result
+
+
+def _call_litellm_with_tools(
+    *,
+    settings: Any,
+    litellm_key: str,
+    model: str,
+    messages: list[dict[str, Any]],
+    config: RunConfig,
+    tools: list[dict[str, Any]],
+    timeout: int,
+) -> tuple[dict[str, Any], int]:
+    """Single-turn LiteLLM call that forwards a ``tools`` list."""
+
+    from lab.core.llm import call_litellm_chat
+
+    extra = dict(config.extra or {})
+    tool_choice = extra.pop("tool_choice", "auto")
+    return call_litellm_chat(
+        settings=settings,
+        litellm_key=litellm_key,
+        model=model,
+        messages=messages,
+        temperature=config.temperature,
+        top_p=config.top_p,
+        max_tokens=config.max_tokens,
+        tools=tools or None,
+        tool_choice=tool_choice,
+        extra=extra or None,
+        timeout=timeout,
+    )
+
+
+def _persist_bfcl_eval_result(*, run_id: str, grade: dict[str, Any]) -> None:
+    """Insert the BFCL AST score into ``eval_results`` (idempotent)."""
+
+    passed = bool(grade.get("valid"))
+    score = 1.0 if passed else 0.0
+    raw_payload: dict[str, Any] = {
+        "bfcl": grade,
+    }
+    # Ensure the evaluator row exists. The evaluator decorator may not
+    # have been invoked in this process (the sweep runner does not call
+    # `register_builtin_evaluators`); fall back to a direct upsert.
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO evaluators (name, version, category, module_path)
+            VALUES ('bfcl_ast_match', '1.0', 'deterministic',
+                    'lab.eval.builtin.bfcl_ast_match')
+            ON CONFLICT (name, version) DO NOTHING;
+            """
+        )
+        cur.execute(
+            "SELECT evaluator_id FROM evaluators WHERE name=%s AND version=%s;",
+            ("bfcl_ast_match", "1.0"),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return
+        evaluator_id = int(row[0])
+        cur.execute(
+            """
+            INSERT INTO eval_results (run_id, evaluator_id, score, passed, raw)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (run_id, evaluator_id) DO UPDATE SET
+                score = EXCLUDED.score,
+                passed = EXCLUDED.passed,
+                raw = EXCLUDED.raw,
+                evaluated_at = NOW();
+            """,
+            (run_id, evaluator_id, score, passed, Json(raw_payload)),
+        )
 
 
 def _execute_agent_cell(

@@ -1,0 +1,52 @@
+# EXP-005 — BFCL v3 external benchmark: local vs cloud
+# Plan: docs/exp/EXP-005-external-benchmarks.md
+# 1000 BFCL AST examples × 4 models × 1 config × 1 seed = 4000 cells.
+# Estimated wall time: 2-3 hr.
+
+experiment:
+  slug: EXP-005
+  title: "BFCL v3 external benchmark — local vs cloud on the Berkeley Function Calling Leaderboard"
+  hypothesis: >-
+    H1 (promotion gate, replication): cloud_best beats qwen3-14b-q4 by >= 10pp on
+    bfcl_ast_match overall. H2 (measurement gate): qwen3-14b-q4 lands in [0.35,
+    0.65] overall (community-tier 14B range). H3: model ordering on overall AST
+    accuracy is gpt-oss-120b-cloud >= glm-5.1-cloud >= gpt-oss-20b-cloud >=
+    qwen3-14b-q4. H4: per-category profile simple >= multiple >= parallel >=
+    parallel_multiple holds for every model.
+  plan_path: docs/exp/EXP-005-external-benchmarks.md
+
+tasks:
+  suite: bfcl-v3-ast
+  # No slugs filter — full 1000 examples across 4 AST categories.
+
+# Models in declared order. Outer-loop-by-model so each model warms once.
+# qwen3-14b-q4 first so the ollama daemon warms; cloud arms drain in
+# declared order after. (No MoE / phi / hermes — see plan § Models NOT
+# in this sweep for the operational reason.)
+models:
+  - qwen3-14b-q4
+  - gpt-oss-20b-cloud
+  - glm-5.1-cloud
+  - gpt-oss-120b-cloud
+
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+
+# `think: false` on the dense local matches F-005 / EXP-006 / EXP-006b
+# convention — without it qwen3-14b-q4 produces a reasoning prelude and
+# fires zero tool calls on most BFCL examples (smoke-confirmed
+# 2026-05-27).
+model_defaults:
+  qwen3-14b-q4:
+    extra:
+      think: false
+
+# BFCL is a single-pass benchmark — no inter-trial averaging.
+seeds: [1]
+
+max_concurrency: 1
+request_timeout_sec: 600

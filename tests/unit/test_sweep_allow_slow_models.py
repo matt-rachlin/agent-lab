@@ -17,6 +17,7 @@ These tests exercise:
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pytest
@@ -185,7 +186,7 @@ def test_gate_refuses_slow_model_without_flag(monkeypatch: pytest.MonkeyPatch) -
     spec = _make_spec(["llama-3.3-70b-q4"])
     _stub_runtime(monkeypatch, slow=["llama-3.3-70b-q4"], models_present=["llama-3.3-70b-q4"])
 
-    with pytest.raises(SlowModelGateError, match="llama-3.3-70b-q4"):
+    with pytest.raises(SlowModelGateError, match=re.escape("llama-3.3-70b-q4")):
         runner_mod.run_sweep(spec, litellm_key="x", resume=False, dry_run=True)
 
 

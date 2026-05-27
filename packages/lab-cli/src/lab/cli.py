@@ -92,6 +92,86 @@ def tasks_list() -> None:
 
 
 # ---------------------------------------------------------------------------
+# data — external benchmark downloads (Phase 17.5)
+# ---------------------------------------------------------------------------
+
+data_app = typer.Typer(help="External benchmark data: download + register tasks")
+app.add_typer(data_app, name="data")
+
+
+@data_app.command("add-benchmark")
+def data_add_benchmark(
+    name: str = typer.Argument(..., help="Benchmark slug (e.g. 'bfcl-v3')"),
+    categories: list[str] = typer.Option(
+        [],
+        "--category",
+        help="Restrict to named categories (repeatable; default: all supported)",
+    ),
+    limit_per_category: int | None = typer.Option(
+        None,
+        "--limit-per-category",
+        help="Cap examples per category (smallest id first; default: full)",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Load and report counts but do not register to the DB"
+    ),
+) -> None:
+    """Download + register an external benchmark as a lab task suite.
+
+    Currently supported:
+
+    * ``bfcl-v3`` — Berkeley Function Calling Leaderboard v3 (Python AST
+      categories: simple, multiple, parallel, parallel_multiple).
+
+    Defers (follow-up):
+
+    * ``tau2-bench`` — Salesforce τ²-Bench (requires user-simulator
+      subprocess; not in Phase 17.5).
+    """
+
+    if name in {"bfcl-v3", "bfcl"}:
+        from lab.eval.external.bfcl import DEFAULT_CATEGORIES, load_bfcl_tasks
+
+        cats = categories if categories else list(DEFAULT_CATEGORIES)
+        unknown = [c for c in cats if c not in DEFAULT_CATEGORIES]
+        if unknown:
+            console.print(
+                f"[red]error[/] unknown BFCL categor{'ies' if len(unknown) > 1 else 'y'}: "
+                f"{', '.join(unknown)} (known: {', '.join(DEFAULT_CATEGORIES)})"
+            )
+            raise typer.Exit(code=2)
+        console.print(
+            f"[bold]bfcl-v3[/] loading {len(cats)} categor{'ies' if len(cats) > 1 else 'y'}: {', '.join(cats)}"
+        )
+        tasks = load_bfcl_tasks(cats, limit_per_category=limit_per_category)
+        by_cat: dict[str, int] = {}
+        for t in tasks:
+            by_cat[t.category or "?"] = by_cat.get(t.category or "?", 0) + 1
+        table = Table("Category", "Count")
+        for cat in cats:
+            table.add_row(cat, str(by_cat.get(cat, 0)))
+        console.print(table)
+        console.print(f"[green]loaded[/] {len(tasks)} task(s)")
+        if dry_run:
+            console.print("[yellow]dry-run[/] — skipping DB write")
+            return
+        n = register_tasks(tasks)
+        console.print(f"[green]registered[/] {n} task(s) into suite 'bfcl-v3-ast'")
+        return
+
+    if name in {"tau2-bench", "tau2"}:
+        console.print(
+            "[yellow]τ²-bench is deferred[/] to a Phase 17.5 follow-up — its "
+            "user-simulator subprocess requires non-trivial integration "
+            "beyond the current sweep harness."
+        )
+        raise typer.Exit(code=2)
+
+    console.print(f"[red]unknown benchmark[/] {name!r}; known: bfcl-v3")
+    raise typer.Exit(code=2)
+
+
+# ---------------------------------------------------------------------------
 # models
 # ---------------------------------------------------------------------------
 
