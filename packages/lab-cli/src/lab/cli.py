@@ -419,6 +419,13 @@ def quota_check(
 eval_app = typer.Typer(help="Evaluator framework")
 app.add_typer(eval_app, name="eval")
 
+# Phase 16.4 follow-up: prompts subgroup wires the lab.eval.prompts +
+# lab.eval.prompt_tests modules into the CLI. Lives in eval_cli.py to
+# keep this module from growing past its current ~1.2k lines.
+from lab.eval_cli import prompts_app as _prompts_app  # noqa: E402
+
+eval_app.add_typer(_prompts_app, name="prompts")
+
 
 @eval_app.command("list")
 def eval_list(
