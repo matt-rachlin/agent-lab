@@ -1,0 +1,13 @@
+task,category,qwen3-14b-q4,qwen3-30b-a3b-moe,gpt-oss-120b-cloud
+code-find-and-fix-bug,code,0.000,0.000,1.000
+code-read-and-explain,code,1.000,1.000,1.000
+code-write-and-execute,code,1.000,1.000,1.000
+fs-grep-extract-and-write,fs,1.000,1.000,1.000
+fs-read-and-copy,fs,1.000,1.000,1.000
+fs-write-csv-summary,fs,1.000,1.000,1.000
+http-fetch-and-count,http,0.000,0.000,1.000
+http-fetch-and-extract,http,0.000,1.000,1.000
+multi-db-self-check,multi,1.000,1.000,1.000
+multi-words-and-hash,multi,1.000,1.000,0.625
+shell-count-lines,shell,0.000,1.000,1.000
+shell-pipeline-extract,shell,1.000,1.000,1.000

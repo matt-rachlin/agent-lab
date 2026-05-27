@@ -1,0 +1,7 @@
+category,dense_end_state,moe_end_state,cloud_end_state,gap_closure,status
+code,0.667,0.667,1.000,0.000,DEFINED
+fs,1.000,1.000,1.000,,UNDEFINED
+http,0.000,0.500,1.000,0.500,DEFINED
+multi,1.000,1.000,0.812,,UNDEFINED
+shell,0.500,1.000,1.000,1.000,DEFINED
+__overall__,0.667,0.833,0.969,0.552,DEFINED

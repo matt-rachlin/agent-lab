@@ -1,0 +1,4 @@
+model,n_cells,n_with_tokens,tokens_in_mean,tokens_in_p50,tokens_out_mean,tokens_out_p50
+qwen3-14b-q4,96,96,2484.2,2074,108.2,81
+qwen3-30b-a3b-moe,96,96,3499.8,2702,160.3,77
+gpt-oss-120b-cloud,96,96,2544.0,2127,208.6,194
