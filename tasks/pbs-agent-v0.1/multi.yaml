@@ -25,7 +25,7 @@ tasks:
       from /workspace/message.txt to avoid any encoding mismatch). Write
       the 64-character hex digest (lowercase, no extra text or newline) to
       a new file 'hash.txt' via fs_write mode='create'. Reply with 'done'.
-    system_prompt_id: agent_system_v1
+    system_prompt_id: agent_system_hashing_v1
     tools:
       - name: fs_read
       - name: python_eval

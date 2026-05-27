@@ -3,7 +3,7 @@ doc_id: postmortem-2026-05-27-multi-words-and-hash-regression
 title: 'Postmortem: multi-words-and-hash regression — qwen3-14b-q4 dense 1.0 (F-005/EXP-002) -> 0.0 (F-009/EXP-006)'
 zone: lab
 kind: postmortem
-status: active
+status: archived
 owner: m
 created: '2026-05-27'
 last_updated: '2026-05-27'
@@ -30,6 +30,22 @@ tags:
 ---
 
 # Postmortem: multi-words-and-hash regression — qwen3-14b-q4 dense 1.0 -> 0.0
+
+> **Resolution (2026-05-27):** Option A applied. New task-local prompt
+> `prompts/library/agent-system-hashing-v1.md` extends `agent_system_v1`
+> with explicit guidance on multi-line python_eval formatting (no `;`-chained
+> compound statements), sequential tool-call discipline, and verbatim copy
+> of python_eval stdout into fs_write `content`. The task at
+> `tasks/pbs-agent-v0.1/multi.yaml` now references this prompt. Single-seed
+> smoke under EXP-006 conditions (greedy, temp=0.0, max_tokens=1024,
+> qwen3-14b-q4 think:false) scored end_state=1.0 on all three arms
+> (qwen3-14b-q4, qwen3-30b-a3b-moe, gpt-oss-120b-cloud). Goldens for the
+> task were regenerated via `tools/sync_golden_outputs.py`. Postmortem
+> `status` set to `archived` (the doc-meta schema's terminal state — there
+> is no `resolved` value); `resolved_by` is the commit recorded below.
+>
+> **resolved_by:** commit `PENDING_COMMIT_SHA` ("Fix multi-words-and-hash
+> regression (F-009 follow-up #4): task-local hashing prompt").
 
 Date: 2026-05-27
 Source finding: [F-009](../findings/F-009-qwen3-30b-moe-refuted-H1-invalid.md)
