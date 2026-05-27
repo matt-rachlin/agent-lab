@@ -13,8 +13,13 @@ from lab.rag.fetchers import FetchedDoc, FetcherContext, FetchResult, register
 
 
 def fetch(source: PlannedSource, ctx: FetcherContext) -> FetchResult:
+    # `playwright` is optional (not in `lab.rag` extras; sandbox-only code
+    # path). Use importlib so static type checkers don't flag the missing
+    # import when the dep isn't installed in the dev environment.
+    import importlib
+
     try:
-        from playwright.sync_api import sync_playwright
+        sync_playwright = importlib.import_module("playwright.sync_api").sync_playwright
     except ImportError:
         return FetchResult(
             skipped=True,

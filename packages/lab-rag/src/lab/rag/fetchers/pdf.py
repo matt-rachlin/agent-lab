@@ -22,8 +22,15 @@ def _pdf_to_markdown(data: bytes) -> tuple[str, str | None]:
         raise RuntimeError(f"pymupdf open failed: {e}") from e
     meta = doc.metadata or {}
     title = meta.get("title")
-    for i, page in enumerate(doc):
-        text = page.get_text("text") or ""
+    # `fitz.Document` implements iteration via `__getitem__` (sequence
+    # protocol), which pyright doesn't recognize as `Iterable`. Iterate by
+    # index instead — equivalent at runtime, accepted by pyright.
+    # `Page.get_text("text")` returns a `str` at runtime but pymupdf's
+    # overloads also allow list/dict shapes for other modes; coerce to
+    # str so the str-only operations below type-check cleanly.
+    for i in range(doc.page_count):
+        page = doc.load_page(i)
+        text = str(page.get_text("text") or "")
         if text.strip():
             md_parts.append(f"\n\n## Page {i + 1}\n\n{text.strip()}\n")
     doc.close()

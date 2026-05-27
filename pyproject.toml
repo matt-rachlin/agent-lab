@@ -157,11 +157,12 @@ markers = [
 ]
 
 [tool.pyright]
-# Phase 13.8: 2nd-opinion type checker alongside mypy --strict.
-# "standard" mode produces 5 errors as of Phase 13 (same count as
-# "basic" — the marginal checks "standard" adds don't trigger here).
-# "strict" balloons to ~500 due to Unknown propagation through pydantic
-# and untyped 3rd-party packages — not worth it for a 2nd opinion.
+# Phase 13.8 + follow-up: 2nd-opinion type checker alongside mypy --strict.
+# "standard" mode produced 5 real errors at Phase 13.8 ship (mypy's
+# pydantic plugin / per-module ignore_missing_imports hid them); those
+# are now fixed and pyright is part of `just check`. "strict" balloons to
+# ~500 due to Unknown propagation through pydantic and untyped 3rd-party
+# packages — not worth it for a 2nd opinion.
 include = ["packages"]
 exclude = ["**/__pycache__", "**/.venv"]
 # Phase 15.1: lab is a PEP 420 namespace split across 8 workspace

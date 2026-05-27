@@ -66,11 +66,10 @@ repos:
         types_or: [python, pyi]
         pass_filenames: false
         require_serial: true
-        # Pyright has 5 known errors as of Phase 13.8 that mypy misses
-        # (see Phase 13.8 commit msg). Until cleaned up, only run on
-        # manual invocation (pre-commit run --hook-stage manual pyright)
-        # or via `just pyright`.
-        stages: [manual]
+        # Phase 13.8 follow-up: the 5 known errors pyright surfaced
+        # (mypy's pydantic plugin / per-module ignore_missing_imports
+        # hid them) have been fixed, so pyright now runs on every
+        # commit as a 2nd-opinion gate alongside mypy.
 
   # Use the system-installed gitleaks binary (Homebrew on this host).
   # The upstream pre-commit hook tries to `go install` gitleaks during

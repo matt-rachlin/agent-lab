@@ -118,9 +118,15 @@ def _extract_sample_metadata(log: Any) -> dict[str, Any]:
     else:
         score_value = None
     messages = [_message_to_jsonable(m) for m in (sample.messages or [])]
-    model_usage = getattr(sample, "model_usage", None) or {}
-    if hasattr(model_usage, "model_dump"):
-        model_usage = model_usage.model_dump()
+    raw_usage = getattr(sample, "model_usage", None) or {}
+    # `sample.model_usage` is `dict[str, ModelUsage]` (pydantic). Dump each
+    # value so downstream (`for v in usage.values(): if isinstance(v, dict)`)
+    # sees plain dicts. Previously the code called `.model_dump()` on the
+    # outer dict — a no-op since `dict` lacks the attr — so the pydantic
+    # values leaked through and the token aggregation silently dropped them.
+    model_usage: dict[str, Any] = {
+        k: (v.model_dump() if hasattr(v, "model_dump") else v) for k, v in raw_usage.items()
+    }
     total_time = getattr(sample, "total_time", None)
     return {
         "lab_agent": lab_agent,

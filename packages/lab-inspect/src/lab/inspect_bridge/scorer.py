@@ -174,7 +174,12 @@ def _eval_db_predicate(predicate: dict[str, Any]) -> tuple[float, str]:
             psycopg.connect(get_settings().pg_dsn) as conn,
             conn.cursor() as cur,
         ):
-            cur.execute(query)
+            # `query` is config-supplied (predicate from task spec), so it's
+            # `str`, not `LiteralString` — psycopg's Query type uses
+            # LiteralString to prevent SQL injection at the type level. Pass
+            # bytes (also accepted as Query) after validating with
+            # `_looks_like_write` above; pyright now accepts the call.
+            cur.execute(query.encode("utf-8"))
             rows = cur.fetchall()
     except Exception as exc:
         return 0.0, f"db_query failed: {type(exc).__name__}: {exc}"

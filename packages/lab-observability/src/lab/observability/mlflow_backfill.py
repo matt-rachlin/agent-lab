@@ -137,7 +137,12 @@ def backfill_runs(
         query += f" LIMIT {int(limit)}"
 
     with psycopg.connect(pg_dsn) as conn, conn.cursor() as cur:
-        cur.execute(query)
+        # `query` was concatenated with an f-string LIMIT clause above so
+        # it's no longer `LiteralString` (psycopg's Query type uses that to
+        # prevent SQL injection at the type level). `int(limit)` is the
+        # only interpolation and is integer-coerced. Pass bytes (also a
+        # valid Query) to satisfy pyright.
+        cur.execute(query.encode("utf-8"))
         rows = cur.fetchall()
 
     for row in rows:

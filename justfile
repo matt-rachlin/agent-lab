@@ -155,10 +155,10 @@ test-integration:
 test-int:
     uv run pytest tests/ -q -m integration
 
-# Phase 13.8: `pyright` is intentionally NOT part of `check` until the
-# ~5 real errors it surfaces (mypy plugins miss them; see commit msg)
-# are fixed. Run `just pyright` manually as a 2nd-opinion gate.
-check: lint fmt-check types test
+# Phase 13.8 follow-up: the 5 real errors pyright surfaced (mypy plugins
+# missed them) have been fixed, so pyright is now part of `check` as a
+# 2nd-opinion gate alongside mypy.
+check: lint fmt-check types pyright test
     @echo "all clean"
 
 # --- benchmarks (Phase 13.3) ---
