@@ -236,3 +236,18 @@ kb-status:
 # Requires the dash extra: `uv sync -E dash` (or `uv sync --all-extras`).
 dash:
     uv run streamlit run apps/eval-dashboard/Home.py
+
+# --- papers cache (Phase 16.5) ---
+
+# Add a paper to the local cache by arXiv id, DOI, or URL.
+papers-add ID:
+    uv run python tools/add_paper.py {{ID}}
+
+# Same as papers-add but writes a stub PDF instead of fetching the real one
+# (useful when offline or sandboxed).
+papers-add-stub ID:
+    uv run python tools/add_paper.py {{ID}} --stub
+
+# List all cached papers.
+papers-list:
+    @ls ~/research/papers/ 2>/dev/null | grep -v README || echo "(no papers cached)"
