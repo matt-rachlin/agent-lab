@@ -13,10 +13,16 @@ tags:
 - adr
 - rag
 - dvc
+- superseded-partial
 ---
 # ADR-006: DVC for KB versioning, MinIO remote
 
-Status: accepted
+> **NOTE (2026-05-27):** The per-KB directory DVC pattern documented here is
+> partially superseded by **ADR-007 (content-addressed RAG registry)**. New
+> KBs route through the registry-bundle DVC pattern instead. This ADR remains
+> the record of the prior state and the migration reference.
+
+Status: accepted (partially superseded by ADR-007)
 Date: 2026-05-27
 Deciders: Matt Rachlin
 

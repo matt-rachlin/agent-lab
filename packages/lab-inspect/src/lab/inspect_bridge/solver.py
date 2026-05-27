@@ -698,6 +698,40 @@ def _stash_trajectory(
     }
 
 
+_WORKSPACE_PREDICATE_TYPES = frozenset(
+    {
+        "workspace_file_exists",
+        "workspace_file_equals",
+        "workspace_file_contains",
+    }
+)
+
+
+def _collect_predicate_paths(predicate: dict[str, Any]) -> list[str]:
+    """Walk a (possibly composite) predicate and return all workspace paths.
+
+    Handles `workspace_file_*` directly and the `all_of` composite by
+    recursing into each sub-predicate. Non-workspace types (`db_query`,
+    `retrieval_recall`, etc.) contribute no paths. Unknown sub-types are
+    silently skipped — the scorer reports the mismatch.
+    """
+
+    paths: list[str] = []
+    ptype = predicate.get("type")
+    if ptype in _WORKSPACE_PREDICATE_TYPES:
+        path = predicate.get("path")
+        if isinstance(path, str) and path:
+            paths.append(path)
+        return paths
+    if ptype == "all_of":
+        subs = predicate.get("predicates")
+        if isinstance(subs, list):
+            for sub in subs:
+                if isinstance(sub, dict):
+                    paths.extend(_collect_predicate_paths(sub))
+    return paths
+
+
 def _snapshot_predicate_files(task_meta: Any, sandbox: Sandbox | None) -> dict[str, bytes | None]:
     """Read any files referenced by `task.success_predicate` out of the sandbox.
 
@@ -707,8 +741,10 @@ def _snapshot_predicate_files(task_meta: Any, sandbox: Sandbox | None) -> dict[s
     exception during snapshotting (e.g. sandbox already stopped) is
     swallowed and the affected entry is `None`.
 
-    Only paths referenced by `workspace_file_*` predicates are read;
+    Only paths referenced by `workspace_file_*` sub-predicates are read;
     `db_query` predicates run at scoring time and don't need a snapshot.
+    Composite `all_of` predicates are walked recursively so every nested
+    workspace path is captured before sandbox teardown.
     """
 
     if sandbox is None or task_meta is None:
@@ -716,21 +752,15 @@ def _snapshot_predicate_files(task_meta: Any, sandbox: Sandbox | None) -> dict[s
     predicate = getattr(task_meta, "success_predicate", None)
     if not predicate or not isinstance(predicate, dict):
         return {}
-    ptype = predicate.get("type")
-    if ptype not in {
-        "workspace_file_exists",
-        "workspace_file_equals",
-        "workspace_file_contains",
-    }:
-        return {}
-    path = predicate.get("path")
-    if not isinstance(path, str) or not path:
+    paths = _collect_predicate_paths(predicate)
+    if not paths:
         return {}
     snapshot: dict[str, bytes | None] = {}
-    try:
-        snapshot[path] = sandbox.read_workspace_file(path)
-    except Exception:
-        snapshot[path] = None
+    for path in paths:
+        try:
+            snapshot[path] = sandbox.read_workspace_file(path)
+        except Exception:
+            snapshot[path] = None
     return snapshot
 
 

@@ -1,11 +1,11 @@
 {
-  "captured_at": "2026-05-27T06:38:27Z",
+  "captured_at": "2026-05-27T18:00:00Z",
   "config_hash": "117f5423a0636e46",
   "model": "llama3.1-8b-q4",
   "response_text": "The mean is 6.0.",
   "scorer_outcomes": {
     "budget_respected": 1.0,
-    "end_state": 1.0,
+    "end_state": 0.0,
     "tool_correctness": 1.0
   },
   "suite": "pbs-agent-v0.1",

@@ -199,6 +199,77 @@ def _eval_db_predicate(predicate: dict[str, Any]) -> tuple[float, str]:
 # ---------------------------------------------------------------------------
 
 
+def _eval_single_predicate(
+    predicate: dict[str, Any], snapshot: dict[str, Any] | None
+) -> tuple[float | str, str]:
+    """Evaluate a single (non-composite) predicate.
+
+    Returns (score_or_NOANSWER, explanation). Score is 1.0/0.0 for known
+    predicate types; NOANSWER (str) for unknown types so an out-of-family
+    predicate (e.g. RAG `retrieval_recall` on the `end_state` scorer) reads
+    as "not applicable" rather than a false fail (F-005 EXP-002 follow-up).
+    """
+
+    ptype = predicate.get("type")
+    if ptype is None:
+        return 0.0, "predicate missing 'type'"
+    if ptype in {
+        "workspace_file_exists",
+        "workspace_file_equals",
+        "workspace_file_contains",
+    }:
+        return _eval_workspace_predicate(predicate, snapshot)
+    if ptype == "db_query":
+        return _eval_db_predicate(predicate)
+    return NOANSWER, f"end_state not applicable to predicate type {ptype!r}"
+
+
+def _eval_all_of_predicate(
+    predicate: dict[str, Any], snapshot: dict[str, Any] | None
+) -> tuple[float | str, str]:
+    """Evaluate a composite `all_of` predicate.
+
+    All sub-predicates must pass (1.0). The first failure short-circuits
+    and is named in the explanation so debugging is greppable. A nested
+    NOANSWER from an unknown sub-type counts as a fail at the composite
+    level (not NOANSWER for the whole composite) because the task author
+    explicitly opted into a multi-check predicate — silently treating a
+    typo'd sub-predicate as "not applicable" would hide the bug.
+
+    The F-009 follow-up pattern: pair `db_query` (meta-check that the
+    predicate code-path itself works against Postgres) with a
+    `workspace_file_*` sub-predicate (evidence the agent actually executed
+    tool calls and produced an end-state artifact). Models that fire zero
+    tool calls fail the workspace sub-predicate even though the db_query
+    sub-predicate always passes for a registered task.
+    """
+
+    subs_raw = predicate.get("predicates")
+    if not isinstance(subs_raw, list) or not subs_raw:
+        return 0.0, "all_of predicate requires non-empty 'predicates' list"
+
+    failures: list[str] = []
+    passes: list[str] = []
+    for idx, sub in enumerate(subs_raw):
+        if not isinstance(sub, dict):
+            return 0.0, f"all_of: sub-predicate {idx} is not a dict"
+        sub_type = sub.get("type")
+        if sub_type == "all_of":
+            # Disallow nested all_of for now — keeps the schema flat and
+            # the snapshot-collection walk simple. If a real need shows up,
+            # generalise then.
+            return 0.0, f"all_of: nested all_of at index {idx} not supported"
+        sub_value, sub_expl = _eval_single_predicate(sub, snapshot)
+        tag = f"[{idx} {sub_type}]"
+        if sub_value == 1.0:
+            passes.append(f"{tag} {sub_expl}")
+            continue
+        failures.append(f"{tag} {sub_expl}")
+        # Short-circuit on first failure.
+        return 0.0, f"all_of FAIL: {'; '.join(failures)}"
+    return 1.0, f"all_of PASS ({len(passes)} sub-predicates): {' | '.join(passes)}"
+
+
 @scorer(metrics=[mean()], name="end_state")
 def end_state(predicate: dict[str, Any] | None = None) -> Scorer:
     """Score the final workspace / DB state against a predicate.
@@ -212,6 +283,12 @@ def end_state(predicate: dict[str, Any] | None = None) -> Scorer:
         type: workspace_file_equals, path: "x", expected: "...", case_sensitive: bool
         type: workspace_file_contains, path: "x", substring: "...", case_sensitive: bool
         type: db_query, query: "SELECT ...", expects_rows: <int|null>
+        type: all_of, predicates: [<predicate>, ...]  # composite AND
+
+    The `all_of` composite (F-009 follow-up) is the right tool when a
+    single predicate would be trivially passable. Pair a `db_query` meta-
+    check with a `workspace_file_*` end-state check so models that never
+    fire tools fail end_state even though the meta-check passes.
     """
 
     async def score(state: TaskState, target: Target) -> Score:
@@ -236,25 +313,11 @@ def end_state(predicate: dict[str, Any] | None = None) -> Scorer:
         lab_agent = _get_lab_agent(state)
         snapshot = lab_agent.get("workspace_snapshot") if lab_agent else None
 
-        if ptype in {
-            "workspace_file_exists",
-            "workspace_file_equals",
-            "workspace_file_contains",
-        }:
-            value, explanation = _eval_workspace_predicate(active, snapshot)
+        if ptype == "all_of":
+            value, explanation = _eval_all_of_predicate(active, snapshot)
             return Score(value=value, explanation=explanation)
-        if ptype == "db_query":
-            value, explanation = _eval_db_predicate(active)
-            return Score(value=value, explanation=explanation)
-        # Unknown predicate type — return NOANSWER (not 0.0) so a scorer
-        # mismatch (e.g. `end_state` paired with a RAG `retrieval_recall`
-        # predicate) reads as "not applicable" rather than a false fail.
-        # F-005 EXP-002 follow-up: `end_state` was scoring 0.0 on every
-        # `retrieval_recall` task, polluting the end_state mean.
-        return Score(
-            value=NOANSWER,
-            explanation=f"end_state not applicable to predicate type {ptype!r}",
-        )
+        value, explanation = _eval_single_predicate(active, snapshot)
+        return Score(value=value, explanation=explanation)
 
     return score
 

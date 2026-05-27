@@ -51,14 +51,26 @@ tasks:
     description: |
       Exercises success_predicate type=db_query end-to-end. The agent's
       visible job is a small fs + python summary. The grading predicate
-      then runs a read-only SQL query against the lab DB confirming that
-      this very task is registered — this is a meta-check that the
-      predicate code path works against real Postgres (since the sandboxed
-      agent cannot write to PG itself).
+      runs a read-only SQL query against the lab DB confirming that
+      this very task is registered — a meta-check that the predicate
+      code path works against real Postgres (since the sandboxed agent
+      cannot write to PG itself) — AND a workspace_file_equals check on
+      mean.txt so the predicate isn't trivially passable.
+
+      Task-author trap (F-009 EXP-006): the previous iteration used the
+      db_query check alone. Because that query always returns 1 row for
+      a registered task regardless of agent behaviour, qwen3-30b-a3b-moe
+      fired zero tool calls and scored end_state=1.0 on every cell. The
+      fix is the all_of composite below: the db_query sub-predicate keeps
+      the meta-check meaningful, and the workspace_file_equals sub-
+      predicate requires the agent to actually produce mean.txt with the
+      correct arithmetic mean. Models that no-op fail the file half;
+      models that misread the data fail the equals half. Same fix shape
+      as F-005's code-find-and-fix-bug Surprise 2.
     input: |
       Use fs_read to read 'nums.csv' (single line, comma-separated integers).
       Use python_eval to compute the arithmetic mean (Python: sum(xs)/len(xs))
-      as a floating-point value. Write the mean (e.g. '12.5') to a new file
+      as a floating-point value. Write the mean (e.g. '6.0') to a new file
       'mean.txt' via fs_write mode='create'. Reply with the mean.
     system_prompt_id: agent_system_v1
     tools:
@@ -69,13 +81,27 @@ tasks:
     tool_budget: 6
     sandbox:
       workspace_files:
+        # Mean of 2,4,6,8,10 is 6.0; verified: sum=30, n=5, 30/5=6.0.
         "nums.csv": "2,4,6,8,10\n"
     success_predicate:
-      type: db_query
-      # Reads-only: confirms this task's row is present in lab.tasks. The
-      # scorer refuses any write-like keyword (INSERT/UPDATE/etc).
-      query: "SELECT slug FROM tasks WHERE suite = 'pbs-agent-v0.1' AND slug = 'multi-db-self-check' AND retired_at IS NULL"
-      expects_rows: 1
+      type: all_of
+      predicates:
+        # 1) db_query meta-check — confirms the predicate code path runs
+        #    against real Postgres. Reads-only; the scorer refuses any
+        #    write-like keyword (INSERT/UPDATE/etc).
+        - type: db_query
+          query: "SELECT slug FROM tasks WHERE suite = 'pbs-agent-v0.1' AND slug = 'multi-db-self-check' AND retired_at IS NULL"
+          expects_rows: 1
+        # 2) workspace_file_contains — requires evidence of actual tool use.
+        #    mean.txt must contain "6.0" (the correct arithmetic mean of
+        #    2,4,6,8,10). Substring match (not equals) so minor formatting
+        #    variation across models is tolerated: "6.0", "6.00", and
+        #    "The mean is 6.0" all pass; "6" alone, "12.5", "5.0", or a
+        #    missing file all fail. Models that never call fs_write fail
+        #    this half because mean.txt won't be in the snapshot at all.
+        - type: workspace_file_contains
+          path: mean.txt
+          substring: "6.0"
     rubric:
       type: tool_call
       target_tool: python_eval

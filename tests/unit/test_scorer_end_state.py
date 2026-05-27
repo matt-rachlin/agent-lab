@@ -225,3 +225,184 @@ def test_retrieval_recall_predicate_returns_noanswer() -> None:
     )
     s = _run(end_state(), state)
     assert s.value == NOANSWER
+
+
+# ---------------------------------------------------------------------------
+# `all_of` composite predicate — F-009 EXP-006 follow-up
+#
+# The `multi-db-self-check` task used a bare `db_query` predicate that always
+# returned 1 row for a registered task; qwen3-30b-a3b-moe fired zero tool
+# calls on 8/8 cells and still scored 1.0. The fix is the `all_of` composite:
+# pair the db_query meta-check with a workspace_file_* sub-predicate so
+# no-op trajectories fail end_state. These tests pin that behaviour.
+# ---------------------------------------------------------------------------
+
+
+def _patch_db_query(monkeypatch: pytest.MonkeyPatch, rows: list[Any]) -> None:
+    """Fake out psycopg.connect so db_query sub-predicates can be tested."""
+
+    class FakeCursor:
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *a: Any) -> None:
+            return None
+
+        def execute(self, q: Any) -> None:
+            self.q = q
+
+        def fetchall(self) -> list[Any]:
+            return rows
+
+    class FakeConn:
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *a: Any) -> None:
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return FakeCursor()
+
+    monkeypatch.setattr(scorer_mod.psycopg, "connect", lambda dsn: FakeConn())
+
+
+def test_all_of_passes_when_every_sub_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both sub-predicates pass → composite passes with value 1.0."""
+    _patch_db_query(monkeypatch, [(1,)])
+    state = _state(
+        success_predicate={
+            "type": "all_of",
+            "predicates": [
+                {"type": "db_query", "query": "SELECT 1", "expects_rows": 1},
+                {
+                    "type": "workspace_file_contains",
+                    "path": "mean.txt",
+                    "substring": "6.0",
+                },
+            ],
+        },
+        workspace_snapshot={"mean.txt": b"6.0\n"},
+    )
+    s = _run(end_state(), state)
+    assert s.value == 1.0
+    assert "PASS" in (s.explanation or "")
+
+
+def test_all_of_fails_when_workspace_sub_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """db_query passes but the file half fails → composite fails."""
+    _patch_db_query(monkeypatch, [(1,)])
+    state = _state(
+        success_predicate={
+            "type": "all_of",
+            "predicates": [
+                {"type": "db_query", "query": "SELECT 1", "expects_rows": 1},
+                {
+                    "type": "workspace_file_contains",
+                    "path": "mean.txt",
+                    "substring": "6.0",
+                },
+            ],
+        },
+        # mean.txt has a wrong value (e.g. model misread the data).
+        workspace_snapshot={"mean.txt": b"12.5\n"},
+    )
+    s = _run(end_state(), state)
+    assert s.value == 0.0
+    assert "FAIL" in (s.explanation or "")
+    assert "workspace_file_contains" in (s.explanation or "")
+
+
+def test_all_of_fails_on_no_tool_calls_trajectory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression guard for F-009 EXP-006: a model that fires zero tool
+    calls produces an empty workspace_snapshot. Under the old bare-db_query
+    predicate this scored 1.0 (db_query meta-check passes for any registered
+    task). Under the tightened `all_of` composite the workspace_file_*
+    sub-predicate now fails because mean.txt was never written, so the
+    composite — and end_state — fails. This is the synthetic version of
+    the qwen3-30b-a3b-moe behaviour from EXP-006.
+    """
+    _patch_db_query(monkeypatch, [(1,)])
+    state = _state(
+        success_predicate={
+            "type": "all_of",
+            "predicates": [
+                {
+                    "type": "db_query",
+                    "query": (
+                        "SELECT slug FROM tasks "
+                        "WHERE suite = 'pbs-agent-v0.1' "
+                        "AND slug = 'multi-db-self-check' "
+                        "AND retired_at IS NULL"
+                    ),
+                    "expects_rows": 1,
+                },
+                {
+                    "type": "workspace_file_contains",
+                    "path": "mean.txt",
+                    "substring": "6.0",
+                },
+            ],
+        },
+        # Crucial: the synthetic "narrate-instead-of-call" trajectory has
+        # no tool calls and therefore no workspace artifacts.
+        workspace_snapshot={},
+    )
+    s = _run(end_state(), state)
+    assert s.value == 0.0, (
+        "A zero-tool-call trajectory must fail end_state on the tightened "
+        "multi-db-self-check predicate; otherwise F-009 EXP-006 regresses."
+    )
+    assert "FAIL" in (s.explanation or "")
+    assert "not present" in (s.explanation or "")
+
+
+def test_all_of_short_circuits_on_first_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The db_query sub-predicate fails first → file half isn't evaluated."""
+    # Return zero rows so db_query fails.
+    _patch_db_query(monkeypatch, [])
+    state = _state(
+        success_predicate={
+            "type": "all_of",
+            "predicates": [
+                {"type": "db_query", "query": "SELECT 1", "expects_rows": 1},
+                {
+                    "type": "workspace_file_contains",
+                    "path": "mean.txt",
+                    "substring": "6.0",
+                },
+            ],
+        },
+        workspace_snapshot={"mean.txt": b"6.0\n"},
+    )
+    s = _run(end_state(), state)
+    assert s.value == 0.0
+    assert "db_query" in (s.explanation or "")
+
+
+def test_all_of_rejects_empty_predicates_list() -> None:
+    state = _state(success_predicate={"type": "all_of", "predicates": []})
+    s = _run(end_state(), state)
+    assert s.value == 0.0
+    assert "non-empty" in (s.explanation or "")
+
+
+def test_all_of_rejects_nested_composites() -> None:
+    """`all_of` inside `all_of` is rejected (keeps the schema flat)."""
+    state = _state(
+        success_predicate={
+            "type": "all_of",
+            "predicates": [
+                {
+                    "type": "all_of",
+                    "predicates": [
+                        {"type": "workspace_file_exists", "path": "x"},
+                    ],
+                },
+            ],
+        },
+        workspace_snapshot={"x": b""},
+    )
+    s = _run(end_state(), state)
+    assert s.value == 0.0
+    assert "nested all_of" in (s.explanation or "")

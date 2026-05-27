@@ -107,23 +107,47 @@ def test_every_tool_is_touched_by_some_task() -> None:
 
 
 def test_success_predicate_shape() -> None:
-    valid_types = {
+    leaf_types = {
         "workspace_file_contains",
         "workspace_file_equals",
         "workspace_file_exists",
         "db_query",
     }
+    valid_types = leaf_types | {"all_of"}
     for task in _all_tasks():
         sp = task.success_predicate
         assert sp is not None, f"{task.slug} missing success_predicate"
-        assert (
-            sp.get("type") in valid_types
-        ), f"{task.slug} predicate type {sp.get('type')!r} not in {valid_types}"
+        ptype = sp.get("type")
+        assert ptype in valid_types, f"{task.slug} predicate type {ptype!r} not in {valid_types}"
+        if ptype == "all_of":
+            subs = sp.get("predicates")
+            assert isinstance(subs, list), f"{task.slug} all_of predicate needs 'predicates' list"
+            assert subs, f"{task.slug} all_of predicate 'predicates' list is empty"
+            for idx, sub in enumerate(subs):
+                assert isinstance(
+                    sub, dict
+                ), f"{task.slug} all_of sub-predicate {idx} is not a dict"
+                assert sub.get("type") in leaf_types, (
+                    f"{task.slug} all_of sub-predicate {idx} type {sub.get('type')!r} "
+                    f"not in {leaf_types}"
+                )
+
+
+def _has_db_query(pred: dict[str, object]) -> bool:
+    """True if the predicate (leaf or all_of) uses a db_query sub-check."""
+
+    if pred.get("type") == "db_query":
+        return True
+    if pred.get("type") == "all_of":
+        for sub in pred.get("predicates") or []:  # type: ignore[union-attr]
+            if isinstance(sub, dict) and sub.get("type") == "db_query":
+                return True
+    return False
 
 
 def test_at_least_one_db_query_predicate() -> None:
-    hits = [t.slug for t in _all_tasks() if (t.success_predicate or {}).get("type") == "db_query"]
-    assert hits, "no task uses success_predicate type=db_query"
+    hits = [t.slug for t in _all_tasks() if _has_db_query(t.success_predicate or {})]
+    assert hits, "no task uses success_predicate type=db_query (leaf or under all_of)"
 
 
 def test_at_least_one_judge_task() -> None:
