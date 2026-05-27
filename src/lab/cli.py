@@ -7,16 +7,18 @@ from datetime import datetime as _datetime
 from pathlib import Path
 
 import typer
+from lab.analyze.report import make_report
 from lab.core.daily_log import ensure_today, open_in_editor
 from lab.core.manifest import capture as capture_manifest
 from lab.core.notify import get_ntfy_url, notify
 from lab.eval import apply_to_experiment, get_registry, load_evaluators_from
 from lab.eval.builtin import register_all as register_builtin_evaluators
+from lab.sweep.config import load_sweep
+from lab.sweep.runner import cancel_sweep, get_sweep_status, run_sweep
 from lab.tasks.registry import list_suites, load_tasks, register_tasks
 from rich.console import Console
 from rich.table import Table
 
-from lab.analyze.report import make_report
 from lab.experiment import (
     get_experiment,
     is_pre_registered,
@@ -29,8 +31,6 @@ from lab.finding import sync as sync_findings
 from lab.quota import alert_if_high as quota_alert
 from lab.quota import usage_window as quota_window
 from lab.spend import backfill as spend_backfill
-from lab.sweep.config import load_sweep
-from lab.sweep.runner import cancel_sweep, get_sweep_status, run_sweep
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
