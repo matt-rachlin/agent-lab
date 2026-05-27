@@ -76,11 +76,7 @@ def task_needs_hf_cache_mount(
 
     if not tool_specs:
         return False
-    value = (
-        reranker_env
-        if reranker_env is not None
-        else os.environ.get("LAB_RAG_RERANKER", "")
-    )
+    value = reranker_env if reranker_env is not None else os.environ.get("LAB_RAG_RERANKER", "")
     if value.strip().lower() == "none":
         return False
     for spec in tool_specs:

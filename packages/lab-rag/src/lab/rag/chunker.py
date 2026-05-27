@@ -568,9 +568,7 @@ def _chunk_parent_child(
             i += 2
             continue
         # Translate section-relative (rs, re_) to body-relative.
-        packed_parents.append(
-            (list(sec.path), sec.start + rs, sec.start + re_, ptxt)
-        )
+        packed_parents.append((list(sec.path), sec.start + rs, sec.start + re_, ptxt))
         i += 1
 
     # Step 3 — emit parent + children pairs.
@@ -636,4 +634,3 @@ __all__ = [
     "chunk_document",
     "strip_frontmatter",
 ]
-

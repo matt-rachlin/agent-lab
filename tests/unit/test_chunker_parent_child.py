@@ -70,9 +70,7 @@ def test_parent_child_parent_path_inherits_section() -> None:
     section."""
     doc = (
         "# Top\n\n"
-        "## Body\n\n"
-        + (". ".join(f"alpha beta gamma delta {i}" for i in range(80)))
-        + ".\n"
+        "## Body\n\n" + (". ".join(f"alpha beta gamma delta {i}" for i in range(80))) + ".\n"
     )
     chunks = chunk_document(
         doc_path="x.md",
@@ -153,12 +151,7 @@ def test_parent_child_empty_doc() -> None:
 def test_flat_mode_unchanged_bitfor_bit() -> None:
     """FLAT mode is the v1 baseline — no parent_id / child_index / is_parent
     populated, even though the fields now exist on the dataclass."""
-    doc = (
-        "# Top\n\n"
-        "## A\n\nbody A.\n\n"
-        "## B\n\nbody B with words.\n\n"
-        "## C\n\nbody C.\n"
-    )
+    doc = "# Top\n\n## A\n\nbody A.\n\n## B\n\nbody B with words.\n\n## C\n\nbody C.\n"
     chunks = chunk_document(
         doc_path="x.md",
         full_text=doc,
@@ -196,9 +189,7 @@ def test_sentence_split_preserves_whitespace_only_pieces() -> None:
     pieces = _sentence_split(text)
     # Reconstruct: concatenating all piece texts must equal the input.
     rebuilt = "".join(p[2] for p in pieces)
-    assert rebuilt == text, (
-        "sentence pieces must reconstruct the original text byte-for-byte"
-    )
+    assert rebuilt == text, "sentence pieces must reconstruct the original text byte-for-byte"
     # And the (start, end) ranges must tile [0, len(text)] without gaps.
     cursor = 0
     for start, end, _ in pieces:

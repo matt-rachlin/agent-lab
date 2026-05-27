@@ -13,9 +13,7 @@ from lab.inspect_bridge.scorer import tool_correctness
 from lab.tasks.registry import Task
 
 
-def _state(
-    *, rubric: dict[str, Any] | None, turns: list[dict[str, Any]]
-) -> TaskState:
+def _state(*, rubric: dict[str, Any] | None, turns: list[dict[str, Any]]) -> TaskState:
     task = Task.model_validate(
         {
             "suite": "test",

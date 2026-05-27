@@ -71,8 +71,7 @@ def test_every_referenced_tool_exists() -> None:
         for spec in task.tools or []:
             name = spec.get("name")
             assert name in TOOL_SERVERS, (
-                f"{task.slug} references unknown tool {name!r}; "
-                f"known: {sorted(TOOL_SERVERS)}"
+                f"{task.slug} references unknown tool {name!r}; known: {sorted(TOOL_SERVERS)}"
             )
 
 
@@ -133,9 +132,7 @@ def test_at_least_one_judge_task() -> None:
 def test_tool_call_rubrics_have_target_tool() -> None:
     for task in _all_tasks():
         if task.rubric is not None and task.rubric.type == "tool_call":
-            assert task.rubric.target_tool, (
-                f"{task.slug} tool_call rubric missing target_tool"
-            )
+            assert task.rubric.target_tool, f"{task.slug} tool_call rubric missing target_tool"
             # target_tool must be in the task's allowed tools list
             allowed = {spec.get("name") for spec in (task.tools or [])}
             assert task.rubric.target_tool in allowed, (
@@ -163,13 +160,12 @@ def test_http_tasks_use_fixture_dir() -> None:
         assert isinstance(network, list), (
             f"{task.slug} uses http_fetch but sandbox.network is not a list"
         )
-        assert network, (
-            f"{task.slug} uses http_fetch but sandbox.network is empty"
-        )
+        assert network, f"{task.slug} uses http_fetch but sandbox.network is empty"
 
 
 @pytest.mark.parametrize(
-    "expected_difficulty", ["easy", "medium", "hard"],
+    "expected_difficulty",
+    ["easy", "medium", "hard"],
 )
 def test_difficulty_mix_present(expected_difficulty: str) -> None:
     """Every difficulty bucket has at least one task."""

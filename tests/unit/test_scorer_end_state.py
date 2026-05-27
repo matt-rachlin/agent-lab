@@ -16,7 +16,8 @@ from lab.tasks.registry import Task
 
 
 def _state(
-    *, success_predicate: dict[str, Any] | None = None,
+    *,
+    success_predicate: dict[str, Any] | None = None,
     workspace_snapshot: dict[str, Any] | None = None,
 ) -> TaskState:
     task = Task.model_validate(
@@ -167,19 +168,29 @@ def test_db_query_predicate_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     """The scorer should call psycopg and pass when row count matches."""
 
     class FakeCursor:
-        def __enter__(self) -> Any: return self
-        def __exit__(self, *a: Any) -> None: return None
-        def execute(self, q: str) -> None: self.q = q
-        def fetchall(self) -> list[Any]: return [(1,)]
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *a: Any) -> None:
+            return None
+
+        def execute(self, q: str) -> None:
+            self.q = q
+
+        def fetchall(self) -> list[Any]:
+            return [(1,)]
 
     class FakeConn:
-        def __enter__(self) -> Any: return self
-        def __exit__(self, *a: Any) -> None: return None
-        def cursor(self) -> FakeCursor: return FakeCursor()
+        def __enter__(self) -> Any:
+            return self
 
-    monkeypatch.setattr(
-        scorer_mod.psycopg, "connect", lambda dsn: FakeConn()
-    )
+        def __exit__(self, *a: Any) -> None:
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return FakeCursor()
+
+    monkeypatch.setattr(scorer_mod.psycopg, "connect", lambda dsn: FakeConn())
     state = _state(
         success_predicate={
             "type": "db_query",

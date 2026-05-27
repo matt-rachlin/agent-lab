@@ -40,9 +40,7 @@ def _task_uses_kb_query(task: LabTask) -> bool:
 
     if not task.tools:
         return False
-    return any(
-        isinstance(spec, dict) and spec.get("name") == "kb_query" for spec in task.tools
-    )
+    return any(isinstance(spec, dict) and spec.get("name") == "kb_query" for spec in task.tools)
 
 
 def _select_scorers(task: LabTask) -> list[Scorer]:

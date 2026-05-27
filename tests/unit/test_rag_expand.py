@@ -94,9 +94,7 @@ def test_multi_query_degrades_to_original_on_complete_failure() -> None:
 
 def test_multi_query_filters_duplicates_against_original() -> None:
     fake = _FakeClient(
-        responses=[
-            "How do I exit a loop?\nbreak out of a loop\nstop a for loop early"
-        ]
+        responses=["How do I exit a loop?\nbreak out of a loop\nstop a for loop early"]
     )
     out = multi_query("How do I exit a loop?", n=3, client=fake)
     # The duplicate phrasing of the original is dropped.

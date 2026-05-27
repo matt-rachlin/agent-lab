@@ -61,9 +61,7 @@ def _clear_stubs() -> Any:
     _StubPool.instances.clear()
 
 
-def _make_state(
-    *, lab_task: Any, prompt: str = "do the thing"
-) -> Any:
+def _make_state(*, lab_task: Any, prompt: str = "do the thing") -> Any:
     """Build a minimal TaskState-compatible object the solver uses."""
     from inspect_ai.model import ChatMessageUser
     from inspect_ai.solver import TaskState
@@ -243,7 +241,7 @@ def test_tool_budget_exhaustion_terminates(
                                 "type": "function",
                                 "function": {
                                     "name": "fs_read",
-                                    "arguments": "{\"path\": \"y\"}",
+                                    "arguments": '{"path": "y"}',
                                 },
                             }
                         ],

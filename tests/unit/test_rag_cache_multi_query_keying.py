@@ -39,17 +39,23 @@ def test_rag_cache_multi_query_isolates_payloads() -> None:
     single_hits = [{"chunk_id": "from-single", "rerank_score": 0.8}]
 
     cache.put_rerank(
-        "q", kb_version="v1", top_k=5, rerank_model="m",
-        hits=multi_hits, multi_query=True,
+        "q",
+        kb_version="v1",
+        top_k=5,
+        rerank_model="m",
+        hits=multi_hits,
+        multi_query=True,
     )
     cache.put_rerank(
-        "q", kb_version="v1", top_k=5, rerank_model="m",
-        hits=single_hits, multi_query=False,
+        "q",
+        kb_version="v1",
+        top_k=5,
+        rerank_model="m",
+        hits=single_hits,
+        multi_query=False,
     )
 
-    out_multi = cache.get_rerank(
-        "q", kb_version="v1", top_k=5, rerank_model="m", multi_query=True
-    )
+    out_multi = cache.get_rerank("q", kb_version="v1", top_k=5, rerank_model="m", multi_query=True)
     out_single = cache.get_rerank(
         "q", kb_version="v1", top_k=5, rerank_model="m", multi_query=False
     )

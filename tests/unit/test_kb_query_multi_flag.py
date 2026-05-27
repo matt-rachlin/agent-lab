@@ -18,9 +18,7 @@ def _stage(tmp_path: Path, name: str) -> Path:
     return kb_dir
 
 
-def test_multi_query_default_false(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_multi_query_default_false(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _stage(tmp_path, "bash")
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
     monkeypatch.setattr("lab.rag.index.count_rows", lambda _d: 5)
@@ -35,9 +33,7 @@ def test_multi_query_default_false(
     assert captured["multi_query"] is False
 
 
-def test_multi_query_flag_is_propagated(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_multi_query_flag_is_propagated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _stage(tmp_path, "bash")
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
     monkeypatch.setattr("lab.rag.index.count_rows", lambda _d: 5)

@@ -50,9 +50,7 @@ def _is_ollama_local(litellm_params: dict[str, Any]) -> bool:
     tag = model.split("/", 1)[1] if "/" in model else ""
     # The piece after the colon is the actual Ollama tag.
     after_colon = tag.split(":", 1)[-1] if ":" in tag else ""
-    return not (
-        tag.endswith("-cloud") or "-cloud" in after_colon or after_colon == "cloud"
-    )
+    return not (tag.endswith("-cloud") or "-cloud" in after_colon or after_colon == "cloud")
 
 
 def check_litellm_keep_alive(config_path: Path | None = None) -> None:

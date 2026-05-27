@@ -10,9 +10,9 @@ from typing import Any
 from lab.rag.index import _dedupe_by_parent, _schema
 
 
-def _cand(cid: str, score: float, parent: str | None = None) -> tuple[
-    str, float, float, float, dict[str, Any]
-]:
+def _cand(
+    cid: str, score: float, parent: str | None = None
+) -> tuple[str, float, float, float, dict[str, Any]]:
     row = {
         "chunk_id": cid,
         "text": cid,

@@ -21,9 +21,7 @@ def _stage(tmp_path: Path, name: str) -> Path:
     return kb_dir
 
 
-def test_rerank_default_false(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_rerank_default_false(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Default reverted to False post-EXP-004c (see F-007 amendment)."""
 
     _stage(tmp_path, "bash")
@@ -43,9 +41,7 @@ def test_rerank_default_false(
     assert captured["alpha"] is None
 
 
-def test_rerank_can_be_enabled(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_rerank_can_be_enabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Callers can opt into rerank explicitly."""
 
     _stage(tmp_path, "bash")
@@ -62,9 +58,7 @@ def test_rerank_can_be_enabled(
     assert captured["rerank"] is True
 
 
-def test_invalid_fusion_rejected(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_invalid_fusion_rejected(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
     out = kb_query_mod.kb_query(kb_name="bash", question="hi", fusion="bogus")
     assert out["hits"] == []

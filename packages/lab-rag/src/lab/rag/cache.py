@@ -82,9 +82,7 @@ def rerank_key(
     keys stable for callers that don't yet pass the flag.
     """
     mq_tag = "mq1" if multi_query else "mq0"
-    payload = (
-        f"{kb_version}|{rerank_model}|{top_k}|{mq_tag}|{_normalize_query(query)}"
-    )
+    payload = f"{kb_version}|{rerank_model}|{top_k}|{mq_tag}|{_normalize_query(query)}"
     return f"rrk:{_sha256_short(payload)}"
 
 
@@ -180,9 +178,7 @@ class RagCache:
         try:
             import redis
         except ImportError as exc:  # pragma: no cover - env guard
-            raise RuntimeError(
-                "redis client not installed; RagCache cannot run"
-            ) from exc
+            raise RuntimeError("redis client not installed; RagCache cannot run") from exc
         if valkey_url is None:
             from lab.core.settings import get_settings
 
@@ -244,9 +240,7 @@ class RagCache:
         *,
         multi_query: bool = False,
     ) -> list[dict[str, Any]] | None:
-        key = rerank_key(
-            query, kb_version, top_k, rerank_model, multi_query=multi_query
-        )
+        key = rerank_key(query, kb_version, top_k, rerank_model, multi_query=multi_query)
         try:
             raw = self._client.get(key)
         except Exception as exc:
@@ -275,9 +269,7 @@ class RagCache:
     ) -> None:
         if not hits:
             return
-        key = rerank_key(
-            query, kb_version, top_k, rerank_model, multi_query=multi_query
-        )
+        key = rerank_key(query, kb_version, top_k, rerank_model, multi_query=multi_query)
         try:
             self._client.set(key, _encode_rerank(hits), ex=RERANK_TTL_SEC)
         except Exception as exc:

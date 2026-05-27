@@ -610,8 +610,7 @@ def _execute_agent_cell(
     tool_filter = cfg_extra.get("tool_filter")
     if tool_filter == "exclude_kb_query" and raw_tools:
         raw_tools = [
-            t for t in raw_tools
-            if not (isinstance(t, dict) and t.get("name") == "kb_query")
+            t for t in raw_tools if not (isinstance(t, dict) and t.get("name") == "kb_query")
         ]
 
     lab_task = LabTask.model_validate(

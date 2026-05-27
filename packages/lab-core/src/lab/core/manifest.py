@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
-
 from lab.core.settings import get_settings
 
 

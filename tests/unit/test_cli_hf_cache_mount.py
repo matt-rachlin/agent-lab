@@ -81,8 +81,7 @@ def _stub_registry(monkeypatch: pytest.MonkeyPatch, tools: list[dict[str, Any]] 
 
 
 def _stub_inspect_bridge(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("lab.inspect_bridge.adapter.lab_task_to_inspect",
-                        lambda *a, **k: object())
+    monkeypatch.setattr("lab.inspect_bridge.adapter.lab_task_to_inspect", lambda *a, **k: object())
     monkeypatch.setattr("inspect_ai.eval", _fake_inspect_eval)
 
 
@@ -173,7 +172,6 @@ def test_agent_run_skips_hf_cache_when_no_kb_query(
 ) -> None:
     monkeypatch.setenv("LAB_HF_CACHE_ROOT", str(tmp_path / "hfc"))
     monkeypatch.setattr("lab.core.settings._settings", None, raising=False)
-    _run_agent_run(monkeypatch, [{"name": "fs_read"}, {"name": "shell_exec"}],
-                   reranker_env=None)
+    _run_agent_run(monkeypatch, [{"name": "fs_read"}, {"name": "shell_exec"}], reranker_env=None)
     kw = _FakeSandbox.last_kwargs
     assert kw["hf_cache_mount"] is None

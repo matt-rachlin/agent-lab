@@ -47,9 +47,7 @@ def test_kb_query_rejects_alpha_out_of_range() -> None:
     assert "alpha" in out["error"]
 
 
-def test_kb_query_clamps_k_to_safe_range(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_kb_query_clamps_k_to_safe_range(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     kb_dir = _stage_manifest(tmp_path, "bash")
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
 
@@ -95,9 +93,7 @@ def test_kb_query_empty_kb_returns_clean_status(
     assert out["kb_status"] == "empty"
 
 
-def test_kb_query_truncates_long_text(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_kb_query_truncates_long_text(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from lab.rag.index import Hit
 
     _stage_manifest(tmp_path, "bash")
@@ -133,9 +129,7 @@ def test_kb_query_truncates_long_text(
     assert hit["authority"] == "official"
 
 
-def test_kb_query_short_text_not_truncated(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_kb_query_short_text_not_truncated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from lab.rag.index import Hit
 
     _stage_manifest(tmp_path, "bash")
@@ -203,9 +197,7 @@ def test_kb_query_passes_authority_filter_through(
         return []
 
     monkeypatch.setattr("lab.rag.index.hybrid_query", fake_hybrid)
-    out = kb_query_mod.kb_query(
-        kb_name="bash", question="x", authority="official", alpha=0.3
-    )
+    out = kb_query_mod.kb_query(kb_name="bash", question="x", authority="official", alpha=0.3)
     assert out["hits"] == []
     assert captured["authority"] == "official"
     assert captured["alpha"] == pytest.approx(0.3)

@@ -20,7 +20,6 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 import redis
-
 from lab.core.settings import get_settings
 
 LEASE_KEY = "lab:gpu:lease"

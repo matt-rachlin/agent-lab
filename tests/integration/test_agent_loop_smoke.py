@@ -45,9 +45,7 @@ def _require_environment() -> None:
         pytest.skip("Ollama (local) not reachable")
 
 
-def test_agent_loop_smoke_reads_a_file(
-    pg: Any, minio_client: Any, tmp_path: Any
-) -> None:
+def test_agent_loop_smoke_reads_a_file(pg: Any, minio_client: Any, tmp_path: Any) -> None:
     """Stage a file, give the agent fs_read, watch it read+respond.
 
     The model is asked to read `note.txt` and return its content. We assert
@@ -157,7 +155,7 @@ def test_agent_loop_smoke_reads_a_file(
     body = obj.read()
     obj.close()
     obj.release_conn()
-    assert b"\"type\": \"header\"" in body or b'"type":"header"' in body
+    assert b'"type": "header"' in body or b'"type":"header"' in body
 
     # And `agent_logs` got an idempotent row.
     with pg.cursor() as cur:

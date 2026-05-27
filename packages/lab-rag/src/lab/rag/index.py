@@ -343,9 +343,7 @@ def _stage1_candidates(
         scored = []
         for cid, row in seen.items():
             combined = fused.get(cid, 0.0)
-            scored.append(
-                (cid, combined, d_sims.get(cid, 0.0), s_norms.get(cid, 0.0), row)
-            )
+            scored.append((cid, combined, d_sims.get(cid, 0.0), s_norms.get(cid, 0.0), row))
     else:
         # alpha-blend (legacy) with explicit alpha
         a = 0.5 if alpha is None else alpha
@@ -440,11 +438,9 @@ def _load_parent_text(tbl: Any, parent_chunk_id: str) -> tuple[str, int] | None:
             rows_all = tbl.to_arrow().to_pylist()
         except Exception:
             return None
-        rows = [
-            r
-            for r in rows_all
-            if r.get("chunk_id") == parent_chunk_id and r.get("is_parent")
-        ][:1]
+        rows = [r for r in rows_all if r.get("chunk_id") == parent_chunk_id and r.get("is_parent")][
+            :1
+        ]
     if not rows:
         return None
     r = rows[0]
@@ -605,9 +601,7 @@ def hybrid_query(
 
     # Phase 11: resolve use_hype. ``None`` (default) → auto-on iff the table
     # carries HyPE columns. Explicit True/False overrides the auto-detect.
-    effective_use_hype = (
-        _table_has_hype(tbl) if use_hype is None else bool(use_hype)
-    )
+    effective_use_hype = _table_has_hype(tbl) if use_hype is None else bool(use_hype)
 
     stage1 = _stage1_candidates(
         tbl=tbl,
@@ -688,9 +682,7 @@ def hybrid_query(
         else:
             # Resolve kb_version from the manifest for cache namespacing.
             cache_key = _resolve_cache_key(kb_dir, top_k=k)
-            reranked = reranker.rerank(
-                query_text, deduped, top_n=k, cache_key=cache_key
-            )
+            reranked = reranker.rerank(query_text, deduped, top_n=k, cache_key=cache_key)
             hits = [
                 _row_to_hit(
                     c["chunk_id"],
@@ -778,14 +770,10 @@ def _hybrid_query_multi(
     best_hit: dict[str, Hit] = {}
     for hits in per_query_hits:
         for rank, h in enumerate(hits, start=1):
-            fused_scores[h.chunk_id] = fused_scores.get(h.chunk_id, 0.0) + 1.0 / (
-                RRF_K + rank
-            )
+            fused_scores[h.chunk_id] = fused_scores.get(h.chunk_id, 0.0) + 1.0 / (RRF_K + rank)
             if h.chunk_id not in best_hit:
                 best_hit[h.chunk_id] = h
-    ordered = sorted(
-        fused_scores.items(), key=lambda kv: kv[1], reverse=True
-    )
+    ordered = sorted(fused_scores.items(), key=lambda kv: kv[1], reverse=True)
     out: list[Hit] = []
     for cid, fused_score in ordered[:k]:
         h = best_hit[cid]

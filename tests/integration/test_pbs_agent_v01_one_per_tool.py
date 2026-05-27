@@ -91,9 +91,7 @@ def _ids() -> list[str]:
     sorted(_select_one_task_per_tool().items()),
     ids=_ids(),
 )
-def test_one_task_per_tool_runs_through_harness(
-    tool_name: str, task: Task, tmp_path: Any
-) -> None:
+def test_one_task_per_tool_runs_through_harness(tool_name: str, task: Task, tmp_path: Any) -> None:
     """Run `task` end-to-end. Pass means the harness completed cleanly.
 
     Scorer outcomes are recorded in the trajectory but NOT asserted — the
@@ -115,13 +113,10 @@ def test_one_task_per_tool_runs_through_harness(
     env = dict(sandbox_cfg.get("env", {}))
     workspace_files_raw = sandbox_cfg.get("workspace_files") or {}
     workspace_files = {
-        k: v.encode("utf-8") if isinstance(v, str) else v
-        for k, v in workspace_files_raw.items()
+        k: v.encode("utf-8") if isinstance(v, str) else v for k, v in workspace_files_raw.items()
     }
 
-    with Sandbox(
-        network=network, env=env, workspace_files=workspace_files
-    ) as sandbox:
+    with Sandbox(network=network, env=env, workspace_files=workspace_files) as sandbox:
         inspect_task = lab_task_to_inspect(
             task,
             model=model,

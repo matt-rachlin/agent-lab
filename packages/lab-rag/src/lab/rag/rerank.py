@@ -185,9 +185,7 @@ class LabReranker:
     # cache helpers
     # ------------------------------------------------------------------
 
-    def _cache_lookup(
-        self, query: str, cache_key: tuple[str, int]
-    ) -> list[dict[str, Any]] | None:
+    def _cache_lookup(self, query: str, cache_key: tuple[str, int]) -> list[dict[str, Any]] | None:
         try:
             from lab.rag.cache import RagCache
 

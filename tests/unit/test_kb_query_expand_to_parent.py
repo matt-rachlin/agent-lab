@@ -39,9 +39,7 @@ def test_expand_to_parent_default_true_passes_through(
     assert captured["dedupe_by_parent"] is True
 
 
-def test_expand_to_parent_can_be_disabled(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_expand_to_parent_can_be_disabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _stage(tmp_path, "bash")
     monkeypatch.setenv("LAB_KB_ROOT", str(tmp_path))
     monkeypatch.setattr("lab.rag.index.count_rows", lambda _d: 5)

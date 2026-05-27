@@ -96,6 +96,7 @@ def _run_coro_sync(coro: Any) -> Any:
     `asyncio.run()` raises; spin up a dedicated thread with its own loop.
     """
     import concurrent.futures
+
     try:
         asyncio.get_running_loop()
     except RuntimeError:

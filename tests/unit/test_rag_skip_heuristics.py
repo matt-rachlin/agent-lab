@@ -77,9 +77,7 @@ def test_small_candidate_set_skip() -> None:
 
 def test_high_confidence_top1_skip() -> None:
     cands = _cands(50, top1=HIGH_CONFIDENCE_TOP1 + 0.01, top2=LOW_CONFIDENCE_TOP2 - 0.01)
-    d = compute_skip_decision(
-        candidates=cands, total_kb_rows=5000, rerank_requested=True
-    )
+    d = compute_skip_decision(candidates=cands, total_kb_rows=5000, rerank_requested=True)
     assert d.use_reranker is False
     assert d.reason == "high_confidence_top1"
     assert get_skip_counters().get("high_confidence_top1") == 1
@@ -87,9 +85,7 @@ def test_high_confidence_top1_skip() -> None:
 
 def test_rerank_runs_when_no_skip_triggers() -> None:
     cands = _cands(50, top1=0.6, top2=0.55)  # gap too small for high-conf skip
-    d = compute_skip_decision(
-        candidates=cands, total_kb_rows=5000, rerank_requested=True
-    )
+    d = compute_skip_decision(candidates=cands, total_kb_rows=5000, rerank_requested=True)
     assert d.use_reranker is True
     assert d.reason == "rerank"
     assert get_skip_counters() == {}

@@ -32,9 +32,7 @@ def _hit(cid: str, score: float) -> Hit:
     )
 
 
-def test_multi_query_does_not_recurse(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_multi_query_does_not_recurse(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Inner call must run with multi_query=False — otherwise infinite loop."""
 
     inner_calls: list[dict[str, Any]] = []

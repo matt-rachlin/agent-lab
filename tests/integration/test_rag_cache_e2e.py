@@ -40,9 +40,7 @@ def test_valkey_round_trip_or_skip(valkey: Any) -> None:
     assert got == hits
 
     # A different kb_version misses (free invalidation contract).
-    other = cache.get_rerank(
-        query, kb_version=f"{kbv}-other", top_k=5, rerank_model="rm"
-    )
+    other = cache.get_rerank(query, kb_version=f"{kbv}-other", top_k=5, rerank_model="rm")
     assert other is None
 
 

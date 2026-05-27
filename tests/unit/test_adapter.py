@@ -30,14 +30,11 @@ def _task(**overrides: Any) -> Task:
 def test_adapter_builds_single_sample_task() -> None:
     """The Inspect Task has exactly one sample."""
 
-
     async def passthrough(state: Any, generate: Any) -> Any:
         return state
 
     # Pass a custom solver to avoid hitting LiteLLM/sandbox during unit tests.
-    inspect_task = lab_task_to_inspect(
-        _task(), model="qwen3-14b-q4", solver_override=passthrough
-    )
+    inspect_task = lab_task_to_inspect(_task(), model="qwen3-14b-q4", solver_override=passthrough)
     # Inspect Task carries .dataset; we just check there's exactly one item
     # and it has the expected metadata.
     samples = list(inspect_task.dataset)
@@ -59,9 +56,7 @@ def test_adapter_uses_gold_answer_as_target() -> None:
         return state
 
     task = _task(gold_answer="42")
-    inspect_task = lab_task_to_inspect(
-        task, model="x", solver_override=passthrough
-    )
+    inspect_task = lab_task_to_inspect(task, model="x", solver_override=passthrough)
     sample = next(iter(inspect_task.dataset))
     assert sample.target == "42"
 

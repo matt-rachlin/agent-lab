@@ -118,7 +118,8 @@ def _truncate_kb_query_result(value: dict[str, Any], cap: int) -> dict[str, Any]
         {
             kk: vv
             for kk, vv in hit.items()
-            if kk in {
+            if kk
+            in {
                 "chunk_id",
                 "source_url",
                 "section_path",
@@ -255,9 +256,7 @@ def _execute_tool_calls(
             if name not in tool_modules:
                 raise ValueError(f"unknown tool {name!r}")
             if pool is None:
-                raise RuntimeError(
-                    "tool call received but no pool configured (sandbox missing)"
-                )
+                raise RuntimeError("tool call received but no pool configured (sandbox missing)")
             result = pool.invoke(tool_modules[name], name, args)
             error: str | None = None
         except Exception as exc:
@@ -357,9 +356,7 @@ def model_with_tools(
         if sandbox is not None and task_meta is not None and tool_budget > 0:
             pool = ToolPool(sandbox)
             try:
-                tools = lab_tools_for_task(
-                    task_meta, sandbox, pool=pool, tool_names=tool_names
-                )
+                tools = lab_tools_for_task(task_meta, sandbox, pool=pool, tool_names=tool_names)
             except Exception as exc:
                 # Surface tool-discovery failures as a partial trajectory.
                 _stash_trajectory(
@@ -602,9 +599,7 @@ def _stash_trajectory(
     }
 
 
-def _snapshot_predicate_files(
-    task_meta: Any, sandbox: Sandbox | None
-) -> dict[str, bytes | None]:
+def _snapshot_predicate_files(task_meta: Any, sandbox: Sandbox | None) -> dict[str, bytes | None]:
     """Read any files referenced by `task.success_predicate` out of the sandbox.
 
     Returns `{path: bytes_or_None}` — empty dict if the task has no

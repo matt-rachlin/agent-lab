@@ -88,9 +88,7 @@ def _seed_responses() -> list[dict[str, Any]]:
     ]
 
 
-def test_pool_reuses_existing_server(
-    monkeypatch: pytest.MonkeyPatch, fake_sandbox: Any
-) -> None:
+def test_pool_reuses_existing_server(monkeypatch: pytest.MonkeyPatch, fake_sandbox: Any) -> None:
     # Make every call return a fresh process so we can detect reuse-vs-new.
     procs: list[_FakeProc] = []
 
@@ -125,9 +123,7 @@ def test_pool_reuses_existing_server(
     assert len(procs) == 1
 
 
-def test_pool_restarts_after_crash(
-    monkeypatch: pytest.MonkeyPatch, fake_sandbox: Any
-) -> None:
+def test_pool_restarts_after_crash(monkeypatch: pytest.MonkeyPatch, fake_sandbox: Any) -> None:
     procs: list[_FakeProc] = []
 
     def fake_popen(*args: Any, **kwargs: Any) -> _FakeProc:
@@ -153,9 +149,7 @@ def test_pool_restarts_after_crash(
     assert len(procs) == 2  # restarted after detecting the crash
 
 
-def test_pool_tears_down_cleanly(
-    monkeypatch: pytest.MonkeyPatch, fake_sandbox: Any
-) -> None:
+def test_pool_tears_down_cleanly(monkeypatch: pytest.MonkeyPatch, fake_sandbox: Any) -> None:
     procs: list[_FakeProc] = []
 
     def fake_popen(*args: Any, **kwargs: Any) -> _FakeProc:

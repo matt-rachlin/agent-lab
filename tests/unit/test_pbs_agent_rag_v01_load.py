@@ -80,9 +80,7 @@ def test_every_task_has_success_predicate() -> None:
         assert isinstance(t.success_predicate, dict), (
             f"{t.slug}: success_predicate is {t.success_predicate!r}"
         )
-        assert t.success_predicate.get("type"), (
-            f"{t.slug}: success_predicate missing 'type'"
-        )
+        assert t.success_predicate.get("type"), f"{t.slug}: success_predicate missing 'type'"
 
 
 def test_at_least_one_task_uses_retrieval_recall() -> None:

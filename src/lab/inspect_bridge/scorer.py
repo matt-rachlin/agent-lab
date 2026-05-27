@@ -330,8 +330,7 @@ def tool_correctness() -> Scorer:
         return Score(
             value=0.0,
             explanation=(
-                f"no call to {target_tool!r} with expected args matched; "
-                f"observed tools={seen}"
+                f"no call to {target_tool!r} with expected args matched; observed tools={seen}"
             ),
         )
 
@@ -423,13 +422,13 @@ def _format_trajectory_for_judge(
                 result = tc.get("result")
                 # Truncate big payloads.
                 try:
-                    args_repr = json.dumps(args, default=str)[:per_turn_cap // 4]
+                    args_repr = json.dumps(args, default=str)[: per_turn_cap // 4]
                 except Exception:
-                    args_repr = str(args)[:per_turn_cap // 4]
+                    args_repr = str(args)[: per_turn_cap // 4]
                 try:
-                    result_repr = json.dumps(result, default=str)[:per_turn_cap // 2]
+                    result_repr = json.dumps(result, default=str)[: per_turn_cap // 2]
                 except Exception:
-                    result_repr = str(result)[:per_turn_cap // 2]
+                    result_repr = str(result)[: per_turn_cap // 2]
                 lines.append(f"    - {tc.get('tool')}({args_repr}) -> {result_repr}")
         if entry.get("error"):
             lines.append(f"  error: {entry['error']}")

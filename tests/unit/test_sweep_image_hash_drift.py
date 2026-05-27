@@ -78,9 +78,7 @@ def test_image_hash_drift_error_message_carries_both_hashes() -> None:
     assert "run-xyz" in s
 
 
-def test_drift_guard_detects_change(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_drift_guard_detects_change(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Simulate the in-sweep re-read: file changes between two reads."""
 
     f = tmp_path / "h.sha"

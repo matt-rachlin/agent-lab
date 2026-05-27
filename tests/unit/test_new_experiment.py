@@ -33,8 +33,7 @@ def fake_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     analysis.mkdir(parents=True)
 
     (docs_exp / "_template.md").write_text(
-        "# EXP-NNN: title\n\nDate created: YYYY-MM-DD\n\n"
-        "Plan path: docs/exp/EXP-NNN-<slug>.md\n",
+        "# EXP-NNN: title\n\nDate created: YYYY-MM-DD\n\nPlan path: docs/exp/EXP-NNN-<slug>.md\n",
         encoding="utf-8",
     )
     (conf_sweep / "_template.yaml").write_text(

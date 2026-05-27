@@ -19,37 +19,52 @@ def test_no_tools_returns_false() -> None:
 
 
 def test_only_unrelated_tools_returns_false() -> None:
-    assert task_needs_hf_cache_mount(
-        [{"name": "fs_read"}, {"name": "shell_exec"}],
-        reranker_env="",
-    ) is False
+    assert (
+        task_needs_hf_cache_mount(
+            [{"name": "fs_read"}, {"name": "shell_exec"}],
+            reranker_env="",
+        )
+        is False
+    )
 
 
 def test_kb_query_with_reranker_default_returns_true() -> None:
     # Unset env (passed as None) means default model — reranker enabled.
-    assert task_needs_hf_cache_mount(
-        [{"name": "kb_query"}],
-        reranker_env="",
-    ) is True
+    assert (
+        task_needs_hf_cache_mount(
+            [{"name": "kb_query"}],
+            reranker_env="",
+        )
+        is True
+    )
 
 
 def test_kb_query_with_reranker_disabled_returns_false() -> None:
-    assert task_needs_hf_cache_mount(
-        [{"name": "kb_query"}],
-        reranker_env="none",
-    ) is False
+    assert (
+        task_needs_hf_cache_mount(
+            [{"name": "kb_query"}],
+            reranker_env="none",
+        )
+        is False
+    )
     # Case-insensitive sentinel; whitespace is stripped.
-    assert task_needs_hf_cache_mount(
-        [{"name": "kb_query"}],
-        reranker_env="  NONE  ",
-    ) is False
+    assert (
+        task_needs_hf_cache_mount(
+            [{"name": "kb_query"}],
+            reranker_env="  NONE  ",
+        )
+        is False
+    )
 
 
 def test_kb_query_with_explicit_model_returns_true() -> None:
-    assert task_needs_hf_cache_mount(
-        [{"name": "kb_query"}],
-        reranker_env="BAAI/bge-reranker-v2-m3",
-    ) is True
+    assert (
+        task_needs_hf_cache_mount(
+            [{"name": "kb_query"}],
+            reranker_env="BAAI/bge-reranker-v2-m3",
+        )
+        is True
+    )
 
 
 def test_plain_string_tool_names_supported() -> None:

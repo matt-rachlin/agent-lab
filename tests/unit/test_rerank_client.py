@@ -162,9 +162,7 @@ def test_empty_inputs_short_circuit_no_network(monkeypatch: pytest.MonkeyPatch) 
 
     _install_transport(monkeypatch, httpx.MockTransport(handler))
 
-    assert (
-        rerank_via_http(url="http://h", query="q", candidates=[], top_n=5) == []
-    )
+    assert rerank_via_http(url="http://h", query="q", candidates=[], top_n=5) == []
     assert (
         rerank_via_http(
             url="http://h",

@@ -16,9 +16,7 @@ from pathlib import Path
 import pytest
 
 # Load the script by file path — it lives under scripts/ which isn't on PYTHONPATH.
-_SCRIPT_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "scripts" / "migrate_kb_schema_v2.py"
-)
+_SCRIPT_PATH = Path(__file__).resolve().parent.parent.parent / "scripts" / "migrate_kb_schema_v2.py"
 
 
 def _load_script():  # type: ignore[no-untyped-def]
@@ -56,10 +54,7 @@ def _make_v1_kb(tmp_path: Path) -> Path:
     )
     # Minimal v1 manifest.
     (kb_dir / "manifest.yaml").write_text(
-        "kb_format_version: 1\n"
-        "chunk_format_version: 1\n"
-        "name: tinykb\n"
-        "slug: tinykb\n",
+        "kb_format_version: 1\nchunk_format_version: 1\nname: tinykb\nslug: tinykb\n",
         encoding="utf-8",
     )
     return kb_dir

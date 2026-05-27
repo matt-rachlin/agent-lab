@@ -107,9 +107,7 @@ def rerank_via_http(
         raise RerankClientError(f"rerank HTTP error: {exc}") from exc
 
     if resp.status_code >= 500:
-        raise RerankClientError(
-            f"rerank server returned {resp.status_code}: {resp.text[:200]}"
-        )
+        raise RerankClientError(f"rerank server returned {resp.status_code}: {resp.text[:200]}")
     if resp.status_code >= 400:
         # 409 (model mismatch), 422 (validation), etc. — surface verbatim
         # so the caller's logs make the misconfig obvious.

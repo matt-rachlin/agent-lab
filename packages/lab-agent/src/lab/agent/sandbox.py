@@ -267,9 +267,7 @@ class Sandbox:
         self.time_limit_sec = time_limit_sec
         self.workspace_files = workspace_files or {}
         self.env = env or {}
-        self.kb_root_mount: Path | None = (
-            Path(kb_root_mount) if kb_root_mount is not None else None
-        )
+        self.kb_root_mount: Path | None = Path(kb_root_mount) if kb_root_mount is not None else None
         self.kb_mount_target = kb_mount_target
         self.hf_cache_mount: Path | None = (
             Path(hf_cache_mount) if hf_cache_mount is not None else None
@@ -307,7 +305,8 @@ class Sandbox:
             # podman handle it AND skip the DNS-pin (the kb_query path needs
             # to resolve other names too, e.g. Ollama remote-model proxies).
             real_hosts = [
-                h for h in self._allowed_hosts
+                h
+                for h in self._allowed_hosts
                 if h not in {"host.containers.internal", "host.docker.internal"}
             ]
             for host in real_hosts:

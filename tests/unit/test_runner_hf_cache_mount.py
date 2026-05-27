@@ -51,6 +51,7 @@ def _stub_inspect_and_logwriter(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # _insert_run touches Postgres — neuter it.
     from lab.sweep import runner as runner_mod
+
     monkeypatch.setattr(runner_mod, "_insert_run", lambda **k: None)
 
 
@@ -120,16 +121,26 @@ def test_runner_skips_hf_cache_when_reranker_disabled_via_sandbox_env(
     monkeypatch.setenv("LAB_RAG_RERANKER", "Qwen/Qwen3-Reranker-0.6B")
 
     from lab.sweep import runner as runner_mod
+
     cell = runner_mod.Cell(
-        run_id="run-1", experiment_id=1, experiment_slug="EXP",
-        model_id=2, model_litellm_id="m", model_backend="cloud",
-        task_id=3, task_slug="t",
+        run_id="run-1",
+        experiment_id=1,
+        experiment_slug="EXP",
+        model_id=2,
+        model_litellm_id="m",
+        model_backend="cloud",
+        task_id=3,
+        task_slug="t",
         task_payload={
-            "input": "hi", "max_turns": 3, "tool_budget": 2,
+            "input": "hi",
+            "max_turns": 3,
+            "tool_budget": 2,
             "tools": [{"name": "kb_query"}],
             "sandbox": {"network": "none", "env": {"LAB_RAG_RERANKER": "none"}},
         },
-        config=runner_mod.RunConfig(name="c"), config_hash="h", seed=0,
+        config=runner_mod.RunConfig(name="c"),
+        config_hash="h",
+        seed=0,
     )
     _run(monkeypatch, cell)
     assert _FakeSandbox.last_kwargs["hf_cache_mount"] is None

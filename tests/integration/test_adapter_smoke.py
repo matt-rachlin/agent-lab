@@ -61,9 +61,7 @@ def test_adapter_round_trip_runs_under_inspect(tmp_path: Any) -> None:
             "gold_answer": "hi",
         }
     )
-    inspect_task = lab_task_to_inspect(
-        task, model="passthrough", solver_override=passthrough
-    )
+    inspect_task = lab_task_to_inspect(task, model="passthrough", solver_override=passthrough)
 
     logs: list[Any] = inspect_eval(
         inspect_task, display="none", log_samples=True, log_dir=str(tmp_path / "inspect")

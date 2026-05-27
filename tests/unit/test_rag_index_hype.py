@@ -172,9 +172,7 @@ def test_stage1_use_hype_promotes_question_match() -> None:
     # then c1 (distance 0.5 → raw d_sim ~0.67), then c2 (distance 1.0 →
     # raw d_sim 0.5). c1's hype-vec matches the query exactly (cosine
     # 1.0) so its boosted raw d_sim climbs above c0's 0.91.
-    tbl = _make_fake_table(
-        rows, dense_order=[0, 1, 2], distances=[0.1, 0.5, 1.0]
-    )
+    tbl = _make_fake_table(rows, dense_order=[0, 1, 2], distances=[0.1, 0.5, 1.0])
 
     # Query vector pointing orthogonal to the row content vectors. The fake
     # table returns precomputed _distance values regardless of qvec, so the
