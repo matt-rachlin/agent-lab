@@ -1,17 +1,27 @@
 ---
-slug: F-005-12gb-agent-v0.2-tool-use
-title: "F-005: The 12 GB Agent v0.2 — local tool-call is real; end-state difficulty is the binding constraint"
+doc_id: f-005-12gb-agent-v0-2-tool-use
+title: 'F-005: The 12 GB Agent v0.2 — local tool-call is real; end-state difficulty
+  is the binding constraint'
+zone: lab
+kind: finding
 status: active
-date: 2026-05-26
-experiment: EXP-002
-plan_path: docs/exp/EXP-002.md
-confidence: medium
-source: EXP-002
-importance: 8
-evidence:
-  - experiments/EXP-002
-  - scripts/analyze_exp002.py
-  - analysis/EXP-002/SUMMARY.md
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+depends_on:
+- kind: doc
+  target: exp-002
+- kind: code
+  target: lab:scripts/analyze_exp002.py
+- kind: doc
+  target: exp-002-summary
+tags:
+- lab
+- finding
+- findings
+- confidence-medium
+- importance-8
 ---
 
 # F-005: The 12 GB Agent v0.2 — local tool-call is real; end-state difficulty is the binding constraint

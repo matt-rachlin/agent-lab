@@ -1,3 +1,18 @@
+---
+doc_id: postmortem-exp-001b
+title: 'Postmortem: EXP-001b — qwen3 reasoning + max_tokens ablation'
+zone: lab
+kind: postmortem
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- postmortem
+- postmortems
+---
 # Postmortem: EXP-001b — qwen3 reasoning + max_tokens ablation
 
 Date: 2026-05-25

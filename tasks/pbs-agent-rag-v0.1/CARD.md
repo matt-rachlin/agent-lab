@@ -1,15 +1,18 @@
 ---
-doc_id: task-suite-pbs-agent-rag-v0.1
+doc_id: pbs-agent-rag-v0-1-card
 title: pbs-agent-rag-v0.1 — task suite
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-26
-last_updated: 2026-05-26
-suite: pbs-agent-rag-v0.1
-task_count: 6
-categories: ['rag']
-last_used_in: ['EXP-003b']
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- tasks
+- pbs-agent-rag-v0.1
 ---
 
 ## Purpose

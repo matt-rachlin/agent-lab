@@ -1,3 +1,18 @@
+---
+doc_id: f-003-exp-001-verdicts-tmp
+title: EXP-001 verdicts — 144 cells, computed automatically
+zone: lab
+kind: finding
+status: draft
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- finding
+- findings
+---
 # EXP-001 verdicts — 144 cells, computed automatically
 
 ## H1 — Reasoning gap on math

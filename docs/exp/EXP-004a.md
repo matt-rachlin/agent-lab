@@ -1,3 +1,17 @@
+---
+doc_id: exp-004a
+title: 'EXP-004a: Reranker validation sweep on bash KB (synthetic-only)'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- exp
+---
 # EXP-004a: Reranker validation sweep on bash KB (synthetic-only)
 
 Date created: 2026-05-26

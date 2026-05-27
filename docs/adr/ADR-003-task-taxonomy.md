@@ -1,3 +1,17 @@
+---
+doc_id: adr-003-task-taxonomy
+title: 'ADR-003: PBS task taxonomy'
+zone: lab
+kind: adr
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- adr
+---
 # ADR-003: PBS task taxonomy
 
 Status: accepted

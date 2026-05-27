@@ -1,3 +1,19 @@
+---
+doc_id: exp-002-verdicts
+title: EXP-002 verdicts — 480 cells (480 done, 0 error)
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-002
+---
 # EXP-002 verdicts — 480 cells (480 done, 0 error)
 
 ## Per-(model, scorer) means with bootstrap 95% CI

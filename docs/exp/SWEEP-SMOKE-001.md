@@ -1,3 +1,17 @@
+---
+doc_id: sweep-smoke-001
+title: 'SWEEP-SMOKE-001: Phase-1 end-to-end pipeline validation'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- exp
+---
 # SWEEP-SMOKE-001: Phase-1 end-to-end pipeline validation
 
 Date created: 2026-05-25

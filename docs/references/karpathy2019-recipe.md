@@ -1,8 +1,19 @@
 ---
-cite_key: karpathy2019recipe
-title: "Karpathy recipe"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: karpathy2019-recipe
+title: Karpathy recipe
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # Karpathy recipe

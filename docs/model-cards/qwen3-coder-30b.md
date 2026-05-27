@@ -1,22 +1,17 @@
 ---
 doc_id: model-qwen3-coder-30b
 title: ollama / qwen3-coder 30b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen3-coder-30b
-backend: ollama-local
-publisher: ollama
-vram_gb: 18.6
-context_max: null
-capabilities: []
-ollama_tag: "qwen3-coder:30b"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

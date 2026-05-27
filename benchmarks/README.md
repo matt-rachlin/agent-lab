@@ -1,3 +1,18 @@
+---
+doc_id: lab-benchmarks-readme
+title: '`benchmarks/` — performance regression tracking'
+zone: lab
+kind: readme
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- readme
+- benchmarks
+---
 # `benchmarks/` — performance regression tracking
 
 Phase 13.3. Micro-benchmarks for hot code paths. The goal is *not*

@@ -1,3 +1,19 @@
+---
+doc_id: exp-003b-summary
+title: EXP-003b — SUMMARY
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-003b
+---
 # EXP-003b — SUMMARY
 
 Cells: 240 (239 done, 1 error)

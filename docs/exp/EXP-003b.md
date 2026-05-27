@@ -1,3 +1,17 @@
+---
+doc_id: exp-003b
+title: 'EXP-003b: RAG-augmented agent — does kb_query change task success?'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- exp
+---
 # EXP-003b: RAG-augmented agent — does kb_query change task success?
 
 Date created: 2026-05-26

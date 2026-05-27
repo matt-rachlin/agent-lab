@@ -1,10 +1,20 @@
 ---
-slug: F-004-qwen3-reasoning-ablation
-title: "F-004: qwen3-14b-q4 reasoning mode is net-negative on PBS-v0.1"
-status: confirmed
-date: 2026-05-25
-experiment: EXP-001b
-plan_path: docs/exp/EXP-001b.md
+doc_id: f-004-qwen3-reasoning-ablation
+title: 'F-004: qwen3-14b-q4 reasoning mode is net-negative on PBS-v0.1'
+zone: lab
+kind: finding
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+depends_on:
+- kind: doc
+  target: exp-001b
+tags:
+- lab
+- finding
+- findings
 ---
 
 # F-004: qwen3-14b-q4 reasoning mode is net-negative on PBS-v0.1

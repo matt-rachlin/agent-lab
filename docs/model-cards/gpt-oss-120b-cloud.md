@@ -1,22 +1,17 @@
 ---
 doc_id: model-gpt-oss-120b-cloud
 title: openai / gpt-oss 120b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: gpt-oss-120b-cloud
-backend: ollama-cloud
-publisher: openai
-vram_gb: null
-context_max: 131072
-capabilities: ['tool_call', 'reasoning', 'json']
-ollama_tag: "gpt-oss:120b-cloud"
-source_url: null
-license: apache-2.0
-known_issues: []
-last_used_in: ['EXP-001', 'EXP-002', 'EXP-003b']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

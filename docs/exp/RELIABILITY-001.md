@@ -1,3 +1,18 @@
+---
+doc_id: reliability-001
+title: 'RELIABILITY-001: variance characterization for 3 local 12 GB models at N=8
+  seeds'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- exp
+---
 # RELIABILITY-001: variance characterization for 3 local 12 GB models at N=8 seeds
 
 Date created: 2026-05-25

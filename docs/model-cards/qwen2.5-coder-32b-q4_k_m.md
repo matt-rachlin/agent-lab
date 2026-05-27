@@ -1,22 +1,17 @@
 ---
-doc_id: model-qwen2.5-coder-32b-q4_k_m
+doc_id: qwen2-5-coder-32b-q4-k-m
 title: ollama / qwen2.5-coder 32b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen2.5-coder-32b-q4_k_m
-backend: ollama-local
-publisher: ollama
-vram_gb: 19.9
-context_max: null
-capabilities: []
-ollama_tag: "qwen2.5-coder:32b-instruct-q4_K_M"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

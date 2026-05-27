@@ -1,22 +1,17 @@
 ---
 doc_id: model-qwen3-vl-235b-cloud
 title: ollama / qwen3-vl 235b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen3-vl-235b-cloud
-backend: ollama-cloud
-publisher: ollama
-vram_gb: 0
-context_max: null
-capabilities: []
-ollama_tag: "qwen3-vl:235b-cloud"
-source_url: null
-license: null
-known_issues: []
-last_used_in: ['_it_sweep_e2e']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

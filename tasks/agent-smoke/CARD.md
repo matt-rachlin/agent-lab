@@ -1,15 +1,18 @@
 ---
 doc_id: task-suite-agent-smoke
 title: agent-smoke — task suite
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-26
-last_updated: 2026-05-26
-suite: agent-smoke
-task_count: 3
-categories: ['smoke']
-last_used_in: []
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- tasks
+- agent-smoke
 ---
 
 ## Purpose

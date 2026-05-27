@@ -1,22 +1,17 @@
 ---
-doc_id: model-qwen2.5-coder-7b-q8_0
+doc_id: qwen2-5-coder-7b-q8-0
 title: ollama / qwen2.5-coder 7b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen2.5-coder-7b-q8_0
-backend: ollama-local
-publisher: ollama
-vram_gb: 8.1
-context_max: null
-capabilities: []
-ollama_tag: "qwen2.5-coder:7b-instruct-q8_0"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

@@ -1,22 +1,17 @@
 ---
 doc_id: model-qwen3-coder-480b-cloud
 title: qwen / qwen3-coder 480b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen3-coder-480b-cloud
-backend: ollama-cloud
-publisher: qwen
-vram_gb: null
-context_max: 262144
-capabilities: ['tool_call', 'code', 'json']
-ollama_tag: "qwen3-coder:480b-cloud"
-source_url: null
-license: apache-2.0
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

@@ -1,22 +1,17 @@
 ---
 doc_id: model-bge-m3-latest
 title: ollama / bge-m3 latest
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: bge-m3-latest
-backend: ollama-local
-publisher: ollama
-vram_gb: 1.2
-context_max: null
-capabilities: []
-ollama_tag: "bge-m3:latest"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

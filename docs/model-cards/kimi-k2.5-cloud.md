@@ -1,22 +1,17 @@
 ---
-doc_id: model-kimi-k2.5-cloud
+doc_id: kimi-k2-5-cloud
 title: ollama / kimi-k2.5
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: kimi-k2.5-cloud
-backend: ollama-cloud
-publisher: ollama
-vram_gb: 0
-context_max: null
-capabilities: []
-ollama_tag: "kimi-k2.5:cloud"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

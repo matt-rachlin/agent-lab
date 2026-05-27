@@ -1,3 +1,19 @@
+---
+doc_id: exp-002-summary
+title: EXP-002 Summary — 12 GB Agent v0.2, first tool-use characterization
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-002
+---
 # EXP-002 Summary — 12 GB Agent v0.2, first tool-use characterization
 
 - Cells: 480 (480 done, 0 error)

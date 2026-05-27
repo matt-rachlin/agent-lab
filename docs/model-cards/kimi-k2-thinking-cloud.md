@@ -1,22 +1,17 @@
 ---
 doc_id: model-kimi-k2-thinking-cloud
 title: moonshot / kimi-k2-thinking 1t
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: kimi-k2-thinking-cloud
-backend: ollama-cloud
-publisher: moonshot
-vram_gb: null
-context_max: 262144
-capabilities: ['tool_call', 'reasoning']
-ollama_tag: "kimi-k2-thinking:1t-cloud"
-source_url: null
-license: kimi-license
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

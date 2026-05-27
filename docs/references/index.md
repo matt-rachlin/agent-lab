@@ -1,3 +1,18 @@
+---
+doc_id: references-index
+title: References
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+---
 # References
 
 Library of papers and posts that inform the lab's methodology. Two parts:

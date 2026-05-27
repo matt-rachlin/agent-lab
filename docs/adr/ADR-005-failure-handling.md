@@ -1,3 +1,17 @@
+---
+doc_id: adr-005-failure-handling
+title: 'ADR-005: Failure handling — harness errors vs model errors'
+zone: lab
+kind: adr
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- adr
+---
 # ADR-005: Failure handling — harness errors vs model errors
 
 Status: accepted

@@ -1,8 +1,19 @@
 ---
-cite_key: tan2024judgebench
-title: "JudgeBench"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: tan2024-judgebench
+title: JudgeBench
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # JudgeBench

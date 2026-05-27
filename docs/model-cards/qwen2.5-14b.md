@@ -1,22 +1,17 @@
 ---
-doc_id: model-qwen2.5-14b
+doc_id: qwen2-5-14b
 title: ollama / qwen2.5 14b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen2.5-14b
-backend: ollama-local
-publisher: ollama
-vram_gb: 9
-context_max: null
-capabilities: []
-ollama_tag: "qwen2.5:14b"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

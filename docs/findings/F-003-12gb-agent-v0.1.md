@@ -1,10 +1,20 @@
 ---
-slug: F-003-12gb-agent-v0.1
-title: "F-003: The 12 GB Agent v0.1 — three of four pre-registered hypotheses refuted"
-status: confirmed
-date: 2026-05-25
-experiment: EXP-001
-plan_path: docs/exp/EXP-001.md
+doc_id: f-003-12gb-agent-v0-1
+title: 'F-003: The 12 GB Agent v0.1 — three of four pre-registered hypotheses refuted'
+zone: lab
+kind: finding
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+depends_on:
+- kind: doc
+  target: exp-001
+tags:
+- lab
+- finding
+- findings
 ---
 
 # F-003: The 12 GB Agent v0.1 — three of four pre-registered hypotheses refuted

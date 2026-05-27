@@ -1,22 +1,17 @@
 ---
 doc_id: model-all-minilm-latest
 title: ollama / all-minilm latest
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: all-minilm-latest
-backend: ollama-local
-publisher: ollama
-vram_gb: 0
-context_max: null
-capabilities: []
-ollama_tag: "all-minilm:latest"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

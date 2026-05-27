@@ -1,8 +1,19 @@
 ---
-cite_key: sierra2024tau2bench
-title: "τ²-bench (Sierra)"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: sierra2024-tau2-bench
+title: τ²-bench (Sierra)
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # τ²-bench (Sierra)

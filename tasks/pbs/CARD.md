@@ -1,15 +1,18 @@
 ---
 doc_id: task-suite-pbs
 title: PBS-v0.1 — task suite
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-suite: PBS-v0.1
-task_count: 24
-categories: ['format-following', 'knowledge-recall', 'math-reasoning']
-last_used_in: ['EXP-001', 'EXP-001b', 'RELIABILITY-001']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- tasks
+- pbs
 ---
 
 ## Purpose

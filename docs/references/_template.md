@@ -1,11 +1,20 @@
 ---
-cite_key: author2024shorttitle
-title: "Full Title"
-authors: [Family, Family]
-year: 2024
-venue: arXiv / NeurIPS / blog
-url: https://arxiv.org/abs/...
-tags: [eval, agents, ...]
+doc_id: lab-references-template
+title: Full Title
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- agents
+- '...'
 ---
 
 # Title

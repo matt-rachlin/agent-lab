@@ -1,3 +1,17 @@
+---
+doc_id: adr-004-reliability-discipline
+title: 'ADR-004: N ≥ 8 seeds + pass^k as the reliability discipline'
+zone: lab
+kind: adr
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- adr
+---
 # ADR-004: N ≥ 8 seeds + pass^k as the reliability discipline
 
 Status: accepted

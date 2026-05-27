@@ -1,3 +1,19 @@
+---
+doc_id: exp-003b-verdicts
+title: EXP-003b verdicts — 240 cells (239 done, 1 error)
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-003b
+---
 # EXP-003b verdicts — 240 cells (239 done, 1 error)
 
 ## H1 — Locals gain more from kb_query than cloud (delta_local - delta_cloud >= 0.10)

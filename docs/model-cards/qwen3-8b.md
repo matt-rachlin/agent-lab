@@ -1,22 +1,17 @@
 ---
 doc_id: model-qwen3-8b
 title: ollama / qwen3 8b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: qwen3-8b
-backend: ollama-local
-publisher: ollama
-vram_gb: 5.2
-context_max: null
-capabilities: []
-ollama_tag: "qwen3:8b"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

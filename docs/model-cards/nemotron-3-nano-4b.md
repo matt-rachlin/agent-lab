@@ -1,22 +1,17 @@
 ---
 doc_id: model-nemotron-3-nano-4b
 title: ollama / nemotron-3-nano 4b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: nemotron-3-nano-4b
-backend: ollama-local
-publisher: ollama
-vram_gb: 2.8
-context_max: null
-capabilities: []
-ollama_tag: "nemotron-3-nano:4b"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

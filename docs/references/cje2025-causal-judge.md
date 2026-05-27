@@ -1,8 +1,19 @@
 ---
-cite_key: cje2025causaljudge
-title: "Causal Judge Evaluation"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: cje2025-causal-judge
+title: Causal Judge Evaluation
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # Causal Judge Evaluation

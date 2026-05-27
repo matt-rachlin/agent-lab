@@ -1,3 +1,18 @@
+---
+doc_id: adr
+title: 'ADR-NNN: <title>'
+zone: lab
+kind: task
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- task
+- _templates
+---
 # ADR-NNN: <title>
 
 Status: proposed

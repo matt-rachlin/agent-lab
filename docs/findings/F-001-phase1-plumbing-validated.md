@@ -1,3 +1,18 @@
+---
+doc_id: f-001-phase1-plumbing-validated
+title: 'F-001: Phase 1 sweep harness produces persisted, queryable runs end-to-end'
+zone: lab
+kind: finding
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- finding
+- findings
+---
 # F-001: Phase 1 sweep harness produces persisted, queryable runs end-to-end
 
 Date: 2026-05-25

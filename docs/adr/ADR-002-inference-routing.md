@@ -1,3 +1,17 @@
+---
+doc_id: adr-002-inference-routing
+title: 'ADR-002: Inference routing — LiteLLM proxy over local Ollama daemon'
+zone: lab
+kind: adr
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- adr
+---
 # ADR-002: Inference routing — LiteLLM proxy over local Ollama daemon
 
 Status: accepted

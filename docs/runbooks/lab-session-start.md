@@ -1,3 +1,18 @@
+---
+doc_id: lab-session-start
+title: Runbook — lab SessionStart hook
+zone: lab
+kind: runbook
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- runbook
+- runbooks
+---
 # Runbook — lab SessionStart hook
 
 This runbook documents the lab-specific Claude Code SessionStart hook that

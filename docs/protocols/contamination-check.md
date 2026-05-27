@@ -1,3 +1,18 @@
+---
+doc_id: contamination-check
+title: 'Protocol: Benchmark contamination check'
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- protocols
+---
 # Protocol: Benchmark contamination check
 
 **Before any task is added to PBS (or any external benchmark is used in the lab), do a contamination check and record the result.**

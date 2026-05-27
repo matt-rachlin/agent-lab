@@ -1,15 +1,18 @@
 ---
 doc_id: task-suite-smoke
 title: smoke — task suite
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-suite: smoke
-task_count: 5
-categories: ['smoke']
-last_used_in: ['SWEEP-SMOKE-001']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- tasks
+- smoke
 ---
 
 ## Purpose

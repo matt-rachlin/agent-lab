@@ -1,3 +1,19 @@
+---
+doc_id: exp-004a-summary
+title: EXP-004a — reranker validation — SUMMARY
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-004a
+---
 # EXP-004a — reranker validation — SUMMARY
 
 N queries: 50  KB: bash  Rerank model: Qwen/Qwen3-Reranker-0.6B

@@ -1,3 +1,18 @@
+---
+doc_id: lab-template-experiment
+title: 'EXP-NNN: <one-line title>'
+zone: lab
+kind: task
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- task
+- _templates
+---
 # EXP-NNN: <one-line title>
 
 Date created: YYYY-MM-DD

@@ -1,3 +1,17 @@
+---
+doc_id: code-readme
+title: lab
+zone: lab
+kind: readme
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- readme
+---
 # lab
 
 Solo AI/ML research lab. Comparing agentic workflows across models, configurations, and prompts under hardware constraints (RTX 3080 Ti, 12 GB VRAM).

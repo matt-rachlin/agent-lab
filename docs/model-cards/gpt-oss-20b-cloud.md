@@ -1,22 +1,17 @@
 ---
 doc_id: model-gpt-oss-20b-cloud
 title: ollama / gpt-oss 20b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: gpt-oss-20b-cloud
-backend: ollama-cloud
-publisher: ollama
-vram_gb: 0
-context_max: null
-capabilities: []
-ollama_tag: "gpt-oss:20b-cloud"
-source_url: null
-license: null
-known_issues: []
-last_used_in: ['EXP-001', 'EXP-002', 'EXP-003b']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

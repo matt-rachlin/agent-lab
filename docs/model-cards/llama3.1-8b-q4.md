@@ -1,22 +1,17 @@
 ---
-doc_id: model-llama3.1-8b-q4
+doc_id: llama3-1-8b-q4
 title: ollama / llama3.1 8b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: llama3.1-8b-q4
-backend: ollama-local
-publisher: ollama
-vram_gb: 4.9
-context_max: null
-capabilities: []
-ollama_tag: "llama3.1:8b-instruct-q4_K_M"
-source_url: null
-license: null
-known_issues: []
-last_used_in: ['EXP-001', 'EXP-002', 'EXP-003b', 'RELIABILITY-001', 'SWEEP-SMOKE-001']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

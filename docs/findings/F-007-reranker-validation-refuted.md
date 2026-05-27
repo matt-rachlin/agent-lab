@@ -1,27 +1,48 @@
 ---
-slug: F-007-reranker-validation-refuted
-title: "F-007: Cross-encoder reranker REFUTED at +10pp threshold on bash KB — +5pp gain replicated at N=199 with paired Wilcoxon p=0.0038; +10pp infeasible on this KB"
-status: final
-date: 2026-05-26
-experiment: EXP-004a + EXP-004c
-plan_path: docs/exp/EXP-004a.md
-confidence: high
-source: EXP-004a + EXP-004c
-importance: 7
-evidence:
-  - experiments/EXP-004a
-  - experiments/EXP-004c
-  - scripts/retrieval_sweep.py
-  - analysis/EXP-004a/SUMMARY.md
-  - analysis/EXP-004a/verdicts.md
-  - analysis/EXP-004a/raw.csv
-  - analysis/EXP-004a/per_cell.csv
-  - analysis/EXP-004a/rerank_stats.json
-  - analysis/EXP-004c/SUMMARY.md
-  - analysis/EXP-004c/verdicts.md
-  - analysis/EXP-004c/raw.csv
-  - analysis/EXP-004c/per_cell.csv
-  - analysis/EXP-004c/rerank_stats.json
+doc_id: f-007-reranker-validation-refuted
+title: 'F-007: Cross-encoder reranker REFUTED at +10pp threshold on bash KB — +5pp
+  gain replicated at N=199 with paired Wilcoxon p=0.0038; +10pp infeasible on this
+  KB'
+zone: lab
+kind: finding
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+depends_on:
+- kind: doc
+  target: exp-004a
+- kind: doc
+  target: exp-004c
+- kind: code
+  target: lab:scripts/retrieval_sweep.py
+- kind: doc
+  target: exp-004a-summary
+- kind: doc
+  target: exp-004a-verdicts
+- kind: artifact
+  target: lab:analysis/EXP-004a/raw.csv
+- kind: artifact
+  target: lab:analysis/EXP-004a/per_cell.csv
+- kind: artifact
+  target: lab:analysis/EXP-004a/rerank_stats.json
+- kind: doc
+  target: exp-004c-summary
+- kind: doc
+  target: exp-004c-verdicts
+- kind: artifact
+  target: lab:analysis/EXP-004c/raw.csv
+- kind: artifact
+  target: lab:analysis/EXP-004c/per_cell.csv
+- kind: artifact
+  target: lab:analysis/EXP-004c/rerank_stats.json
+tags:
+- lab
+- finding
+- findings
+- confidence-high
+- importance-7
 ---
 
 # F-007: Cross-encoder reranker REFUTED at +10pp threshold on bash KB — +4pp gain not significant at N=50

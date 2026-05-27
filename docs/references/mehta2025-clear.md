@@ -1,8 +1,19 @@
 ---
-cite_key: mehta2025clear
-title: "CLEAR framework"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: mehta2025-clear
+title: CLEAR framework
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # CLEAR framework

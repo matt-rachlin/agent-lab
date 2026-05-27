@@ -1,3 +1,19 @@
+---
+doc_id: exp-003a-summary
+title: EXP-003a — bash KB retrieval-quality sweep — SUMMARY
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-003a
+---
 # EXP-003a — bash KB retrieval-quality sweep — SUMMARY
 
 N queries: 50

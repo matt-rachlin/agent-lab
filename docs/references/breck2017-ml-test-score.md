@@ -1,8 +1,19 @@
 ---
-cite_key: breck2017mltestscore
-title: "ML Test Score"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: breck2017-ml-test-score
+title: ML Test Score
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # ML Test Score

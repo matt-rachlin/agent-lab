@@ -1,3 +1,17 @@
+---
+doc_id: lab-exp-template
+title: 'EXP-NNN: <one-line title>'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- exp
+---
 # EXP-NNN: <one-line title>
 
 <!--

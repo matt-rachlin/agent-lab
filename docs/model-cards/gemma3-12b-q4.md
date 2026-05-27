@@ -1,22 +1,17 @@
 ---
 doc_id: model-gemma3-12b-q4
 title: ollama / gemma3 12b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: gemma3-12b-q4
-backend: ollama-local
-publisher: ollama
-vram_gb: 8.1
-context_max: null
-capabilities: []
-ollama_tag: "gemma3:12b-it-q4_K_M"
-source_url: null
-license: null
-known_issues: []
-last_used_in: ['EXP-001', 'RELIABILITY-001', 'SWEEP-SMOKE-001']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

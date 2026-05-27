@@ -1,3 +1,19 @@
+---
+doc_id: exp-004a-verdicts
+title: EXP-004a — verdicts
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-004a
+---
 # EXP-004a — verdicts
 
 Pre-registered in `docs/exp/EXP-004a.md`.

@@ -1,3 +1,19 @@
+---
+doc_id: exp-004c-summary
+title: EXP-004c — reranker validation at higher N — SUMMARY
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- guide
+- analysis
+- exp-004c
+---
 # EXP-004c — reranker validation at higher N — SUMMARY
 
 N queries: 199  KB: bash

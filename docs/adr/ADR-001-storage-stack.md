@@ -1,3 +1,17 @@
+---
+doc_id: adr-001-storage-stack
+title: 'ADR-001: Storage stack — Postgres + MinIO + DuckDB'
+zone: lab
+kind: adr
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- adr
+---
 # ADR-001: Storage stack — Postgres + MinIO + DuckDB
 
 Status: accepted

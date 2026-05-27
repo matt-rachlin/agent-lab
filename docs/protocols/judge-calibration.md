@@ -1,3 +1,18 @@
+---
+doc_id: judge-calibration
+title: 'Protocol: LLM-as-judge calibration'
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- protocols
+---
 # Protocol: LLM-as-judge calibration
 
 **Pre-registered protocol for any LLM-judge use in the lab. Cite this protocol from EXP plans.**

@@ -1,15 +1,18 @@
 ---
-doc_id: task-suite-pbs-agent-v0.1
+doc_id: pbs-agent-v0-1-card
 title: pbs-agent-v0.1 — task suite
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-26
-last_updated: 2026-05-26
-suite: pbs-agent-v0.1
-task_count: 12
-categories: ['code', 'fs', 'http', 'multi', 'shell']
-last_used_in: ['EXP-002']
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- tasks
+- pbs-agent-v0.1
 ---
 
 ## Purpose

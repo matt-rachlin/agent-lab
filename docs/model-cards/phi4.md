@@ -1,22 +1,17 @@
 ---
 doc_id: model-phi4
 title: ollama / phi4 latest
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: phi4
-backend: ollama-local
-publisher: ollama
-vram_gb: 9.1
-context_max: null
-capabilities: []
-ollama_tag: "phi4:latest"
-source_url: null
-license: null
-known_issues: []
-last_used_in: ['EXP-001']
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

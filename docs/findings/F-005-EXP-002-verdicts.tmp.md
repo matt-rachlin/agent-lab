@@ -1,3 +1,18 @@
+---
+doc_id: f-005-exp-002-verdicts-tmp
+title: EXP-002 verdicts — 480 cells (480 done, 0 error)
+zone: lab
+kind: finding
+status: draft
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- finding
+- findings
+---
 # EXP-002 verdicts — 480 cells (480 done, 0 error)
 
 ## Per-(model, scorer) means with bootstrap 95% CI

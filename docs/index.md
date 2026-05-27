@@ -1,3 +1,17 @@
+---
+doc_id: lab-docs-index
+title: lab
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+---
 # lab
 
 Solo AI/ML research lab — comparing agentic workflows across models, configurations, and prompts under hardware constraints (RTX 3080 Ti, 12 GB VRAM).

@@ -1,20 +1,33 @@
 ---
-slug: F-006-rag-hybrid-wins-locals-need-kb
-title: "F-006: The lab RAG stack v0.1 — hybrid retrieval beats endpoints, locals depend on kb_query more than cloud"
-status: final
-date: 2026-05-26
-experiment: EXP-003a + EXP-003b
-plan_path: docs/exp/EXP-003a.md
-confidence: high
-source: EXP-003a + EXP-003b
-importance: 8
-evidence:
-  - experiments/EXP-003a
-  - experiments/EXP-003b
-  - scripts/retrieval_sweep.py
-  - scripts/analyze_exp003b.py
-  - analysis/EXP-003a/SUMMARY.md
-  - analysis/EXP-003b/SUMMARY.md
+doc_id: f-006-rag-hybrid-wins-locals-need-kb
+title: 'F-006: The lab RAG stack v0.1 — hybrid retrieval beats endpoints, locals depend
+  on kb_query more than cloud'
+zone: lab
+kind: finding
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+depends_on:
+- kind: doc
+  target: exp-003a
+- kind: doc
+  target: exp-003b
+- kind: code
+  target: lab:scripts/retrieval_sweep.py
+- kind: code
+  target: lab:scripts/analyze_exp003b.py
+- kind: doc
+  target: exp-003a-summary
+- kind: doc
+  target: exp-003b-summary
+tags:
+- lab
+- finding
+- findings
+- confidence-high
+- importance-8
 ---
 
 # F-006: The lab RAG stack v0.1 — hybrid retrieval beats endpoints, locals depend on kb_query more than cloud

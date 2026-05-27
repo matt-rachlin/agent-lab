@@ -1,22 +1,17 @@
 ---
-doc_id: model-deepseek-v3.1-671b-cloud
+doc_id: deepseek-v3-1-671b-cloud
 title: deepseek / deepseek-v3.1 671b
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: deepseek-v3.1-671b-cloud
-backend: ollama-cloud
-publisher: deepseek
-vram_gb: null
-context_max: 163840
-capabilities: ['tool_call', 'reasoning', 'json']
-ollama_tag: "deepseek-v3.1:671b-cloud"
-source_url: null
-license: deepseek-license
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

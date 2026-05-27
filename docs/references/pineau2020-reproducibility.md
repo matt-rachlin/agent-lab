@@ -1,8 +1,19 @@
 ---
-cite_key: pineau2020reproducibility
-title: "Pineau reproducibility checklist"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: pineau2020-reproducibility
+title: Pineau reproducibility checklist
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # Pineau reproducibility checklist

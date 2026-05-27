@@ -1,8 +1,19 @@
 ---
-cite_key: bjarnason2026randomness
-title: "Randomness in agentic evals"
-url: see references.bib
-tags: [eval, lab-methodology]
+doc_id: bjarnason2026-randomness
+title: Randomness in agentic evals
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- references
+- eval
+- lab-methodology
 ---
 
 # Randomness in agentic evals

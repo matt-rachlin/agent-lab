@@ -1,3 +1,18 @@
+---
+doc_id: reliability-sweep
+title: 'Protocol: Reliability sweep (N ≥ 8)'
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- protocols
+---
 # Protocol: Reliability sweep (N ≥ 8)
 
 **Cite this protocol from any EXP plan that reports a `pass@k`, `pass^k`, or mean-score number.**

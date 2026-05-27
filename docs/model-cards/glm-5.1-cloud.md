@@ -1,22 +1,17 @@
 ---
-doc_id: model-glm-5.1-cloud
+doc_id: glm-5-1-cloud
 title: zhipu-ai / glm-5.1 cloud
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-26
-last_updated: 2026-05-26
-litellm_id: glm-5.1-cloud
-backend: ollama_cloud
-publisher: zhipu-ai
-vram_gb: null
-context_max: null
-capabilities: ['tool_call', 'reasoning']
-ollama_tag: "glm-5.1:cloud"
-source_url: null
-license: null
-known_issues: []
-last_used_in: ['EXP-002', 'EXP-003b', 'SWEEP-SMOKE-001']
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

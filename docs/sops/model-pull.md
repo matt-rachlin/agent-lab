@@ -1,3 +1,18 @@
+---
+doc_id: model-pull
+title: 'SOP: Registering a model (local or cloud)'
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- sops
+---
 # SOP: Registering a model (local or cloud)
 
 **Purpose:** add a new model to the lab's catalog and route it through LiteLLM.

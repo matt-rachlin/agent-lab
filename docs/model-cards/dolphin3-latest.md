@@ -1,22 +1,17 @@
 ---
 doc_id: model-dolphin3-latest
 title: ollama / dolphin3 latest
+zone: lab
 kind: card
 status: active
 owner: m
-created: 2026-05-25
-last_updated: 2026-05-26
-litellm_id: dolphin3-latest
-backend: ollama-local
-publisher: ollama
-vram_gb: 4.9
-context_max: null
-capabilities: []
-ollama_tag: "dolphin3:latest"
-source_url: null
-license: null
-known_issues: []
-last_used_in: []
+created: '2026-05-25'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- card
+- model-cards
 ---
 
 <!-- BEGIN AUTOGEN -->

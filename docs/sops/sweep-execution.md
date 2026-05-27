@@ -1,3 +1,18 @@
+---
+doc_id: sweep-execution
+title: 'SOP: Sweep execution'
+zone: lab
+kind: guide
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- guide
+- sops
+---
 # SOP: Sweep execution
 
 **Purpose:** end-to-end procedure for executing a comparison sweep, from plan to analysis.

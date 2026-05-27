@@ -1,3 +1,17 @@
+---
+doc_id: exp-003a
+title: 'EXP-003a: Bash KB retrieval-quality sweep'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-26'
+last_updated: '2026-05-26'
+last_verified: '2026-05-26'
+tags:
+- lab
+- exp
+---
 # EXP-003a: Bash KB retrieval-quality sweep
 
 Date created: 2026-05-26

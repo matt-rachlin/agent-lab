@@ -1,3 +1,17 @@
+---
+doc_id: exp-001b
+title: 'EXP-001b: qwen3 reasoning-mode + max_tokens ablation'
+zone: lab
+kind: exp
+status: active
+owner: m
+created: '2026-05-25'
+last_updated: '2026-05-25'
+last_verified: '2026-05-25'
+tags:
+- lab
+- exp
+---
 # EXP-001b: qwen3 reasoning-mode + max_tokens ablation
 
 Date created: 2026-05-25
