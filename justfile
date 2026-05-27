@@ -138,13 +138,13 @@ fmt-check:
     uv run ruff format --check .
 
 types:
-    uv run mypy src
+    uv run mypy packages
 
 # Phase 13.8: 2nd-opinion type checker. Catches a handful of
 # argument/overload issues mypy's plugins suppress; config in
 # pyproject.toml [tool.pyright].
 pyright:
-    uv run pyright src/lab/
+    uv run pyright packages
 
 test:
     uv run pytest tests/unit -q
