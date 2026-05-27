@@ -83,5 +83,36 @@ else
     echo "[lab] rerank service: down or unreachable"
 fi
 
-# -- 6. doc-graph placeholder (Phase 14) -------------------------------------
-echo "[lab] doc-graph: Phase 14 pending"
+# -- 6. doc-graph (Phase 14.4) -----------------------------------------------
+# Three-line summary derived directly from the SQLite DB so the hook stays
+# well under the 200ms budget (no python/uv cold-start). Falls back to a
+# single helpful line if the DB doesn't exist yet.
+
+DOCS_DB="${LAB_DOCS_DB:-$HOME/db/m/docs.db}"
+if [[ ! -f "$DOCS_DB" ]]; then
+    echo "[lab] doc-graph: not initialised — run \`m docs scan\`"
+else
+    status_line="$(timeout "$TIMEOUT" sqlite3 "$DOCS_DB" \
+        "SELECT 'active: ' || COALESCE(SUM(status='active'),0) || \
+                ', draft: '  || COALESCE(SUM(status='draft'),0) || \
+                ', archived: ' || COALESCE(SUM(status='archived'),0) \
+         FROM docs;" 2>/dev/null || true)"
+    if [[ -n "$status_line" ]]; then
+        echo "[lab] doc-graph status: $status_line"
+    else
+        echo "[lab] doc-graph status: (db unreachable)"
+    fi
+
+    gap_count="$(timeout "$TIMEOUT" sqlite3 "$DOCS_DB" \
+        "SELECT COUNT(*) FROM docs \
+         WHERE last_verified IS NULL \
+            OR last_verified < date('now', '-30 days');" 2>/dev/null || echo "?")"
+    echo "[lab] doc-graph gap (>30d): ${gap_count:-?}"
+
+    orphan_count="$(timeout "$TIMEOUT" sqlite3 "$DOCS_DB" \
+        "SELECT COUNT(*) FROM docs d \
+         WHERE NOT EXISTS (SELECT 1 FROM doc_deps WHERE doc_id = d.doc_id) \
+           AND NOT EXISTS (SELECT 1 FROM doc_deps WHERE dep_kind='doc' AND dep_target = d.doc_id);" \
+        2>/dev/null || echo "?")"
+    echo "[lab] doc-graph orphans: ${orphan_count:-?}"
+fi
