@@ -27,8 +27,8 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Json
 
-from lab.minio_io import run_key, upload_bytes
-from lab.settings import get_settings
+from lab.core.minio_io import run_key, upload_bytes
+from lab.core.settings import get_settings
 
 
 @dataclass

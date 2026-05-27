@@ -20,7 +20,7 @@ import pytest
 
 from lab.agent.sandbox import gvisor_available
 from lab.agent.tools import TOOL_SERVERS
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 from lab.tasks.registry import Task, load_tasks
 
 pytestmark = pytest.mark.integration

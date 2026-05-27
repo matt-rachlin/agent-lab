@@ -18,7 +18,7 @@ from typing import Literal
 
 import httpx
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 JUDGE_SYSTEM_PROMPT = (
     "You are an impartial evaluator. You score outputs strictly per the rubric. "

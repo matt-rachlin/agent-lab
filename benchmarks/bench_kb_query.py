@@ -34,7 +34,7 @@ def _check_gpu_lease_free() -> None:
     try:
         import redis
 
-        from lab.settings import get_settings
+        from lab.core.settings import get_settings
     except ImportError as exc:  # pragma: no cover — lab not installed
         raise BenchmarkSkipped(f"lab packages not importable: {exc}") from exc
 
@@ -52,8 +52,8 @@ def _check_gpu_lease_free() -> None:
 
 def _resolve_kb_dir() -> object:
     try:
+        from lab.core.settings import get_settings
         from lab.rag.index import count_rows
-        from lab.settings import get_settings
     except ImportError as exc:  # pragma: no cover
         raise BenchmarkSkipped(f"lab.rag not importable: {exc}") from exc
 

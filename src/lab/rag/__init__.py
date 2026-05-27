@@ -2,7 +2,7 @@
 
 Vendored from kb-builder (Phase 6h-a). The standalone kb-builder repo is no
 longer the source of truth; lab.rag is. Constants live here; runtime paths
-(LAB_KB_ROOT) read from lab.settings.
+(LAB_KB_ROOT) read from lab.core.settings.
 
 Phase 9 (2026-05-26): parent-child chunking. ``lab.rag.chunker.ChunkMode``
 selects between flat (v1, default) and parent_child (v2) chunking. Parent-
@@ -16,7 +16,7 @@ and are no-ops on legacy v1 KBs.
 
 from __future__ import annotations
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 KB_FORMAT_VERSION = 1
 #: Bumped to 2 in Phase 9 to mark KBs that may carry parent-child chunks.

@@ -14,7 +14,7 @@ import httpx
 import pytest
 
 from lab.agent.sandbox import gvisor_available
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 pytestmark = pytest.mark.integration
 

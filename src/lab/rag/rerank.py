@@ -165,11 +165,8 @@ class LabReranker:
         # CrossEncoder.predict returns one float per pair. The list[tuple]
         # signature mypy infers from sentence-transformers 5.x is invariant
         # over a huge union — cast keeps strict mode clean without changing
-        # behaviour. (The arg-type ignore was needed pre-Phase-15.1 when
-        # mypy resolved sentence-transformers via the legacy single-source
-        # layout; under explicit_package_bases the inferred signature now
-        # accepts list[tuple[str, str]] directly.)
-        scores = list(model.predict(pairs))
+        # behaviour.
+        scores = list(model.predict(pairs))  # type: ignore[arg-type]
         scored: list[tuple[int, float, dict[str, Any]]] = []
         for idx, (cand, raw) in enumerate(zip(candidates, scores, strict=True)):
             out = dict(cand)

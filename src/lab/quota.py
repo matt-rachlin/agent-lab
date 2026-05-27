@@ -21,7 +21,7 @@ from typing import Literal
 
 import psycopg
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 # Per-model "cost weight" — relative GPU-seconds per 1K output tokens.
 # Calibrate empirically as we accumulate data.
@@ -109,7 +109,7 @@ def alert_if_high(
     window_hours: int = 168,
 ) -> TierUsage:
     """Compute usage and send an ntfy alert if above threshold. Returns the TierUsage."""
-    from lab.notify import notify
+    from lab.core.notify import notify
 
     u = usage_window(tier=tier, window_hours=window_hours)
     if u.pct_consumed >= threshold_pct:

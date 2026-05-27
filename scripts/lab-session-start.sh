@@ -38,7 +38,7 @@ else
 fi
 
 # -- 2. Last 3 findings (importance-sorted) ----------------------------------
-# Schema (per /data/lab/code/src/lab/migrations) has no importance column —
+# Schema (per /data/lab/code/packages/lab-core/src/lab/migrations) has no importance column —
 # fall back to most-recent finding_id. Future schema additions: ORDER BY
 # importance DESC, finding_id DESC.
 findings="$(timeout "$TIMEOUT" psql -tAX -F'|' -d lab -c \

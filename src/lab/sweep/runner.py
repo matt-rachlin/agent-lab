@@ -26,10 +26,10 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from lab.gpu_lease import force_release, gpu_lease
-from lab.gpu_lease import status as gpu_lease_status
-from lab.manifest import capture as capture_manifest
-from lab.settings import get_settings
+from lab.core.gpu_lease import force_release, gpu_lease
+from lab.core.gpu_lease import status as gpu_lease_status
+from lab.core.manifest import capture as capture_manifest
+from lab.core.settings import get_settings
 from lab.sweep.config import RunConfig, SweepConfig, config_hash, run_id
 from lab.tasks.registry import get_tasks
 
@@ -342,7 +342,7 @@ def _call_litellm(
     so the multi-turn agent solver and this path share the same request
     shape.
     """
-    from lab.llm import call_litellm_chat
+    from lab.core.llm import call_litellm_chat
 
     return call_litellm_chat(
         settings=settings,
@@ -359,7 +359,7 @@ def _call_litellm(
 
 def _persist_trace(*, run_id_: str, payload: dict[str, Any]) -> str:
     """Upload trace JSONL to MinIO. Returns the s3:// path."""
-    from lab.minio_io import run_key, upload_bytes
+    from lab.core.minio_io import run_key, upload_bytes
 
     data = (json.dumps(payload) + "\n").encode()
     return upload_bytes(
@@ -648,7 +648,7 @@ def _execute_agent_cell(
 
     kb_root_mount: Path | None = None
     if _task_needs_kb_mount(lab_task.tools):
-        from lab.settings import get_settings as _get_settings_kb
+        from lab.core.settings import get_settings as _get_settings_kb
 
         kb_root_mount = _get_settings_kb().kb_root
         env.setdefault("LAB_KB_ROOT", "/kb")
@@ -682,7 +682,7 @@ def _execute_agent_cell(
 
     hf_cache_mount: Path | None = None
     if _task_needs_hf_cache_mount(lab_task.tools, reranker_env=env.get("LAB_RAG_RERANKER")):
-        from lab.settings import get_settings as _get_settings_hf
+        from lab.core.settings import get_settings as _get_settings_hf
 
         hf_cache_root = _get_settings_hf().hf_cache_root
         hf_cache_root.mkdir(parents=True, exist_ok=True)
@@ -971,7 +971,7 @@ def run_sweep(
 
     # Best-effort notification on sweep completion
     try:
-        from lab.notify import notify as _notify
+        from lab.core.notify import notify as _notify
 
         n_exec = summary.get("executed", 0)
         n_err = summary.get("errors", 0)

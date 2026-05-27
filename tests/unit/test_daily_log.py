@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 
-from lab.daily_log import _yesterdays_tomorrow, ensure_today
+from lab.core.daily_log import _yesterdays_tomorrow, ensure_today
 
 
 def test_ensure_today_creates_file(tmp_path: Path) -> None:

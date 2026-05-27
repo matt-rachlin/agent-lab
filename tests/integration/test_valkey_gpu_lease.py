@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from lab.gpu_lease import LEASE_KEY, force_release, gpu_lease, status
+from lab.core.gpu_lease import LEASE_KEY, force_release, gpu_lease, status
 
 pytestmark = pytest.mark.integration
 

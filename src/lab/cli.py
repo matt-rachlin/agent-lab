@@ -11,7 +11,9 @@ from rich.console import Console
 from rich.table import Table
 
 from lab.analyze.report import make_report
-from lab.daily_log import ensure_today, open_in_editor
+from lab.core.daily_log import ensure_today, open_in_editor
+from lab.core.manifest import capture as capture_manifest
+from lab.core.notify import get_ntfy_url, notify
 from lab.eval import apply_to_experiment, get_registry, load_evaluators_from
 from lab.eval.builtin import register_all as register_builtin_evaluators
 from lab.experiment import (
@@ -23,8 +25,6 @@ from lab.experiment import (
 )
 from lab.finding import list_findings, new_finding
 from lab.finding import sync as sync_findings
-from lab.manifest import capture as capture_manifest
-from lab.notify import get_ntfy_url, notify
 from lab.quota import alert_if_high as quota_alert
 from lab.quota import usage_window as quota_window
 from lab.spend import backfill as spend_backfill
@@ -591,7 +591,7 @@ def agent_run(
     }
 
     from lab.agent.tools import task_needs_hf_cache_mount, task_needs_kb_mount
-    from lab.settings import get_settings as _get_settings_kb
+    from lab.core.settings import get_settings as _get_settings_kb
 
     kb_root_mount: Path | None = None
     if task_needs_kb_mount(lab_task.tools):
@@ -707,7 +707,7 @@ def agent_run(
     if not no_persist:
         import psycopg as _psycopg
 
-        from lab.settings import get_settings as _get_settings
+        from lab.core.settings import get_settings as _get_settings
 
         with _psycopg.connect(_get_settings().pg_dsn) as pg, pg.cursor() as cur:
             cur.execute(
@@ -826,7 +826,7 @@ def agent_tools_test(
         # `bash` KB, which is `enrichment_pending` with 0 indexed chunks, so
         # `kb_query` short-circuits to the empty-KB path before touching
         # Ollama — no network needed.
-        from lab.settings import get_settings as _get_settings_kb
+        from lab.core.settings import get_settings as _get_settings_kb
 
         kb_root_mount = _get_settings_kb().kb_root
         env["LAB_KB_ROOT"] = "/kb"
@@ -960,7 +960,7 @@ app.add_typer(kb_app, name="kb")
 
 
 def _kb_root_path() -> Path:
-    from lab.settings import get_settings
+    from lab.core.settings import get_settings
 
     return Path(get_settings().kb_root).expanduser()
 
@@ -1097,8 +1097,8 @@ def kb_eval(
     """
     import redis
 
+    from lab.core.settings import get_settings
     from lab.rag.eval_retrieval import DEFAULT_EVAL_MODEL, run_eval
-    from lab.settings import get_settings
 
     settings = get_settings()
     try:

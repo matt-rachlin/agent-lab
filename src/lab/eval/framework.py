@@ -27,7 +27,7 @@ from typing import Any, Literal, Protocol
 import psycopg
 from psycopg.types.json import Json
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 # ---------------------------------------------------------------------------
 # Row types — minimal projections of the underlying tables

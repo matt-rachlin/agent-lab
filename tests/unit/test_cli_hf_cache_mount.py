@@ -98,10 +98,10 @@ def _run_agent_run(
     reranker_env: str | None = None,
 ) -> None:
     from lab import cli as cli_mod
-    from lab.settings import get_settings
+    from lab.core.settings import get_settings
 
     # Reset settings cache so monkeypatched env or paths apply cleanly.
-    monkeypatch.setattr("lab.settings._settings", None, raising=False)
+    monkeypatch.setattr("lab.core.settings._settings", None, raising=False)
     if reranker_env is None:
         monkeypatch.delenv("LAB_RAG_RERANKER", raising=False)
     else:
@@ -128,7 +128,7 @@ def test_agent_run_mounts_hf_cache_when_kb_query_and_reranker_enabled(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("LAB_HF_CACHE_ROOT", str(tmp_path / "hfc"))
-    monkeypatch.setattr("lab.settings._settings", None, raising=False)
+    monkeypatch.setattr("lab.core.settings._settings", None, raising=False)
     _run_agent_run(monkeypatch, [{"name": "kb_query"}], reranker_env=None)
     kw = _FakeSandbox.last_kwargs
     assert kw["hf_cache_mount"] == tmp_path / "hfc"
@@ -153,7 +153,7 @@ def test_agent_run_skips_hf_cache_when_reranker_disabled(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("LAB_HF_CACHE_ROOT", str(tmp_path / "hfc"))
-    monkeypatch.setattr("lab.settings._settings", None, raising=False)
+    monkeypatch.setattr("lab.core.settings._settings", None, raising=False)
     _run_agent_run(monkeypatch, [{"name": "kb_query"}], reranker_env="none")
     kw = _FakeSandbox.last_kwargs
     assert kw["hf_cache_mount"] is None
@@ -172,7 +172,7 @@ def test_agent_run_skips_hf_cache_when_no_kb_query(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("LAB_HF_CACHE_ROOT", str(tmp_path / "hfc"))
-    monkeypatch.setattr("lab.settings._settings", None, raising=False)
+    monkeypatch.setattr("lab.core.settings._settings", None, raising=False)
     _run_agent_run(monkeypatch, [{"name": "fs_read"}, {"name": "shell_exec"}],
                    reranker_env=None)
     kw = _FakeSandbox.last_kwargs

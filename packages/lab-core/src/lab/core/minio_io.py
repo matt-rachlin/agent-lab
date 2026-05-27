@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 
 def make_minio_client() -> Any:

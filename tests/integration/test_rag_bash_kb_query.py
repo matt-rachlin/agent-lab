@@ -30,8 +30,8 @@ def test_bash_kb_query_or_skip():
     # We import lazily so the test loads even when ollama isn't reachable.
     import redis
 
+    from lab.core.settings import get_settings
     from lab.rag.index import hybrid_query
-    from lab.settings import get_settings
 
     settings = get_settings()
     # Refuse to query if a sweep is holding the GPU lease.

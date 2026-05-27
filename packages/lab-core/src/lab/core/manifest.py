@@ -6,7 +6,7 @@ exist.
 
 Usage:
 
-    from lab.manifest import capture
+    from lab.core.manifest import capture
     m = capture(extra={"config_hash": "...", "task_id": 42})
     # m.sha is the canonical id; m.payload is the full dict
 """
@@ -26,7 +26,7 @@ from typing import Any
 
 import psycopg
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 
 @dataclass(frozen=True)

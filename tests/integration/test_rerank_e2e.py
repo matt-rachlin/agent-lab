@@ -35,7 +35,7 @@ def test_bash_kb_rerank_e2e_or_skip() -> None:
 
     import redis
 
-    from lab.settings import get_settings
+    from lab.core.settings import get_settings
 
     settings = get_settings()
     try:

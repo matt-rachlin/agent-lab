@@ -18,7 +18,7 @@ db-create:
 
 # Apply all SQL migrations
 db-migrate:
-    @for f in src/lab/migrations/*.sql; do echo "applying $f"; psql -d lab -f "$f"; done
+    @for f in packages/lab-core/src/lab/migrations/*.sql; do echo "applying $f"; psql -d lab -f "$f"; done
 
 # Full DB init: create + migrate
 db-init: db-create db-migrate

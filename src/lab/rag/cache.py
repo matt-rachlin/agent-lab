@@ -184,7 +184,7 @@ class RagCache:
                 "redis client not installed; RagCache cannot run"
             ) from exc
         if valkey_url is None:
-            from lab.settings import get_settings
+            from lab.core.settings import get_settings
 
             valkey_url = get_settings().redis_url
         try:

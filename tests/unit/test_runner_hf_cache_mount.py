@@ -85,7 +85,7 @@ def _run(monkeypatch: pytest.MonkeyPatch, cell: Any) -> None:
     _FakeSandbox.last_kwargs = {}
     monkeypatch.setattr("lab.agent.sandbox.Sandbox", _FakeSandbox)
     _stub_inspect_and_logwriter(monkeypatch)
-    monkeypatch.setattr("lab.settings._settings", None, raising=False)
+    monkeypatch.setattr("lab.core.settings._settings", None, raising=False)
     runner_mod._execute_agent_cell(cell=cell, manifest_sha="deadbeef", timeout=10)
 
 

@@ -29,9 +29,9 @@ from inspect_ai.tool import Tool
 
 from lab.agent.sandbox import Sandbox
 from lab.agent.tool_pool import ToolPool
+from lab.core.llm import call_litellm_chat
+from lab.core.settings import get_settings
 from lab.inspect_bridge.tools import discover_tool_schemas
-from lab.llm import call_litellm_chat
-from lab.settings import get_settings
 
 # Truncation budget for tool call inputs/outputs recorded in `turns`.
 _TURN_PAYLOAD_CAP = 4096

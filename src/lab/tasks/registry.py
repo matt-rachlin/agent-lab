@@ -16,7 +16,7 @@ import psycopg
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from lab.settings import get_settings
+from lab.core.settings import get_settings
 
 
 class TaskRubric(BaseModel):
