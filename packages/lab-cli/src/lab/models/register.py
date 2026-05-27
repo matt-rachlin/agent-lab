@@ -277,11 +277,47 @@ def sync_models(*, include_cloud: bool = True) -> dict[str, int]:
                 cur.execute(UPSERT_SQL, row)
         conn.commit()
 
+    # Phase 15.2: additive MLflow mirror. Best-effort, never blocks.
+    _mirror_models_to_mlflow(rows)
+
     return {
         "total": len(rows),
         "local": len([r for r in rows if r["backend"] == "ollama-local"]),
         "cloud": len([r for r in rows if r["backend"] == "ollama-cloud"]),
     }
+
+
+def _mirror_models_to_mlflow(rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
+    try:
+        from lab.observability.mlflow_mirror import MlflowMirror
+
+        mirror = MlflowMirror()
+        if not mirror.enabled:
+            return
+        for row in rows:
+            litellm_id = row.get("litellm_id")
+            if not litellm_id:
+                continue
+            mlflow_uri = mirror.log_model_card(
+                litellm_id,
+                publisher=row.get("publisher") or "",
+                variant=row.get("variant"),
+                capabilities=row.get("capabilities") or [],
+                known_issues=None,
+            )
+            if mlflow_uri:
+                with (
+                    psycopg.connect(get_settings().pg_dsn) as conn,
+                    conn.cursor() as cur,
+                ):
+                    cur.execute(
+                        "UPDATE models SET mlflow_model_uri = %s WHERE litellm_id = %s",
+                        (mlflow_uri, litellm_id),
+                    )
+    except Exception:  # noqa: S110 — belt-and-suspenders; mirror already logs
+        pass
 
 
 def main() -> int:

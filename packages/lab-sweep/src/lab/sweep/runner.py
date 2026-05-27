@@ -417,6 +417,74 @@ def _insert_run(
                 "error": result.error,
             },
         )
+    # Phase 15.2: additive mirror into MLflow. Best-effort, never blocks.
+    _mirror_cell_to_mlflow(
+        cell=cell,
+        result=result,
+        trace_path=trace_path,
+        sandbox_image_hash=None,
+        actual_turns=None,
+        tool_call_count=None,
+    )
+
+
+def _mirror_cell_to_mlflow(
+    *,
+    cell: Cell,
+    result: CellResult,
+    trace_path: str | None,
+    sandbox_image_hash: str | None,
+    actual_turns: int | None,
+    tool_call_count: int | None,
+) -> None:
+    """Mirror one cell into MLflow + write back the assigned mlflow_run_id."""
+
+    try:
+        from lab.observability.mlflow_mirror import MlflowMirror
+
+        metrics: dict[str, float] = {}
+        if result.latency_ms is not None:
+            metrics["latency_ms"] = float(result.latency_ms)
+        if result.tokens_in is not None:
+            metrics["tokens_in"] = float(result.tokens_in)
+        if result.tokens_out is not None:
+            metrics["tokens_out"] = float(result.tokens_out)
+        if result.cost_usd is not None:
+            metrics["cost_usd"] = float(result.cost_usd)
+        if actual_turns is not None:
+            metrics["actual_turns"] = float(actual_turns)
+        if tool_call_count is not None:
+            metrics["tool_call_count"] = float(tool_call_count)
+
+        tags: dict[str, str] = {
+            "model_backend": cell.model_backend,
+            "config_hash": cell.config_hash,
+            "config_name": cell.config.name,
+        }
+        if sandbox_image_hash:
+            tags["sandbox_image_hash"] = sandbox_image_hash
+
+        mlflow_run_id = MlflowMirror().log_run(
+            cell.experiment_slug,
+            cell.run_id,
+            model=cell.model_litellm_id,
+            task=cell.task_slug,
+            seed=cell.seed,
+            config=cell.config.model_dump(),
+            metrics=metrics,
+            tags=tags,
+            artifact_uri=trace_path,
+            status="FAILED" if result.status == "error" else "FINISHED",
+        )
+        if mlflow_run_id:
+            with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE experiment_runs SET mlflow_run_id = %s WHERE run_id = %s",
+                    (mlflow_run_id, cell.run_id),
+                )
+    except Exception:  # noqa: S110 — belt-and-suspenders; mirror already logs
+        # The mirror already swallows everything; this is belt-and-suspenders.
+        pass
 
 
 def _is_agent_cell(task_payload: dict[str, Any]) -> bool:

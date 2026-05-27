@@ -122,6 +122,7 @@ def sync(findings_dir: Path = FINDINGS_DIR_DEFAULT) -> tuple[int, int]:
         return (0, 0)
     files = sorted(findings_dir.glob("F-*.md"))
     synced = skipped = 0
+    successful: list[ParsedFinding] = []
     with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
         for f in files:
             parsed = parse_finding(f)
@@ -139,8 +140,45 @@ def sync(findings_dir: Path = FINDINGS_DIR_DEFAULT) -> tuple[int, int]:
                     "created": parsed.date,
                 },
             )
+            successful.append(parsed)
             synced += 1
+    # Phase 15.2: additive MLflow mirror. Best-effort, never blocks.
+    _mirror_findings_to_mlflow(successful)
     return (synced, skipped)
+
+
+_CONFIDENCE_FLOAT = {"low": 0.3, "medium": 0.6, "high": 0.9}
+
+
+def _mirror_findings_to_mlflow(parsed_findings: list[ParsedFinding]) -> None:
+    if not parsed_findings:
+        return
+    try:
+        from lab.observability.mlflow_mirror import MlflowMirror
+
+        mirror = MlflowMirror()
+        if not mirror.enabled:
+            return
+        for p in parsed_findings:
+            conf_val = _CONFIDENCE_FLOAT.get(p.confidence or "low", 0.3)
+            mlflow_run_id = mirror.log_finding(
+                p.slug,
+                claim=p.claim,
+                importance=3,  # uniform default until plans add an `importance` field
+                confidence=conf_val,
+                evidence=[p.source_exp_slug] if p.source_exp_slug else None,
+            )
+            if mlflow_run_id:
+                with (
+                    psycopg.connect(get_settings().pg_dsn) as conn,
+                    conn.cursor() as cur,
+                ):
+                    cur.execute(
+                        "UPDATE findings SET mlflow_run_id = %s WHERE slug = %s",
+                        (mlflow_run_id, p.slug),
+                    )
+    except Exception:  # noqa: S110 — belt-and-suspenders; mirror already logs
+        pass
 
 
 def list_findings() -> list[dict[str, object]]:

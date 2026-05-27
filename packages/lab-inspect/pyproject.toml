@@ -12,6 +12,7 @@ dependencies = [
     "lab-eval",
     "lab-agent",
     "lab-rag",
+    "lab-observability",
     "inspect-ai>=0.3.226",
 ]
 
@@ -20,6 +21,7 @@ lab-core = { workspace = true }
 lab-eval = { workspace = true }
 lab-agent = { workspace = true }
 lab-rag = { workspace = true }
+lab-observability = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

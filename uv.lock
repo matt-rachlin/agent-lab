@@ -2778,6 +2778,7 @@ dependencies = [
     { name = "lab-agent" },
     { name = "lab-core" },
     { name = "lab-eval" },
+    { name = "lab-observability" },
     { name = "lab-rag" },
 ]
 
@@ -2787,6 +2788,7 @@ requires-dist = [
     { name = "lab-agent", editable = "packages/lab-agent" },
     { name = "lab-core", editable = "packages/lab-core" },
     { name = "lab-eval", editable = "packages/lab-eval" },
+    { name = "lab-observability", editable = "packages/lab-observability" },
     { name = "lab-rag", editable = "packages/lab-rag" },
 ]
 
@@ -2850,6 +2852,7 @@ dependencies = [
     { name = "lab-core" },
     { name = "lab-eval" },
     { name = "lab-inspect" },
+    { name = "lab-observability" },
     { name = "mlflow" },
     { name = "numpy" },
     { name = "omegaconf" },
@@ -2864,6 +2867,7 @@ requires-dist = [
     { name = "lab-core", editable = "packages/lab-core" },
     { name = "lab-eval", editable = "packages/lab-eval" },
     { name = "lab-inspect", editable = "packages/lab-inspect" },
+    { name = "lab-observability", editable = "packages/lab-observability" },
     { name = "mlflow", specifier = ">=2.18.0" },
     { name = "numpy", specifier = ">=2.1.0" },
     { name = "omegaconf", specifier = ">=2.3.0" },

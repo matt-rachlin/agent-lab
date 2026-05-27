@@ -177,6 +177,30 @@ def register_plan(
                 datetime.now(UTC),
             ),
         )
+
+    # MLflow additive mirror (Phase 15.2). Best-effort: never blocks the
+    # canonical Postgres write. Capture the assigned MLflow experiment id
+    # back into Postgres so the analysis tier can deep-link to the UI.
+    try:
+        from lab.observability.mlflow_mirror import MlflowMirror
+
+        mlflow_id = MlflowMirror().upsert_experiment(
+            v.slug,
+            title=v.title,
+            plan_path=rel_path,
+            hypothesis=hypothesis,
+        )
+        if mlflow_id:
+            with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE experiments SET mlflow_experiment_id = %s WHERE slug = %s",
+                    (mlflow_id, v.slug),
+                )
+    except Exception:  # noqa: S110 — belt-and-suspenders; mirror already logs
+        # Mirror must never break canonical registration; the mirror itself
+        # already swallows + logs, this is belt-and-suspenders.
+        pass
+
     _ = note  # reserved for future use (e.g. retroactive registration reason)
     return v
 

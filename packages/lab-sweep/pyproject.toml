@@ -11,6 +11,7 @@ dependencies = [
     "lab-core",
     "lab-eval",
     "lab-inspect",
+    "lab-observability",
     "duckdb>=1.1.0",
     "scipy>=1.14.0",
     "numpy>=2.1.0",
@@ -24,6 +25,7 @@ dependencies = [
 lab-core = { workspace = true }
 lab-eval = { workspace = true }
 lab-inspect = { workspace = true }
+lab-observability = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

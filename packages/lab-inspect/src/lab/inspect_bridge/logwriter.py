@@ -19,6 +19,7 @@ Idempotent on `run_id`.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -446,7 +447,87 @@ def write_run_from_inspect_log(log: Any, sweep_context: SweepContext) -> str:
         compact_turns=_compact_turns(extracted.get("lab_agent") or {}),
         score_breakdown=extracted.get("score_breakdown"),
     )
+    # Phase 15.2: additive MLflow mirror. Best-effort, never blocks the
+    # canonical Postgres / MinIO writes above.
+    _mirror_agent_run_to_mlflow(ctx=sweep_context, extracted=extracted, trace_uri=trace_uri)
     return trace_uri
+
+
+def _mirror_agent_run_to_mlflow(
+    *, ctx: SweepContext, extracted: dict[str, Any], trace_uri: str
+) -> None:
+    """Mirror an agent-path cell into MLflow + write back mlflow_run_id."""
+
+    try:
+        from lab.observability.mlflow_mirror import MlflowMirror
+
+        lab_agent = extracted.get("lab_agent") or {}
+        error = lab_agent.get("error") or extracted.get("error")
+        status = "FAILED" if error else "FINISHED"
+
+        usage = extracted.get("model_usage") or {}
+        tokens_in: int | None = None
+        tokens_out: int | None = None
+        for v in usage.values():
+            if isinstance(v, dict):
+                ti = v.get("input_tokens")
+                to = v.get("output_tokens")
+                if ti is not None:
+                    tokens_in = (tokens_in or 0) + int(ti)
+                if to is not None:
+                    tokens_out = (tokens_out or 0) + int(to)
+        metrics: dict[str, float] = {}
+        latency = lab_agent.get("total_latency_ms")
+        if latency is not None:
+            metrics["latency_ms"] = float(latency)
+        if tokens_in is not None:
+            metrics["tokens_in"] = float(tokens_in)
+        if tokens_out is not None:
+            metrics["tokens_out"] = float(tokens_out)
+        if lab_agent.get("actual_turns") is not None:
+            metrics["actual_turns"] = float(lab_agent["actual_turns"])
+        if lab_agent.get("tool_call_count") is not None:
+            metrics["tool_call_count"] = float(lab_agent["tool_call_count"])
+        if extracted.get("score") is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                metrics["score"] = float(extracted["score"])
+        for scorer, info in (extracted.get("score_breakdown") or {}).items():
+            val = info.get("value") if isinstance(info, dict) else None
+            if val is None:
+                continue
+            with contextlib.suppress(TypeError, ValueError):
+                metrics[f"score.{scorer}"] = float(val)
+
+        sandbox_hash = _read_sandbox_hash()
+        tags: dict[str, str] = {
+            "model_backend": "agent",
+            "config_hash": ctx.config_hash,
+        }
+        if sandbox_hash:
+            tags["sandbox_image_hash"] = sandbox_hash
+        if lab_agent.get("terminated_reason"):
+            tags["terminated_reason"] = str(lab_agent["terminated_reason"])
+
+        mlflow_run_id = MlflowMirror().log_run(
+            ctx.experiment_slug,
+            ctx.run_id,
+            model=ctx.model_litellm_id,
+            task=ctx.task_slug,
+            seed=ctx.seed,
+            config=ctx.config,
+            metrics=metrics,
+            tags=tags,
+            artifact_uri=trace_uri,
+            status="FAILED" if status == "FAILED" else "FINISHED",
+        )
+        if mlflow_run_id:
+            with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE experiment_runs SET mlflow_run_id = %s WHERE run_id = %s",
+                    (mlflow_run_id, ctx.run_id),
+                )
+    except Exception:  # noqa: S110 — belt-and-suspenders; mirror already logs
+        pass
 
 
 __all__ = ["SweepContext", "write_run_from_inspect_log"]
