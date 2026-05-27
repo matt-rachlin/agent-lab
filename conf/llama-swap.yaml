@@ -24,26 +24,37 @@ globalTTL: 600 # default unload after 10 min idle; per-model override below
 
 # Reusable command snippets.
 #
-# LLAMA_SERVER is the llama.cpp `llama-server` binary on this host. The
-# .local/bin/llama-server symlink is broken (points at a non-existent
-# build); use the real path under /data/apps/_vendor/llama.cpp/.
+# LLAMA_SERVER is the llama.cpp `llama-server` binary on this host. Phase 19d
+# rebuilt llama.cpp with CUDA backend (commit 66d65ec29 / b8183) into a
+# separate build-cuda/ tree so the Vulkan build/ stays intact for fallback.
+# CUDA build uses CUDA 12.9 toolkit (12.8 had glibc 2.42 noexcept header
+# conflicts with cospi/sinpi/rsqrt; we patched crt/math_functions.h to add
+# noexcept (true) to the device-builtin decls — see runbook). Compute
+# capability sm_86 (RTX 3080 Ti). Host compiler gcc-14.
 #
-# LD_LIBRARY_PATH must include the build dir so the bundled
-# libggml-*.so.0 / libllama.so.0 / libmtmd.so.0 are resolved.
+# LD_LIBRARY_PATH must include the CUDA build dir so the bundled
+# libggml-*.so.0 / libllama.so.0 / libmtmd.so.0 are resolved (the binary
+# does NOT have RPATH baked in for /data/apps/_vendor/...).
 macros:
-  "LLAMA_SERVER": "/data/apps/_vendor/llama.cpp/build/bin/llama-server"
-  "LD_LIB": "/data/apps/_vendor/llama.cpp/build/bin"
+  "LLAMA_SERVER": "/data/apps/_vendor/llama.cpp/build-cuda/bin/llama-server"
+  "LD_LIB": "/data/apps/_vendor/llama.cpp/build-cuda/bin"
   "MODELS_DIR": "/data/models/gguf"
 
-  # Common flags for medium-class models (14B-class, fits 12 GB cleanly).
-  "default_args_medium": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99"
+  # Common flags for medium-class models (14B-class). With ~8.5 GB free
+  # of 12 GB (rerank server persists at ~2.6 GB in small-tools), an 8.6 GB
+  # Q4_K_M model cannot fully offload — use -ngl 25 (smoked clean Phase 19d).
+  "default_args_medium": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 25"
 
   # Common flags for the 30B-A3B MoE: full GPU offload of attention,
   # expert tensors on CPU via `-ot` regex. Per research (plan §19b).
   "default_args_moe_30b": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99 -ot 'exps=CPU'"
 
-  # Common flags for 20B-class MXFP4 (gpt-oss-20b). Full GPU offload.
-  "default_args_20b": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99"
+  # Common flags for 20B-class MXFP4 (gpt-oss-20b). gpt-oss-20b is a MoE
+  # (~21B total / 3.6B active); full MXFP4 needs ~12 GB which won't fit
+  # the ~8.5 GB free window. Use the same MoE hybrid pattern as Qwen3 MoE:
+  # offload all attention to GPU, keep expert tensors on CPU via -ot.
+  # Smoked clean Phase 19d at ~6.6 GB VRAM with this layout.
+  "default_args_20b": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99 -ot 'exps=CPU'"
 
 # ---------------------------------------------------------------------------
 # models — each entry maps a model ID to a launch command and a group.
@@ -91,18 +102,17 @@ models:
     description: "Math/reasoning specialist; beats DSR1-distill-70B on AIME 2025."
     ttl: 600
 
-  # Hermes 4.3 36B — landed 2026-05-27. ~21 GB Q4_K_M; full GPU offload
-  # is too tight on 12 GB (would need most of VRAM + leave no headroom
-  # for KV cache), so we use hybrid offload via -ngl. Per research:
-  # 36B Q4 needs roughly 22 GB raw + 1-2 GB KV, fits with offload at
-  # ~30 layers (rough estimate; tune after first smoke). Assigned to
-  # big-llm group (exclusive) because it competes for the same lane
-  # as qwen3-30b-a3b-moe / gpt-oss-20b-local.
+  # Hermes 4.3 36B — landed 2026-05-27. ~21 GB Q4_K_M; far too big to
+  # fully offload on a 12 GB card. Use hybrid offload with -ngl 22 +
+  # q8_0 KV cache: smoked clean Phase 19d at ~11.4 GB VRAM with
+  # ctx-size 8192. Headroom is tight — leaves ~600 MB free which is
+  # enough for response generation but bigger contexts may OOM, see
+  # runbook. Assigned to big-llm group (exclusive).
   "hermes-4.3-36b":
     cmd: |
       ${LLAMA_SERVER}
       --port ${PORT} --host 127.0.0.1 --ctx-size 8192
-      --n-gpu-layers 30 -ctk q8_0 -ctv q8_0
+      --n-gpu-layers 22 -ctk q8_0 -ctv q8_0
       --model ${MODELS_DIR}/hermes-4.3-36b/NousResearch_Hermes-4.3-36B-Q4_K_M.gguf
       --jinja
     env:

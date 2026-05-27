@@ -41,9 +41,10 @@ agent / sweep cell
    v                          v
  Ollama (port 11434)     llama-server (per-model ports 10001+)
    - small local models    - qwen3-30b-a3b-moe (Q4_K_M MoE, experts on CPU)
-   - Ollama Cloud models   - gpt-oss-20b-local (MXFP4)
-                           - phi-4-reasoning-14b
-                           - (future) hermes-4.3-36b, llama-3.3-70b-q4
+   - Ollama Cloud models   - gpt-oss-20b-local (MXFP4, experts on CPU)
+                           - phi-4-reasoning-14b (hybrid offload, ngl 25)
+                           - hermes-4.3-36b (hybrid offload, ngl 22)
+                           - (Phase 19e) llama-3.3-70b-q4
 ```
 
 ## Files
@@ -87,13 +88,12 @@ agent / sweep cell
 |---|---|---|
 | `small-tools` | `qwen3-reranker-0.6b` | persistent, never evicted by big-model loads |
 | `medium-llm` | `qwen3-14b-q4`, `phi-4-reasoning-14b` | exclusive within group, evicts other groups |
-| `big-llm` | `qwen3-30b-a3b-moe`, `gpt-oss-20b-local` | exclusive within group, evicts other groups |
+| `big-llm` | `qwen3-30b-a3b-moe`, `gpt-oss-20b-local`, `hermes-4.3-36b` | exclusive within group, evicts other groups |
 
 Deferred (model not yet pulled / GGUF not on disk):
 
-- `ceiling-llm` — `llama-3.3-70b-q4` (Phase 19e)
+- `ceiling-llm` — `llama-3.3-70b-q4` (Phase 19e — GGUF on disk but not wired)
 - `embedder-big` — `qwen3-embedding-8b-q8`
-- `big-llm` member: `hermes-4.3-36b` (download was interrupted)
 - (no group) `xlam-2-7b-fc-r` — re-checked 2026-05-27, no upstream GGUF;
   only xLAM-1 (`xLAM-7b-fc-r`) variants exist on the Hub
 
@@ -179,15 +179,116 @@ curl -s -X POST http://localhost:8080/api/unload-all
 - **GPU monitoring**: llama-swap logs
   `[ERROR] failed reading from gpuCh - stopping read goroutine` when the
   NVIDIA driver isn't loaded. Cosmetic — it doesn't affect routing.
-- **llama.cpp build is Vulkan-only**: the binary at
-  `/data/apps/_vendor/llama.cpp/build/bin/llama-server` was compiled
-  without CUDA. With the NVIDIA driver loaded it falls back through
-  Vulkan, which on a 3080 Ti is ~10-20% slower than CUDA but works.
-  If we hit throughput problems, rebuild llama.cpp with `-DGGML_CUDA=ON`.
-- **`~/.local/bin/llama-server` symlink is broken** — points at
-  `~/applications/llama.cpp/build/bin/llama-server` which doesn't exist.
-  llama-swap.yaml uses the real path under `/data/apps/_vendor/`
-  directly. Don't rely on the symlink.
+
+## llama.cpp CUDA build (Phase 19d, 2026-05-27)
+
+Phase 19a smokes pushed us off the Vulkan build — on the 3080 Ti, Vulkan
+fell over for big-model swaps and we wanted real CUDA throughput. The
+current llama.cpp tree at `/data/apps/_vendor/llama.cpp/` is master
+commit `66d65ec29` (b8183). We keep two parallel builds:
+
+- `build/`       — original Vulkan-only build (kept as fallback)
+- `build-cuda/`  — Phase 19d CUDA build, used by llama-swap
+
+llama-swap macros in `conf/llama-swap.yaml` point at `build-cuda/bin/llama-server`
+and set `LD_LIBRARY_PATH=/data/apps/_vendor/llama.cpp/build-cuda/bin` per
+model so the bundled `libggml-cuda.so.0` is found at runtime. We did NOT
+add `LD_LIBRARY_PATH` to the systemd unit; per-model `env:` blocks in
+the YAML are enough because llama-swap propagates them to children.
+
+### CUDA build recipe
+
+```bash
+cd /data/apps/_vendor/llama.cpp
+# CUDA 12.8 in /usr/local/cuda-12.8 hit the glibc-2.42 noexcept conflict
+# (cospi/sinpi/rsqrt redeclared); installed CUDA 12.9:
+sudo dnf install -y cuda-nvcc-12-9 cuda-cudart-devel-12-9 cuda-cccl-12-9 \
+                    libcublas-devel-12-9 cuda-nvrtc-devel-12-9
+
+# CUDA 12.9 has the same glibc-2.42 conflict — patch crt/math_functions.h
+# to add `noexcept (true)` to cospi/sinpi/rsqrt + the float variants. See
+# sed in our build log. CUDA 12.9.86 ships with the wrong noexcept on these
+# six device-builtin decls on Fedora 43 (glibc 2.42).
+
+# Then configure + build with gcc-14 (gcc-15 unsupported by CUDA):
+PATH=/usr/local/cuda-12.9/bin:$PATH cmake -B build-cuda \
+  -DGGML_CUDA=ON \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLAMA_CURL=OFF \
+  -DCMAKE_CUDA_ARCHITECTURES=86 \
+  -DCMAKE_C_COMPILER=/usr/bin/gcc-14 \
+  -DCMAKE_CXX_COMPILER=/usr/bin/g++-14 \
+  -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/gcc-14 \
+  -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.9/bin/nvcc
+PATH=/usr/local/cuda-12.9/bin:$PATH cmake --build build-cuda \
+  --config Release -j --target llama-server
+```
+
+Verify CUDA linkage and device detection:
+
+```bash
+ldd /data/apps/_vendor/llama.cpp/build-cuda/bin/llama-server | grep -E 'cudart|cublas'
+# Should list libcudart.so.12 and libcublas.so.12 from /usr/local/cuda/...
+
+LD_LIBRARY_PATH=/data/apps/_vendor/llama.cpp/build-cuda/bin \
+  /data/apps/_vendor/llama.cpp/build-cuda/bin/llama-server --version
+# Header should say:
+#   ggml_cuda_init: found 1 CUDA devices:
+#     Device 0: NVIDIA GeForce RTX 3080 Ti, compute capability 8.6, VMM: yes
+#   version: 8183 (66d65ec29)
+```
+
+`~/.local/bin/llama-server` is now a symlink to `build-cuda/bin/llama-server`
+(was previously broken; Phase 19c noted this).
+
+### LD_LIBRARY_PATH strategy
+
+llama-swap's systemd unit does NOT export `LD_LIBRARY_PATH` globally. Instead,
+each model entry in `conf/llama-swap.yaml` sets it in `env:` (already in
+place pre-Phase-19d for the Vulkan build):
+
+```yaml
+env:
+  - "LD_LIBRARY_PATH=${LD_LIB}"   # where LD_LIB = build-cuda/bin macro
+```
+
+Option chosen: Option A's per-process env (via YAML), already in place — we
+just changed the macro to point at `build-cuda/bin`. No service file edit needed,
+no wrapper script.
+
+### Per-model VRAM tuning (Phase 19d smokes, ctx-size 8192)
+
+The 3080 Ti has 12 GB physical VRAM. The rerank server in `small-tools`
+holds ~2.6 GB persistent, leaving ~8.5 GB free for big-model loads. All
+n-gpu-layers values below smoked clean with `keep_alive=0` and one
+greedy completion through `/v1/chat/completions`:
+
+| Model | Flags | Peak VRAM | First-token latency | Notes |
+|---|---|---|---|---|
+| `phi-4-reasoning-14b` | `-ngl 25` | ~10.1 GB | ~7 s | Hybrid offload; full -ngl 99 would need 9.1 GB tensors alone and OOMs |
+| `qwen3-30b-a3b-moe` | `-ngl 99 -ot 'exps=CPU'` | ~5.6 GB | ~11 s | MoE with experts on CPU — attention layers small, fits fine |
+| `gpt-oss-20b-local` (MXFP4) | `-ngl 99 -ot 'exps=CPU'` | ~6.7 GB | ~14 s cold | Also MoE; needs experts-on-CPU pattern. MXFP4 loads natively in b8183 |
+| `hermes-4.3-36b` (Q4_K_M) | `-ngl 22 -ctk q8_0 -ctv q8_0` | ~11.4 GB | ~16 s | Tight; only ~600 MB headroom at ctx 8192. Bumping ctx will OOM |
+
+MXFP4 outcome: **loaded natively** — the b8183 CUDA backend supports MXFP4
+out of the box, no quant-unknown errors. gpt-oss-20b needs the same MoE
+expert-on-CPU pattern as Qwen3-30B-A3B because at full-GPU offload the
+MXFP4 tensors alone need ~12 GB (more than free VRAM, not more than
+total — the rerank server is the headroom culprit).
+
+### Rebuild trigger
+
+Rebuild when:
+
+- The pinned upstream commit changes (rare — we don't update master often)
+- Driver / CUDA toolkit version changes such that linkage breaks
+- A new quant format ships (e.g. a Phase 19a-style new model whose GGUF
+  uses something newer than b8183)
+
+The Fedora glibc-2.42 patch on `crt/math_functions.h` is sticky to the
+CUDA toolkit version. If the dnf transaction reinstalls cuda-cudart-12-9
+or cuda-nvcc-12-9, redo the sed. CUDA 13 (when it lands in Fedora) should
+ship with `noexcept (true)` on those six decls and drop the patch.
 
 ## Phase 19c — `lab.core.model_pool` integration
 
