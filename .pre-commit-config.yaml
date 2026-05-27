@@ -82,3 +82,18 @@ repos:
         entry: gitleaks protect --staged --redact --verbose
         language: system
         pass_filenames: false
+
+  # Phase 14.6: lint markdown doc frontmatter via `m docs lint`.
+  # Tolerant during the Phase 14.5 backfill — files with no frontmatter
+  # pass cleanly. Only blocks on missing required fields or invalid
+  # frontmatter. See ~/docs/specs/2026-05-26-doc-meta-spec.md.
+  #
+  # Manual run: `pre-commit run --hook-stage manual docs-lint --all-files`
+  - repo: local
+    hooks:
+      - id: docs-lint
+        name: m docs lint (markdown frontmatter)
+        entry: scripts/docs-lint-precommit.sh
+        language: system
+        types: [markdown]
+        stages: [pre-commit, manual]
