@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from lab.rag.index import count_rows
 from lab.rag.manifest import load_manifest
 
@@ -28,6 +29,7 @@ def test_bash_kb_query_or_skip():
     # If we get here the KB is real and indexed — exercise hybrid_query.
     # We import lazily so the test loads even when ollama isn't reachable.
     import redis
+
     from lab.core.settings import get_settings
     from lab.rag.index import hybrid_query
 

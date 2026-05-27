@@ -1,6 +1,18 @@
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+# Phase 15.1: workspace layout. ruff uses these for first-party import
+# detection during isort.
+src = [
+    "tests",
+    "packages/lab-core/src",
+    "packages/lab-rag/src",
+    "packages/lab-agent/src",
+    "packages/lab-eval/src",
+    "packages/lab-inspect/src",
+    "packages/lab-sweep/src",
+    "packages/lab-observability/src",
+    "packages/lab-cli/src",
+]
 
 [lint]
 select = [

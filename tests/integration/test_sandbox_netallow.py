@@ -15,6 +15,7 @@ from __future__ import annotations
 import socket
 
 import pytest
+
 from lab.agent.sandbox import Sandbox, gvisor_available
 from lab.agent.tools import TOOL_SERVERS
 from lab.inspect_bridge.tools import _invoke_tool_via_sandbox_sync

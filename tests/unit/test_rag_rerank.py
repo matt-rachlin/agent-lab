@@ -12,6 +12,7 @@ import time
 from typing import Any, ClassVar
 
 import pytest
+
 from lab.rag import (
     DEFAULT_RERANKER_MODE_WHEN_UNSET,
     DEFAULT_RERANKER_MODEL,

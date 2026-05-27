@@ -14,6 +14,7 @@ import httpx
 import psycopg
 import pytest
 import redis
+
 from lab.core.settings import get_settings
 
 

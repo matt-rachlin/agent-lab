@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from lab.agent.tools import shell_exec as shell_exec_mod
 
 

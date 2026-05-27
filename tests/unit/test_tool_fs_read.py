@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from lab.agent.tools import fs_read as fs_read_mod
 from lab.agent.tools._common import PathEscapeError, resolve_workspace_path
 

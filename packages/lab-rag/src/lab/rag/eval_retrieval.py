@@ -16,10 +16,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from lab.rag._util import atomic_write_text, console, write_jsonl
-from lab.rag.index import hybrid_query
 from ollama import Client
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+from lab.rag._util import atomic_write_text, console, write_jsonl
+from lab.rag.index import hybrid_query
 
 DEFAULT_EVAL_MODEL = "qwen3:14b-q4_K_M"
 
@@ -80,6 +81,7 @@ def run_eval(
     kb_dir: Path, *, n: int = 20, k: int = 5, model: str = DEFAULT_EVAL_MODEL
 ) -> dict[str, Any]:
     import lancedb
+
     from lab.rag.index import TABLE_NAME
 
     db = lancedb.connect(str(kb_dir / "index"))

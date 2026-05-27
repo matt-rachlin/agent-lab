@@ -10,10 +10,11 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from lab.rag._util import atomic_write_text
-from lab.rag.manifest import Authority, SourceType
 from pydantic import BaseModel, Field
 from ruamel.yaml import YAML
+
+from lab.rag._util import atomic_write_text
+from lab.rag.manifest import Authority, SourceType
 
 FETCHER_BY_TYPE: dict[SourceType, str] = {
     "manpage": "manpage",

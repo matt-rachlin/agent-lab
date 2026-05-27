@@ -11,6 +11,7 @@ Each test starts a fresh sandbox, runs the in-sandbox MCP server via
 from __future__ import annotations
 
 import pytest
+
 from lab.agent.sandbox import Sandbox, gvisor_available
 from lab.agent.tools import TOOL_SERVERS
 from lab.inspect_bridge.tools import _invoke_tool_via_sandbox_sync

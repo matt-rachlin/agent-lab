@@ -12,6 +12,7 @@ from typing import ClassVar
 
 import pytest
 from fastapi.testclient import TestClient
+
 from lab.rag import RERANKER_ENV_VAR
 from lab.rag.rerank import LabReranker, reset_default_reranker
 from lab.rag.rerank_client import URL_ENV_VAR

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from lab.eval.framework import RunRow, TaskRow, clear_registry
 
 

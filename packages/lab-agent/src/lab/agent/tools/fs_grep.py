@@ -11,8 +11,9 @@ import json
 import subprocess
 from typing import Any
 
-from lab.agent.tools._common import PathEscapeError, resolve_workspace_path
 from mcp.server.fastmcp import FastMCP
+
+from lab.agent.tools._common import PathEscapeError, resolve_workspace_path
 
 mcp: FastMCP = FastMCP("lab.fs_grep")
 

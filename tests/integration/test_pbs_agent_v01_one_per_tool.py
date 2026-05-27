@@ -17,6 +17,7 @@ from typing import Any
 
 import httpx
 import pytest
+
 from lab.agent.sandbox import gvisor_available
 from lab.agent.tools import TOOL_SERVERS
 from lab.core.settings import get_settings
@@ -101,6 +102,7 @@ def test_one_task_per_tool_runs_through_harness(tool_name: str, task: Task, tmp_
     """
 
     from inspect_ai import eval as inspect_eval
+
     from lab.agent.sandbox import Sandbox
     from lab.inspect_bridge.adapter import lab_task_to_inspect
 

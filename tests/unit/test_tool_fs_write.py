@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from lab.agent.tools import fs_write as fs_write_mod
 
 

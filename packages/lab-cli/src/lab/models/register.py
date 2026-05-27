@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 import psycopg
+
 from lab.core.settings import get_settings
 
 # Curated initial catalog. Edit + re-run to refresh.

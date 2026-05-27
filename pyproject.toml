@@ -132,10 +132,11 @@ build-backend = "hatchling.build"
 
 # Phase 15.1: root `lab` distribution is an umbrella that just pulls in the
 # workspace members; the source for the `lab.*` namespace lives in those.
-# Build the wheel from the (now empty after migration) src/lab to satisfy
-# hatchling's package discovery without re-shipping any modules.
+# Ship an empty top-level marker so hatchling has something to package; the
+# real lab.* modules come from the workspace packages.
 [tool.hatch.build.targets.wheel]
-packages = ["src/lab"]
+bypass-selection = true
+only-include = ["pyproject.toml"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -154,15 +155,40 @@ markers = [
 # "basic" — the marginal checks "standard" adds don't trigger here).
 # "strict" balloons to ~500 due to Unknown propagation through pydantic
 # and untyped 3rd-party packages — not worth it for a 2nd opinion.
-include = ["src"]
+include = ["packages"]
 exclude = ["**/__pycache__", "**/.venv"]
+# Phase 15.1: lab is a PEP 420 namespace split across 8 workspace
+# packages. extraPaths lets pyright resolve `from lab.X` imports from
+# any of them.
+extraPaths = [
+    "packages/lab-core/src",
+    "packages/lab-rag/src",
+    "packages/lab-agent/src",
+    "packages/lab-eval/src",
+    "packages/lab-inspect/src",
+    "packages/lab-sweep/src",
+    "packages/lab-observability/src",
+    "packages/lab-cli/src",
+]
 typeCheckingMode = "standard"
 reportMissingImports = "error"
 reportMissingTypeStubs = "none"
 pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
 
 [tool.coverage.run]
-source = ["src/lab"]
+# Phase 15.1: lab is now split across packages/lab-*/src/lab.
+source = [
+    "packages/lab-core/src/lab",
+    "packages/lab-rag/src/lab",
+    "packages/lab-agent/src/lab",
+    "packages/lab-eval/src/lab",
+    "packages/lab-inspect/src/lab",
+    "packages/lab-sweep/src/lab",
+    "packages/lab-observability/src/lab",
+    "packages/lab-cli/src/lab",
+]
 branch = true
 omit = ["*/tests/*"]
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 from xml.etree import ElementTree as ET
 
 import httpx
+
 from lab.rag._plan import PlannedSource
 from lab.rag.fetchers import FetcherContext, FetchResult, register
 from lab.rag.fetchers.html_single import fetch as fetch_single

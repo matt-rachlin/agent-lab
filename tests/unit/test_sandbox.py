@@ -8,6 +8,7 @@ a real container (see `tests/integration/test_sandbox.py`).
 from __future__ import annotations
 
 import pytest
+
 from lab.agent.sandbox import Sandbox, _build_run_argv
 
 

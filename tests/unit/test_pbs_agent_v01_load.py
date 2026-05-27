@@ -18,6 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from lab.agent.tools import TOOL_SERVERS
 from lab.tasks.registry import Task, load_tasks
 

@@ -16,6 +16,7 @@ from inspect_ai import Task as InspectTask
 from inspect_ai.dataset import Sample
 from inspect_ai.scorer import Scorer
 from inspect_ai.solver import Solver
+
 from lab.agent.sandbox import Sandbox
 from lab.inspect_bridge.scorer import (
     budget_respected,

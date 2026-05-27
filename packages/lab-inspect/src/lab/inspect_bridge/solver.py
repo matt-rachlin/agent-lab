@@ -26,6 +26,7 @@ from typing import Any
 from inspect_ai.model import ChatMessageAssistant, ChatMessageTool, ChatMessageUser
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool
+
 from lab.agent.sandbox import Sandbox
 from lab.agent.tool_pool import ToolPool
 from lab.core.llm import call_litellm_chat

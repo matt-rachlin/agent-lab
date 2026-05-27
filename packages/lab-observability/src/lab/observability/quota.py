@@ -20,6 +20,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 import psycopg
+
 from lab.core.settings import get_settings
 
 # Per-model "cost weight" — relative GPU-seconds per 1K output tokens.

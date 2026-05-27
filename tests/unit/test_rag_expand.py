@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from lab.rag.expand import (
     MAX_PHRASING_CHARS,
     _clean_phrasing,

@@ -10,6 +10,7 @@ import json
 from typing import Any
 
 import pytest
+
 from lab.agent import tool_pool as tp_mod
 from lab.agent.tool_pool import ToolPool, ToolPoolError, _PooledServer
 

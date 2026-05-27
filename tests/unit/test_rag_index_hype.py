@@ -9,6 +9,7 @@ import json
 from typing import Any
 
 import pytest
+
 from lab.rag.index import (
     _hype_boost_dsim,
     _row_has_hype,

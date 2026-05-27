@@ -18,6 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from lab.sweep import runner as runner_mod
 from lab.sweep.runner import (
     ImageHashDriftError,

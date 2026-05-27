@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from lab.inspect_bridge.adapter import _select_scorers, lab_task_to_inspect
 from lab.tasks.registry import Task
 

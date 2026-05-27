@@ -15,6 +15,7 @@ import json
 from typing import Any, ClassVar
 
 import pytest
+
 from lab.inspect_bridge import solver as solver_mod
 from lab.inspect_bridge import tools as tools_mod
 

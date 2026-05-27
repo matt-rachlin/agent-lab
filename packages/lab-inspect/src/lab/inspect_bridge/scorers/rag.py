@@ -35,6 +35,7 @@ from typing import Any
 
 from inspect_ai.scorer import NOANSWER, Score, Scorer, Target, mean, scorer
 from inspect_ai.solver import TaskState
+
 from lab.eval.judge import make_judge
 
 # ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 import pytest
+
 from lab.agent.sandbox import gvisor_available
 from lab.core.settings import get_settings
 
@@ -55,6 +56,7 @@ def test_agent_loop_smoke_reads_a_file(pg: Any, minio_client: Any, tmp_path: Any
     import uuid as _uuid
 
     from inspect_ai import eval as inspect_eval
+
     from lab.agent.sandbox import Sandbox
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log

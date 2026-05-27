@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 
 import pytest
+
 from lab.rag.rerank_client import (
     DEFAULT_CLIENT_TIMEOUT_SEC,
     RerankClientError,

@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from lab.rag import skip
 from lab.rag.skip import (
     HIGH_CONFIDENCE_TOP1,

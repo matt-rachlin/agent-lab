@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from lab.inspect_bridge import logwriter as lw_mod
 from lab.inspect_bridge.logwriter import (
     SweepContext,

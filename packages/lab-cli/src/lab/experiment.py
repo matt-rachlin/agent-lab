@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import psycopg
+
 from lab.core.settings import get_settings
 
 # Section headings the plan must contain (case-insensitive, leading `## `).

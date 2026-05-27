@@ -60,8 +60,8 @@ repos:
         require_serial: true
 
       - id: pyright
-        name: pyright 2nd-opinion (src/lab)
-        entry: uv run pyright src/lab/
+        name: pyright 2nd-opinion (packages/lab-*/src/lab)
+        entry: uv run pyright packages
         language: system
         types_or: [python, pyi]
         pass_filenames: false

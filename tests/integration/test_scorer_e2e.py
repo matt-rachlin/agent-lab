@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 import pytest
+
 from lab.agent.sandbox import gvisor_available
 from lab.core.settings import get_settings
 
@@ -60,6 +61,7 @@ def test_scorers_fire_e2e_workspace_predicate(pg: Any, tmp_path: Any) -> None:
     `tool_correctness` asserts the fs_write tool was invoked.
     """
     from inspect_ai import eval as inspect_eval
+
     from lab.agent.sandbox import Sandbox
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.tasks.registry import Task
@@ -149,6 +151,7 @@ def test_scorers_fire_e2e_workspace_predicate(pg: Any, tmp_path: Any) -> None:
 def test_scorers_persist_to_postgres(pg: Any, minio_client: Any, tmp_path: Any) -> None:
     """A successful run with multiple scorers must land in agent_logs.turns.score_breakdown."""
     from inspect_ai import eval as inspect_eval
+
     from lab.agent.sandbox import Sandbox
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log

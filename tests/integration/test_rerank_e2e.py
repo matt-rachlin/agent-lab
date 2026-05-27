@@ -34,6 +34,7 @@ def test_bash_kb_rerank_e2e_or_skip() -> None:
         pytest.skip("sentence-transformers not installed; rerank e2e skipped")
 
     import redis
+
     from lab.core.settings import get_settings
 
     settings = get_settings()

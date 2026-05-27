@@ -13,8 +13,9 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from lab.agent.tools._common import PathEscapeError, resolve_workspace_path
 from mcp.server.fastmcp import FastMCP
+
+from lab.agent.tools._common import PathEscapeError, resolve_workspace_path
 
 mcp: FastMCP = FastMCP("lab.fs_write")
 

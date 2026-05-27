@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 
 import pytest
+
 from lab.inspect_bridge.solver import (
     _chat_message_to_dict,
     _coerce_arguments,

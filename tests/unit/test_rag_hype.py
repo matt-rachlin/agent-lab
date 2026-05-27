@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from lab.rag.hype import (
     MAX_QUESTION_CHARS,
     MIN_QUESTION_CHARS,
