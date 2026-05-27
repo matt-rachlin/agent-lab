@@ -43,34 +43,58 @@ Source: <https://huggingface.co/bartowski/Llama-3.3-70B-Instruct-GGUF>
 
 <!-- BEGIN HAND -->
 Meta's Llama-3.3-70B-Instruct quantized to Q4_K_M — the lab's offline-only
-**quality ceiling** model. Per Phase 19 strategic decisions: 6-10 tok/s with
-hybrid GPU+CPU offload, useful only for non-interactive batch eval. Tagged
-`slow_mode` so sweep runners refuse to use it unless `--allow-slow-models` is
-explicit.
+**quality ceiling** model. Mode: `offline-only`. Per Phase 19 strategic
+decisions: 6-10 tok/s with hybrid GPU+CPU offload, useful only for
+non-interactive batch eval. Tagged `slow_mode` in `lab.models.capabilities`
+so sweep runners and `lab agent run` refuse to use it unless the
+`--allow-slow-models` flag is set explicitly. Do not use in interactive
+cells; sweep-runner gates via `--allow-slow-models`.
 
 family=llama3 fmt=gguf source=bartowski/Llama-3.3-70B-Instruct-GGUF
 
-### VRAM math (Q4_K_M hybrid offload)
+### VRAM math (Q4_K_M hybrid offload, Phase 19e working config)
 
 - Weights on disk: ~39.6 GB Q4_K_M GGUF
 - 70B dense — does NOT fit in 12 GB even quantized
-- Research-best hybrid offload for this card: `--n-gpu-layers 21 --ctx-size 8192 -ctk q8_0 -ctv q8_0`
-- KV cache at 8K ctx (Q8): ~2.5 GB
-- VRAM resident: ~11 GB (21 layers @ Q4_K_M + KV + scratch)
-- DDR5 resident: ~30 GB (remaining layers as CPU offload)
+- Working `--n-gpu-layers`: **14** (validated Phase 19e smoke 2026-05-27).
+  Plan called for 21, but the rerank server (~2.6 GB persistent in
+  `small-tools`) cut effective free headroom to 8.5 GB; ngl=21 OOM'd
+  with `cudaMalloc failed: 10846 MiB > free`, ngl=15 OOM'd on the q8 KV
+  alloc, ngl=14 fits with ~219 MB headroom on the steady-state lab box.
+- ctx-size 8192, Q8 KV cache (`-ctk q8_0 -ctv q8_0`) — halves KV footprint
+  at ~3 % perplexity cost.
+- Peak VRAM during smoke: **11.8 GB** (~470 MB headroom)
+- DDR5 resident: ~30 GB (remaining 67/81 layers as CPU offload via mmap)
+
+### llama-swap config
+
+Group: `ceiling-llm` (exclusive — when this loads, all `big-llm` members
+are evicted). TTL 1800s (longer than other big models because the cold
+load from NVMe is ~60-90 s; we want to keep it resident across an offline
+batch). See `conf/llama-swap.yaml` for the canonical command.
+
+### LiteLLM route
+
+`llama-3.3-70b-q4-local` → llama-swap on port 8080 → llama-server. Timeout
+1800 s (single turn can take 100-170 s; a multi-turn agent task can stretch
+to multiple minutes per turn). Defined in `conf/litellm-config.yaml`.
 
 ### Recommended use
 
 - Offline batch reference cells (the "what if we had unlimited budget" baseline)
-- Pre-registered comparison runs where ceiling is the question
+- Pre-registered comparison runs where ceiling is the question (EXP-006b)
 - NOT for: interactive workflows, latency-sensitive cells, sweeps without
   `--allow-slow-models`
 
 ### Throughput expectations
 
-- 6-10 tok/s on RTX 3080 Ti with the hybrid-offload command line above
+- **Measured Phase 19e smoke: ~1.83 tok/s** (slower than the plan's
+  research-cited 6-10 tok/s, because only 14/81 layers run on GPU here
+  vs the 21/81 the research assumed). Aggregate is CPU-bound.
+- Prompt processing: ~5.5 tok/s
 - Cold load: 60-90 s from NVMe; ~10 s from page cache
-- A typical PBS-Agent task (~1024 output tokens) = 100-170 s
+- A typical PBS-Agent task (~1024 output tokens) = ~9-10 minutes at
+  steady state, plus cold-load on first cell of a batch
 
 ### License + source
 
@@ -82,20 +106,30 @@ family=llama3 fmt=gguf source=bartowski/Llama-3.3-70B-Instruct-GGUF
 
 ### Verified by lab
 
-Phase 19a smoke deferred to EXP-002b completion (GPU contention and 40 GB
-cold-load wall). Phase 19e will perform the formal smoke (load + one PBS-Agent
-turn end-to-end) before EXP-006b.
+Phase 19e formal smoke 2026-05-27: `fs-read-and-copy` PBS-Agent task
+end-to-end via `lab agent run --model llama-3.3-70b-q4-local
+--allow-slow-models`. Result: `end_state` = 1.0, `tool_correctness` =
+1.0, `budget_respected` = 1.0 (full pass). 3 turns, 2 tool calls,
+total wall 103 s, peak VRAM 11.8 GB. See the Phase 19e section of
+`docs/runbooks/llama-swap-runbook.md` for the recorded latency / VRAM
+table.
 <!-- END HAND -->
 
 ## Known issues
 
 <!-- BEGIN HAND -->
-- **Hybrid offload mode only on this hardware.** 6-10 tok/s wall throughput; a
-  PBS-Agent-style multi-turn task can run 30-60s+ per turn. Be patient or skip.
-- 21 GPU layers is the researched-best for 12 GB; auto-split heuristics can
-  mis-allocate, so always pass the explicit flag.
+- **Hybrid offload only.** ~1.8 tok/s measured wall throughput (slower
+  than the research-cited 6-10 tok/s on a clean 12 GB card — see runbook
+  for why); a PBS-Agent-style multi-turn task can run minutes per turn.
+- **--n-gpu-layers must be 14 on the steady-state lab box**, not the 21
+  the plan called for, because the persistent rerank server (~2.6 GB)
+  in `small-tools` cuts free headroom below 9 GB. Auto-split heuristics
+  can mis-allocate, so always pass the explicit flag.
 - Llama 3.3 community license — commercial OK with restrictions (no
   training-on-outputs to make competing LLMs).
 - Cold-load from NVMe is ~60-90 s (40 GB read); page-cache hit drops to ~10 s
   but it'll evict everything else.
+- **Tight VRAM headroom (~470 MB at smoke).** If a parked PyTorch
+  session or Chrome bloat steals additional VRAM, the load OOMs. See
+  runbook "what to do when it OOMs".
 <!-- END HAND -->

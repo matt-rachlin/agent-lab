@@ -173,6 +173,14 @@ def sweep_run(
         "--enforce-pre-registration",
         help="Refuse to start if the experiment slug is not pre-registered (no plan_git_sha).",
     ),
+    allow_slow_models: bool = typer.Option(
+        False,
+        "--allow-slow-models",
+        help=(
+            "Phase 19e: opt into ceiling-class models tagged `slow_mode` in "
+            "lab.models (e.g. llama-3.3-70b-q4 at 6-10 tok/s). Default off."
+        ),
+    ),
     key_file: Path = typer.Option(
         Path("/data/lab/services/litellm-master-key"),
         "--key-file",
@@ -180,6 +188,8 @@ def sweep_run(
     ),
 ) -> None:
     """Run a sweep from a YAML config."""
+    from lab.sweep.runner import SlowModelGateError
+
     spec = load_sweep(config)
     if enforce_pre_registration and not is_pre_registered(spec.experiment.slug):
         console.print(
@@ -189,7 +199,17 @@ def sweep_run(
         )
         raise typer.Exit(code=2)
     litellm_key = key_file.read_text().strip()
-    summary = run_sweep(spec, litellm_key=litellm_key, resume=resume, dry_run=dry_run)
+    try:
+        summary = run_sweep(
+            spec,
+            litellm_key=litellm_key,
+            resume=resume,
+            dry_run=dry_run,
+            allow_slow_models=allow_slow_models,
+        )
+    except SlowModelGateError as exc:
+        console.print(f"[red]ERROR[/]: {exc}")
+        raise typer.Exit(code=2) from exc
     console.print(f"[bold green]summary[/]: {summary}")
     if summary.get("errors", 0) > 0:
         raise typer.Exit(code=1)
@@ -621,6 +641,15 @@ def agent_run(
             "without loading anything."
         ),
     ),
+    allow_slow_models: bool = typer.Option(
+        False,
+        "--allow-slow-models",
+        help=(
+            "Phase 19e: opt into ceiling-class models tagged `slow_mode` in "
+            "lab.models (e.g. llama-3.3-70b-q4 at 6-10 tok/s). Default off; "
+            "agent_run refuses to dispatch without this flag."
+        ),
+    ),
 ) -> None:
     """Run a single agent cell end-to-end via the Inspect harness.
 
@@ -638,6 +667,20 @@ def agent_run(
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
     from lab.tasks.registry import Task as LabTask
     from lab.tasks.registry import get_tasks
+
+    # Phase 19e — slow-model gate. Reuses the same DB-driven capability
+    # check as the sweep runner so a single registration controls both
+    # entry points. `--allow-slow-models` opts in explicitly.
+    if not allow_slow_models:
+        from lab.sweep.runner import _slow_models_in
+
+        slow = _slow_models_in([model])
+        if slow:
+            console.print(
+                f"[red]ERROR[/]: model {model!r} is tagged `slow_mode` in lab.models "
+                "(ceiling-class, 6-10 tok/s). Pass --allow-slow-models to opt in."
+            )
+            raise typer.Exit(code=2)
 
     rows = get_tasks(suite, [task])
     if not rows:

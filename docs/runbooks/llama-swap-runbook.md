@@ -89,10 +89,10 @@ agent / sweep cell
 | `small-tools` | `qwen3-reranker-0.6b` | persistent, never evicted by big-model loads |
 | `medium-llm` | `qwen3-14b-q4`, `phi-4-reasoning-14b` | exclusive within group, evicts other groups |
 | `big-llm` | `qwen3-30b-a3b-moe`, `gpt-oss-20b-local`, `hermes-4.3-36b` | exclusive within group, evicts other groups |
+| `ceiling-llm` | `llama-3.3-70b-q4` (llama-swap id; `litellm_id` is `llama-3.3-70b-q4-local`) | exclusive within group; sweep-runner gated via `--allow-slow-models` |
 
 Deferred (model not yet pulled / GGUF not on disk):
 
-- `ceiling-llm` — `llama-3.3-70b-q4` (Phase 19e — GGUF on disk but not wired)
 - `embedder-big` — `qwen3-embedding-8b-q8`
 - (no group) `xlam-2-7b-fc-r` — re-checked 2026-05-27, no upstream GGUF;
   only xLAM-1 (`xLAM-7b-fc-r`) variants exist on the Hub
@@ -349,6 +349,122 @@ Skipping this on a 30B-class model leaves multiple GB pinned in the
 PyTorch allocator's free list, invisible to `nvidia-smi`'s "used" but
 unavailable to the next model. ModelPool already handles llama-swap-
 managed models; this discipline is only relevant for raw-torch sites.
+
+## Phase 19e — 70B quality-ceiling lane
+
+Added 2026-05-27. Llama-3.3-70B-Instruct Q4_K_M served via llama.cpp
+hybrid GPU+CPU offload as the lab's **offline-only** quality ceiling.
+Not a swap-in for any interactive workload — runs ~1.8 tok/s on this
+hardware (single-digit, where the medium models do 30-60 tok/s).
+
+### Working config
+
+```yaml
+"llama-3.3-70b-q4":
+  cmd: |
+    ${LLAMA_SERVER}
+    --port ${PORT} --host 127.0.0.1 --ctx-size 8192
+    --n-gpu-layers 14 -ctk q8_0 -ctv q8_0
+    --model ${MODELS_DIR}/llama-3.3-70b-q4/Llama-3.3-70B-Instruct-Q4_K_M.gguf
+    --jinja
+  ttl: 1800
+  groups: [ceiling-llm]
+```
+
+### Working `--n-gpu-layers` and why it differs from the plan
+
+Plan §19e called for ngl=21 (per research-best on a clean 12 GB card).
+The Phase 19e tuning smoke had:
+
+| ngl | Outcome | Detail |
+|-----|---------|--------|
+| 21 | OOM | `cudaMalloc 10846 MiB > free 8.5 GiB` — research assumed 12 GB total free; rerank-server-resident (~2.6 GB) cuts it to 8.5 GB |
+| 15 | OOM | weights fit (7968 MiB) but KV-cache q8_0 alloc (238 MiB) tipped it over |
+| **14** | **works** | weights 7445 MiB on GPU, KV+scratch take total to 11.7 GB / 12 GB; 219 MB headroom |
+
+The 12 GB physical VRAM minus persistent rerank server (~2.6 GB) is the
+hard constraint here. We could squeeze ngl up by evicting the rerank
+server, but the cost is enormous re-load for every kb_query downstream;
+ngl=14 with the rerank server resident is the better lab-wide trade.
+
+### Measured smoke (2026-05-27)
+
+PBS-Agent task `fs-read-and-copy` end-to-end via
+`lab agent run --model llama-3.3-70b-q4-local --allow-slow-models`:
+
+| Metric | Value |
+|---|---|
+| Total wall (cold load + 3 turns) | **103 s** |
+| In-inference latency (3 turns) | 101 s |
+| Peak VRAM during run | **11.8 GB** (~470 MB headroom on the 12 GB card) |
+| Turns used | 3 |
+| Tool calls | 2 |
+| Generation throughput (single-turn measured) | **~1.83 tok/s** (147 tokens in 80 s, ctx 56) |
+| Prompt throughput | ~5.5 tok/s (prompt processing) |
+| `end_state` scorer | **1.0** (PASS) |
+| `tool_correctness` scorer | 1.0 |
+| `budget_respected` scorer | 1.0 |
+
+The 1.8 tok/s is slower than the plan's 6-10 tok/s aspiration. Root
+cause: only 14/81 layers run on GPU (vs the 21/81 the research assumed
+was possible). The remaining 67 layers are CPU-bound; aggregate
+throughput is dominated by the CPU pipeline. A future fix is to free
+the rerank server's VRAM during ceiling-llm sweeps (would need cross-
+group eviction in llama-swap config OR a wrapper that pauses the
+persistent reranker) — left for future work; today's plain ceiling-llm
+group doesn't do that.
+
+### Sweep-runner `--allow-slow-models` gate
+
+`llama-3.3-70b-q4-local` is registered in `lab.models` with `capabilities`
+containing `slow_mode`. `lab sweep run` and `lab agent run` refuse to
+dispatch with this model unless the operator passes
+`--allow-slow-models`. The DB lookup is in
+`lab.sweep.runner._slow_models_in`; the gate raises `SlowModelGateError`
+in the sweep runner and `typer.Exit(2)` in the agent CLI. Adding future
+ceiling-mode models is a registration concern only — no code change.
+
+```bash
+# This refuses (default-safe):
+lab sweep run conf/sweep/some-sweep-with-70b.yaml --dry-run
+# ERROR: sweep references slow_mode (ceiling-class) models without
+# --allow-slow-models: ['llama-3.3-70b-q4-local']. These run 6-10 tok/s; pass
+# the flag explicitly to opt in, or drop them from spec.models.
+
+# Same sweep with explicit opt-in runs:
+lab sweep run conf/sweep/some-sweep-with-70b.yaml --allow-slow-models
+```
+
+The agent CLI surface:
+
+```bash
+lab agent run --suite pbs-agent-v0.1 --task fs-read-and-copy \
+  --model llama-3.3-70b-q4-local --allow-slow-models
+```
+
+### LiteLLM route
+
+`llama-3.3-70b-q4-local` (note: the `-local` suffix distinguishes the
+LiteLLM model_name from the llama-swap internal ID). Timeout 1800 s
+because a multi-turn agent task at ~1.8 tok/s can stretch to multiple
+minutes per turn; 1800 s covers the worst-case full-budget task.
+
+### What to do when it OOMs
+
+If a different lab process has parked memory on the GPU (Chrome,
+Loupe, an old PyTorch session), `ngl 14` may still fail. Steps:
+
+```bash
+# Check who has VRAM
+nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
+
+# Evict whatever you can; the 70B needs ~8 GB free over the rerank server's footprint
+# If you can't free enough, drop --n-gpu-layers further (each layer is ~530 MiB)
+```
+
+The cmd is tuned for the steady-state lab box. Drift here means a
+PyTorch session leaked or Chrome went heavy; fix that, don't re-tune
+the model.
 
 ## Rollback
 

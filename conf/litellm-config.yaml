@@ -34,6 +34,18 @@ model_list:
       api_key: dummy
       timeout: 600
 
+  # ---- Phase 19e quality-ceiling lane (routed through llama-swap) ----
+  # Long timeout (1800s = 30min) because 70B hybrid offload runs ~6-10
+  # tok/s; a single PBS-Agent turn at 1024 output tokens is 100-170s,
+  # and cold load adds 60-90s. Sweep runner gates this model via
+  # --allow-slow-models (capabilities.slow_mode in lab.models).
+  - model_name: llama-3.3-70b-q4-local
+    litellm_params:
+      model: openai/llama-3.3-70b-q4
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 1800
+
   # ---- local Ollama models (12GB-fitting) ----
   - model_name: qwen3-14b-q4
     litellm_params:

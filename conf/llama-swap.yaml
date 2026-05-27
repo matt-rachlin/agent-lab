@@ -121,6 +121,40 @@ models:
     description: "High-context generalist, 512K context, reliable JSON tool calling."
     ttl: 600
 
+  # ---- Phase 19e: 70B quality-ceiling lane ----
+  #
+  # Llama-3.3-70B-Instruct Q4_K_M GGUF, hybrid GPU+CPU offload.
+  #
+  # Working ngl tuned in Phase 19e (2026-05-27): **--n-gpu-layers 14**.
+  # Plan §19e called for ngl=21 per research; smoke OOM'd (cudaMalloc
+  # 10846 MiB > 8.5 GiB free) because the rerank server in `small-tools`
+  # group is persistent (~2.6 GB), cutting effective free headroom from
+  # 12 GB → 8.5 GB. ngl=15 also OOM'd on the KV-cache allocation. At
+  # ngl=14 weights occupy ~7.4 GB GPU; KV-cache (q8_0 at ctx 8192) +
+  # scratch push resident total to ~11.7 GB (~219 MB headroom).
+  # Measured throughput at ngl=14: ~1.8 tok/s (slower than the plan's
+  # 6-10 tok/s aspiration — only 14/81 layers are GPU-resident). Still
+  # usable for offline batch eval; documented in runbook + model card.
+  #
+  # Sweep runner gates this model via --allow-slow-models (capabilities
+  # contains 'slow_mode' in lab.models). See packages/lab-sweep/.../runner.py
+  # (SLOW_MODEL_CAPABILITY).
+  #
+  # Longer TTL (1800s = 30min) than other big models: cold load is
+  # ~60-90 s from NVMe; keep resident across a batch of offline cells.
+  "llama-3.3-70b-q4":
+    cmd: |
+      ${LLAMA_SERVER}
+      --port ${PORT} --host 127.0.0.1 --ctx-size 8192
+      --n-gpu-layers 14 -ctk q8_0 -ctv q8_0
+      --model ${MODELS_DIR}/llama-3.3-70b-q4/Llama-3.3-70B-Instruct-Q4_K_M.gguf
+      --jinja
+    env:
+      - "LD_LIBRARY_PATH=${LD_LIB}"
+    name: "Llama-3.3-70B Q4_K_M (hybrid offload, ceiling)"
+    description: "Quality-ceiling reference. Offline batch only; ~1.8 tok/s on this hardware."
+    ttl: 1800
+
   # ---- Existing Ollama-backed small/medium models, proxied via llama-swap ----
   #
   # These already run on Ollama (port 11434). We register them in llama-swap
@@ -180,10 +214,18 @@ groups:
       - "qwen3-30b-a3b-moe"
       - "gpt-oss-20b-local"
       - "hermes-4.3-36b" # added Phase 19c, GGUF landed 2026-05-27
-  #
-  # ceiling-llm (llama-3.3-70b-q4): DEFERRED — GGUF on disk but adding
-  #   to llama-swap is a Phase 19e task per plan.
-  #   Use --n-gpu-layers 21 --ctx-size 8192 -ctk q8_0 -ctv q8_0.
+
+  # Phase 19e: quality-ceiling lane. Exclusive — when loaded, evicts
+  # all big-llm members. Hybrid GPU+CPU offload eats ~10-11 GB VRAM
+  # plus ~30 GB of system RAM via mmap; cohabitating with any other
+  # big-model load would OOM. Solo member, but the group lets sweep
+  # consumers reason about "ceiling lane is busy" symmetrically with
+  # the other groups.
+  "ceiling-llm":
+    swap: true
+    exclusive: true
+    members:
+      - "llama-3.3-70b-q4"
   #
   # embedder-big (qwen3-embedding-8b-q8): DEFERRED — not yet pulled.
   #

@@ -241,6 +241,54 @@ def _models_lookup(litellm_ids: list[str]) -> dict[str, tuple[int, str]]:
         return {row[1]: (int(row[0]), row[2]) for row in cur.fetchall()}
 
 
+# ----------------------------------------------------------------------------
+# Phase 19e — slow-model gate
+# ----------------------------------------------------------------------------
+
+# Models registered with this capability tag in lab.models are "offline-only"
+# class — quality-ceiling references that run 6-10 tok/s and would melt the
+# wall-clock budget of a normal sweep. `lab sweep run` refuses to dispatch
+# them unless `--allow-slow-models` is passed explicitly. This is the
+# infrastructure-side guard; individual cells can still hit these models via
+# `lab agent run --allow-slow-models` for one-off smokes (see CLI).
+SLOW_MODEL_CAPABILITY = "slow_mode"
+
+
+def _slow_models_in(litellm_ids: list[str]) -> list[str]:
+    """Return the subset of `litellm_ids` whose `capabilities` contain `slow_mode`.
+
+    Phase 19e: gating helper for the sweep runner. A model is considered
+    "slow" if its `models.capabilities` array includes 'slow_mode' — set
+    by 19e on the llama-3.3-70b-q4 row. We pass them through the DB
+    rather than hard-code names so future ceiling-mode models inherit
+    the gate by registration alone.
+    """
+
+    if not litellm_ids:
+        return []
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT litellm_id
+            FROM models
+            WHERE litellm_id = ANY(%s)
+              AND capabilities @> ARRAY[%s]::text[]
+            ORDER BY litellm_id
+            """,
+            (litellm_ids, SLOW_MODEL_CAPABILITY),
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
+class SlowModelGateError(RuntimeError):
+    """Raised when a sweep references a slow_mode model without --allow-slow-models.
+
+    Phase 19e infrastructure gate. The exception message lists the
+    offending models by litellm_id so the operator can either drop them
+    from the sweep matrix or re-run with the explicit override.
+    """
+
+
 def _done_run_ids(experiment_id: int | None) -> set[str]:
     """Run IDs already in the runs table for this experiment (any non-error status)."""
     if experiment_id is None:
@@ -1046,8 +1094,16 @@ def run_sweep(
     litellm_key: str,
     resume: bool = True,
     dry_run: bool = False,
+    allow_slow_models: bool = False,
 ) -> dict[str, Any]:
-    """Execute the full sweep. Returns a summary dict."""
+    """Execute the full sweep. Returns a summary dict.
+
+    `allow_slow_models` (Phase 19e) opts into using ceiling-class models
+    (capabilities contain `slow_mode`, e.g. llama-3.3-70b-q4). Default
+    False so a stray reference can't melt a sweep's wall-clock budget;
+    the dispatcher fails fast with `SlowModelGateError` naming the
+    offending models.
+    """
     # Preflight: refuse to start if proxy config has Ollama models without keep_alive
     if not dry_run:
         preflight_litellm_keep_alive_or_raise()
@@ -1056,6 +1112,19 @@ def run_sweep(
     missing = sorted(set(spec.models) - set(models))
     if missing:
         raise ValueError(f"models not registered in lab.models: {missing}")
+
+    # Phase 19e — slow-model gate. The capability check uses the DB row so
+    # adding future ceiling-class models is a registration concern, not a
+    # code edit. Runs before matrix expansion so the operator sees the
+    # rejection without paying for any task lookups.
+    if not allow_slow_models:
+        slow = _slow_models_in(list(spec.models))
+        if slow:
+            raise SlowModelGateError(
+                "sweep references slow_mode (ceiling-class) models without "
+                f"--allow-slow-models: {slow}. These run 6-10 tok/s; pass the "
+                "flag explicitly to opt in, or drop them from spec.models."
+            )
 
     cells = expand_matrix(spec, experiment_id, models)
     done = _done_run_ids(experiment_id) if resume else set()
@@ -1354,6 +1423,15 @@ def main() -> int:
     parser.add_argument("config", type=str, help="Path to sweep YAML/JSON")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-resume", action="store_true")
+    parser.add_argument(
+        "--allow-slow-models",
+        action="store_true",
+        help=(
+            "Opt into ceiling-class models tagged `slow_mode` in lab.models "
+            "(e.g. llama-3.3-70b-q4 at 6-10 tok/s). Default off so a stray "
+            "reference can't blow a sweep's wall-clock budget."
+        ),
+    )
     args = parser.parse_args()
 
     from pathlib import Path
@@ -1367,7 +1445,11 @@ def main() -> int:
     litellm_key = litellm_key_path.read_text().strip()
 
     summary = run_sweep(
-        spec, litellm_key=litellm_key, resume=not args.no_resume, dry_run=args.dry_run
+        spec,
+        litellm_key=litellm_key,
+        resume=not args.no_resume,
+        dry_run=args.dry_run,
+        allow_slow_models=args.allow_slow_models,
     )
     console.print(f"[bold green]summary[/]: {summary}")
     return 0 if summary.get("errors", 0) == 0 else 1
