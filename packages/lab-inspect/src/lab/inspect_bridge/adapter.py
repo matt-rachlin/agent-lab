@@ -14,10 +14,12 @@ from typing import Any
 
 from inspect_ai import Task as InspectTask
 from inspect_ai.dataset import Sample
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser
 from inspect_ai.scorer import Scorer
 from inspect_ai.solver import Solver
 
 from lab.agent.sandbox import Sandbox
+from lab.eval.prompts import PromptNotFoundError, PromptRegistry
 from lab.inspect_bridge.scorer import (
     budget_respected,
     end_state,
@@ -96,6 +98,46 @@ def _select_scorers(task: LabTask) -> list[Scorer]:
     return scorers
 
 
+def _resolve_system_prompt(
+    task: LabTask,
+    *,
+    registry: PromptRegistry | None = None,
+) -> tuple[str | None, str | None]:
+    """Return ``(system_body, prompt_id_used)`` for ``task``.
+
+    Precedence:
+
+    1. If ``task.system_prompt_id`` is set, resolve via ``PromptRegistry``.
+       Missing prompt → raise ``PromptNotFoundError`` (build-time, NOT
+       run-time) so the failure is loud and ergonomic.
+    2. Otherwise, fall back to the inlined ``task.system`` string.
+    3. If neither is set, return ``(None, None)``.
+
+    Both set is rejected by the Task model_validator; this is defence in
+    depth (assertion-style) in case the task came from somewhere that
+    skipped validation.
+    """
+    if task.system is not None and task.system_prompt_id is not None:
+        raise ValueError(
+            f"task {task.suite}/{task.slug} sets both 'system' and "
+            f"'system_prompt_id'; choose exactly one"
+        )
+    if task.system_prompt_id is not None:
+        reg = registry if registry is not None else PromptRegistry()
+        try:
+            body = reg.get(task.system_prompt_id)
+        except PromptNotFoundError as exc:
+            raise PromptNotFoundError(
+                f"task {task.suite}/{task.slug} references "
+                f"system_prompt_id={task.system_prompt_id!r}, but no such "
+                f"prompt exists in the registry. Original: {exc}"
+            ) from exc
+        return body, task.system_prompt_id
+    if task.system is not None:
+        return task.system, None
+    return None, None
+
+
 def lab_task_to_inspect(
     task: LabTask,
     *,
@@ -105,6 +147,7 @@ def lab_task_to_inspect(
     max_tokens: int | None = None,
     solver_override: Solver | None = None,
     extra: dict[str, Any] | None = None,
+    prompt_registry: PromptRegistry | None = None,
 ) -> InspectTask:
     """Build an Inspect `Task` for one lab `Task`.
 
@@ -116,7 +159,14 @@ def lab_task_to_inspect(
         temperature, max_tokens: forwarded to the solver.
         solver_override: Inject a custom solver — used by tests to avoid
             hitting LiteLLM.
+        prompt_registry: Override the prompt registry used to resolve
+            ``task.system_prompt_id`` (default: ``PromptRegistry()``).
     """
+
+    # Resolve the effective system prompt FIRST so a missing prompt fails
+    # at adapter-build time with a clear error, not in the middle of the
+    # solver loop.
+    system_body, prompt_id_used = _resolve_system_prompt(task, registry=prompt_registry)
 
     metadata: dict[str, Any] = {
         "lab_task": task,
@@ -125,11 +175,27 @@ def lab_task_to_inspect(
         "lab_category": task.category,
         "lab_max_turns": task.max_turns,
         "lab_tool_budget": task.tool_budget,
+        # Persisted into the trajectory so post-hoc analysis can correlate
+        # outcomes with the prompt body that actually ran.
+        "lab_prompt_id_used": prompt_id_used,
     }
     target = task.gold_answer if task.gold_answer is not None else ""
 
+    # Build Sample.input as either a plain string (no system prompt) or a
+    # list of ChatMessage objects when a system prompt is present. Inspect
+    # accepts both shapes; the list form is what we need to inject the
+    # system message into state.messages before the solver starts.
+    sample_input: str | list[Any]
+    if system_body is not None:
+        sample_input = [
+            ChatMessageSystem(content=system_body),
+            ChatMessageUser(content=task.input),
+        ]
+    else:
+        sample_input = task.input
+
     sample = Sample(
-        input=task.input,
+        input=sample_input,
         target=target,
         metadata=metadata,
         id=task.slug,
@@ -166,4 +232,4 @@ def lab_task_to_inspect(
     )
 
 
-__all__ = ["_select_scorers", "lab_task_to_inspect"]
+__all__ = ["_resolve_system_prompt", "_select_scorers", "lab_task_to_inspect"]

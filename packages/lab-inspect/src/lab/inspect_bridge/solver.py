@@ -23,7 +23,12 @@ import time
 import uuid
 from typing import Any
 
-from inspect_ai.model import ChatMessageAssistant, ChatMessageTool, ChatMessageUser
+from inspect_ai.model import (
+    ChatMessageAssistant,
+    ChatMessageSystem,
+    ChatMessageTool,
+    ChatMessageUser,
+)
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool
 
@@ -608,9 +613,13 @@ def _dict_to_chat_message(payload: dict[str, Any]) -> Any:
             tool_call_id=payload.get("tool_call_id", ""),
             function=payload.get("name", ""),
         )
-    # System messages are kept as ChatMessageUser to avoid having to import
-    # ChatMessageSystem just for the fallback; they're already in chat from
-    # the initial state, not re-added by the loop.
+    if role == "system":
+        # Phase 16.4: the adapter now injects ChatMessageSystem when a task
+        # references a prompt via system_prompt_id (or an inline `system`
+        # field). Preserve the role on the round-trip so post-hoc readers
+        # of state.messages see the system prompt as a system message,
+        # not as a fallback user message.
+        return ChatMessageSystem(content=content)
     return ChatMessageUser(content=content)
 
 
@@ -629,6 +638,11 @@ def _stash_trajectory(
 
     if state.metadata is None:
         state.metadata = {}
+    # The adapter stamps `lab_prompt_id_used` on Sample.metadata when a
+    # task referenced a prompt by id. Pull it through into the trajectory
+    # record so the logwriter (and human readers) can see which prompt
+    # body actually ran. Stays `None` for legacy `task.system` rows.
+    prompt_id_used = state.metadata.get("lab_prompt_id_used")
     state.metadata["lab_agent"] = {
         "error": error,
         "turns": turns,
@@ -637,6 +651,7 @@ def _stash_trajectory(
         "total_latency_ms": total_latency_ms,
         "terminated_reason": terminated_reason,
         "workspace_snapshot": workspace_snapshot or {},
+        "prompt_id_used": prompt_id_used,
     }
 
 

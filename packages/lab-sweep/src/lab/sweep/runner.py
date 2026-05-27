@@ -315,11 +315,24 @@ def _build_messages(
 
     Precedence for the system message (highest → lowest):
         1. task-level `system` field (from the Task schema)
-        2. sweep `model_defaults[<litellm_id>].system_prompt`
-        3. RunConfig.extra `system_prompt`
+        2. task-level `system_prompt_id` resolved via :class:`PromptRegistry`
+           (Phase 16.4 — only one of {system, system_prompt_id} is allowed)
+        3. sweep `model_defaults[<litellm_id>].system_prompt`
+        4. RunConfig.extra `system_prompt`
     """
     messages: list[dict[str, str]] = []
-    system = task_payload.get("system") or model_default_system or config_system
+    system: str | None = task_payload.get("system")
+    if system is None:
+        prompt_id = task_payload.get("system_prompt_id")
+        if prompt_id:
+            # Local import: keep sweep package light when system_prompt_id
+            # is unused. Failures here are loud (PromptNotFoundError) on
+            # purpose — a typo'd id should not silently fall through.
+            from lab.eval.prompts import PromptRegistry
+
+            system = PromptRegistry().get(str(prompt_id))
+    if system is None:
+        system = model_default_system or config_system
     if system:
         messages.append({"role": "system", "content": str(system)})
     messages.append({"role": "user", "content": str(task_payload["input"])})
@@ -752,6 +765,9 @@ def _execute_agent_cell(
             "category": payload.get("category"),
             "input": payload["input"],
             "system": payload.get("system"),
+            # Phase 16.4: tasks can reference a prompt by id; the adapter
+            # resolves it via PromptRegistry at build time.
+            "system_prompt_id": payload.get("system_prompt_id"),
             "tools": raw_tools,
             "max_turns": payload.get("max_turns", 1),
             "tool_budget": payload.get("tool_budget", 0),

@@ -606,6 +606,9 @@ def agent_run(
             "difficulty": row.get("difficulty"),
             "input": payload["input"],
             "system": payload.get("system"),
+            # Phase 16.4: tasks can reference a prompt by id; resolved at
+            # adapter-build time via PromptRegistry.
+            "system_prompt_id": payload.get("system_prompt_id"),
             "tools": payload.get("tools"),
             "max_turns": max_turns if max_turns is not None else payload.get("max_turns", 1),
             "tool_budget": tool_budget
