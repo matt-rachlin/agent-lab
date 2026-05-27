@@ -33,3 +33,9 @@ mlartifacts/
 
 # Docs build output
 site/
+
+# Claude Code: per-repo slash commands (Phase 13.6). Override global
+# .claude/ ignore so the lab's /new-exp, /run-sweep, etc. are versioned.
+!.claude/
+!.claude/commands/
+!.claude/commands/*.md
