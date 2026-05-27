@@ -62,6 +62,7 @@ dev = [
     "hypothesis>=6.115.0",
     "ruff>=0.7.0",
     "mypy>=1.13.0",
+    "pyright>=1.1.400",
     "types-redis",
     "types-protobuf",
     "types-PyYAML",
@@ -111,6 +112,19 @@ markers = [
     "integration: requires live Postgres/Valkey/MinIO/Ollama",
     "slow: tests that take >2s",
 ]
+
+[tool.pyright]
+# Phase 13.8: 2nd-opinion type checker alongside mypy --strict.
+# "standard" mode produces 5 errors as of Phase 13 (same count as
+# "basic" — the marginal checks "standard" adds don't trigger here).
+# "strict" balloons to ~500 due to Unknown propagation through pydantic
+# and untyped 3rd-party packages — not worth it for a 2nd opinion.
+include = ["src"]
+exclude = ["**/__pycache__", "**/.venv"]
+typeCheckingMode = "standard"
+reportMissingImports = "error"
+reportMissingTypeStubs = "none"
+pythonVersion = "3.12"
 
 [tool.coverage.run]
 source = ["src/lab"]

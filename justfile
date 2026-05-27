@@ -140,6 +140,12 @@ fmt-check:
 types:
     uv run mypy src
 
+# Phase 13.8: 2nd-opinion type checker. Catches a handful of
+# argument/overload issues mypy's plugins suppress; config in
+# pyproject.toml [tool.pyright].
+pyright:
+    uv run pyright src/lab/
+
 test:
     uv run pytest tests/unit -q
 
@@ -149,6 +155,9 @@ test-integration:
 test-int:
     uv run pytest tests/ -q -m integration
 
+# Phase 13.8: `pyright` is intentionally NOT part of `check` until the
+# ~5 real errors it surfaces (mypy plugins miss them; see commit msg)
+# are fixed. Run `just pyright` manually as a 2nd-opinion gate.
 check: lint fmt-check types test
     @echo "all clean"
 
