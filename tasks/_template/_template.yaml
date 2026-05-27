@@ -1,0 +1,105 @@
+# Task suite template — copy this directory to tasks/<your-suite>/ and edit.
+#
+# The lab task loader (src/lab/tasks/registry.py) reads YAML files of this
+# shape and writes rows into the `tasks` table (suite, slug, category,
+# difficulty, payload, …). One file per logical category is the convention
+# (see tasks/pbs-agent-v0.1/{code,fs,http,multi,shell}.yaml). For a small
+# suite a single file like tasks/smoke/smoke.yaml is fine.
+#
+# Required top-level keys: `suite`, `tasks`. Everything inside `tasks`
+# may vary by category; the schemas below show the union of fields used
+# by the existing suites — strip the ones you don't need.
+
+# Suite name — must be unique across the lab. Matches the CARD.md
+# `suite:` frontmatter and the `suite:` field a sweep config refers to.
+suite: <suite-name>
+
+# Default category for every task in this file (each task may override).
+# Categories are free-form strings; common ones in the lab are:
+#   smoke, math-reasoning, format-following, knowledge-recall,
+#   code, fs, http, multi, shell.
+category: <category>
+
+tasks:
+
+  # =========================================================================
+  # Single-turn text-in / text-out task (PBS-v0.1 shape)
+  # =========================================================================
+  - slug: <task-slug-001>             # unique within the suite
+    category: <category>              # optional override of file-level category
+    difficulty: easy                  # one of: easy | medium | hard
+    input: |                          # the prompt sent to the model
+      <multi-line prompt text>
+    gold_answer: "<expected answer>"  # optional; used by exact_match rubrics
+    rubric:                           # how to grade the model's reply
+      type: exact_match               # exact_match | regex | judge | tool_call | …
+      case_sensitive: false           # exact_match: default true
+      # pattern: '<regex>'            # regex variant only
+      # judge_model: <litellm_id>     # judge variant only
+
+  # =========================================================================
+  # Agent task (PBS-Agent shape — needs tools, a sandbox, success_predicate)
+  # =========================================================================
+  - slug: <task-slug-002>
+    difficulty: medium
+    description: |
+      <one-paragraph human-readable description of the task — what the
+      agent has to do and how we're scoring it>
+    input: |
+      <the user-turn prompt the agent sees>
+    system: |
+      <optional system prompt; omit for default>
+    tools:                            # tool names the agent is allowed to call
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: http_get
+      - name: kb_query                # RAG retrieval (see PBS-Agent-RAG suite)
+      - name: shell                   # shell sandbox (see PBS-Agent v0.1/shell)
+    max_turns: 4                      # hard ceiling on agent loop turns
+    tool_budget: 4                    # hard ceiling on tool calls total
+    sandbox:                          # files staged into the agent workspace
+      workspace_files:
+        "<path/in/workspace>": |
+          <file contents>
+      # services:                     # optional: pin http fixtures, etc.
+      #   http_fixture:
+      #     url: http://localhost:9999
+      #     fixture: <path to fixture json>
+    success_predicate:                # programmatic pass/fail check
+      type: workspace_file_exists     # workspace_file_exists | workspace_file_equals
+                                      # | workspace_file_contains | judge_only
+      path: "<expected/output/file>"
+      # expected: "<exact string>"    # workspace_file_equals only
+      # contains: "<substring>"       # workspace_file_contains only
+      include_judge: true             # also run a trajectory/end-state judge
+      judge_model: gpt-oss-120b-cloud # which model judges (must be in lab.models)
+    rubric:                           # finer-grained scorer beyond the predicate
+      type: tool_call                 # tool_call | end_state | trajectory_judge
+      target_tool: fs_read            # tool_call: which tool must be called
+      expected_args:                  # tool_call: required argument match (subset)
+        path: "<path>"
+
+  # =========================================================================
+  # RAG-augmented task (PBS-Agent-RAG shape — kb_query in tools)
+  # =========================================================================
+  - slug: <task-slug-003>
+    difficulty: hard
+    input: |
+      <a question whose answer requires KB retrieval>
+    tools:
+      - name: kb_query
+        config:                       # per-tool config; kb_query supports:
+          kb: bash                    #   which KB to search (lab.rag KB name)
+          alpha: 0.5                  #   hybrid blend (0=BM25, 1=dense)
+          k: 5                        #   top-k retrieval
+          # rerank: true              #   opt-in cross-encoder rerank (EXP-004c)
+          # expand_to_parent: true    #   parent-child expansion (Phase 9)
+          # multi_query: true         #   query expansion (Phase 12)
+    max_turns: 3
+    tool_budget: 3
+    success_predicate:
+      type: judge_only
+      judge_model: gpt-oss-120b-cloud
+      judge_prompt: |
+        Did the answer correctly use bash KB material?

@@ -1,0 +1,115 @@
+# Sweep config template — copy to conf/sweep/EXP-NNN.yaml and edit.
+#
+# Two shapes live in this directory:
+#   (a) Agent / model sweeps consumed by `lab sweep run` (src/lab/sweep/).
+#       Uses top-level `tasks`, `models`, `configs`, `seeds`.
+#   (b) Retrieval sweeps consumed by `scripts/retrieval_sweep.py` (EXP-003a,
+#       EXP-004a/c). Uses top-level `kb`, `queries`, `matrix` (or `cells`).
+#
+# Pick the shape that matches your experiment. Both are documented below;
+# delete the irrelevant section in your copy.
+#
+# All sweep YAMLs MUST have an `experiment:` block — `lab sweep run
+# --enforce-pre-registration` looks up `experiment.slug` in the
+# `experiments` table and refuses to run if `plan_git_sha` is null.
+
+# =============================================================================
+# Common header — required for both shapes
+# =============================================================================
+
+experiment:
+  slug: EXP-NNN                       # must match the H1 slug in the plan doc
+  title: "<short title — matches plan doc title>"
+  hypothesis: "<one-line summary of pre-registered hypotheses>"
+  plan_path: docs/exp/EXP-NNN-<slug>.md
+
+# =============================================================================
+# Shape (a) — agent / model sweep (lab sweep run)
+# =============================================================================
+
+tasks:
+  suite: <suite-name>                 # must exist in lab.tasks
+  # slugs: [task-001, task-002]       # optional filter; omit = all suite tasks
+
+models:                               # ordered; outer loop is by model
+  - <litellm_id-a>                    # must exist in lab.models
+  - <litellm_id-b>
+  - <litellm_id-c>
+
+configs:
+  - name: greedy-1024                 # unique name per config
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn             # single_turn | agent (auto-dispatched if
+                                      # task.max_turns > 1)
+    # extra: {…}                      # passed verbatim into the model call
+
+# Per-model overrides — extras layered onto the base config for one model.
+# Used e.g. to disable qwen3 reasoning via {think: false} (see EXP-002).
+model_defaults:
+  <litellm_id>:
+    extra:
+      think: false
+
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]       # ≥ 8 per pre-reg discipline
+
+max_concurrency: 1                    # GPU lease forces 1 for local cells;
+                                      # set higher for all-cloud sweeps.
+request_timeout_sec: 600
+
+# =============================================================================
+# Shape (b) — retrieval sweep (scripts/retrieval_sweep.py)
+# =============================================================================
+
+kb:
+  name: <kb-name>                     # must be a sealed KB under ~/db/kb/
+  embedding_model: <litellm_id>       # held fixed across the sweep
+
+queries:
+  n_target: 50                        # synthetic queries to generate
+  question_model: qwen3:14b-q4_K_M    # query-generator model
+  cache_path: analysis/EXP-NNN/queries.jsonl
+  # seed_cache_path: analysis/EXP-other/queries.jsonl  # extend an existing cache
+
+# Pick ONE of `matrix` or `cells`:
+
+# matrix: alpha × k grid (EXP-003a shape)
+matrix:
+  alpha: [0.0, 0.25, 0.5, 0.75, 1.0]
+  k: [1, 3, 5, 10]
+
+# cells: per-cell configs (EXP-004a/c shape — needed when each cell varies
+# more than one knob independently, e.g. rerank + truncation + mode).
+cells:
+  - name: <cell-name>
+    fusion: alpha                     # alpha | rrf
+    alpha: 0.75
+    top_k_stage1: 50
+    rerank: true                      # opt-in; needs `rerank:` block below
+    rerank_model: Qwen/Qwen3-Reranker-0.6B
+    truncation: 1500                  # int chars | null (no truncation)
+    mode: rpc                         # rpc (host service) | inproc (in-cell)
+    final_k: 5
+
+rerank:                               # only required if any cell sets rerank: true
+  url: http://127.0.0.1:8401
+  model: Qwen/Qwen3-Reranker-0.6B
+
+# Optional pilot run — smaller version of the matrix to sanity-check before
+# committing the full budget. retrieval_sweep.py respects `pilot.enabled`.
+pilot:
+  enabled: true
+  n_queries: 5
+  cells:
+    - {alpha: 0.5, k: 5}
+
+# =============================================================================
+# Outputs — required for shape (b); shape (a) writes into experiment_runs.
+# =============================================================================
+
+outputs:
+  summary: analysis/EXP-NNN/SUMMARY.md
+  verdicts: analysis/EXP-NNN/verdicts.md
+  raw: analysis/EXP-NNN/raw.csv
+  best_configs: analysis/EXP-NNN/best_configs.csv
