@@ -3,12 +3,12 @@
 ## Intent today
 
 ## Did
-- 
+-
 
 ## Stuck on / questions
-- 
+-
 
 ## Notes
 
 ## Tomorrow
-- 
+-

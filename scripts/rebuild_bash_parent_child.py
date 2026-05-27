@@ -48,7 +48,6 @@ from lab.rag.embedder import (  # noqa: E402
 from lab.rag.index import index_bytes, replace_table  # noqa: E402
 from lab.rag.manifest import (  # noqa: E402
     Manifest,
-    dump_manifest,
     load_manifest,
     now_iso,
     write_manifest,

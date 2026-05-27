@@ -1,0 +1,84 @@
+# Phase 13.1: pre-commit hooks
+# Install: `pre-commit install` (writes .git/hooks/pre-commit)
+# Run all: `pre-commit run --all-files`
+# Skip specific hook for one commit: SKIP=mypy git commit ...
+#
+# Pre-existing legacy files are excluded from format/whitespace hooks
+# (see .pre-commit-config-ignore for the full list + rationale). New
+# files must pass everything. To re-enable a file after cleanup,
+# delete it from the regex below + drop it from .pre-commit-config-ignore.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        # CSV exports in analysis/ are produced by pandas with CRLF; not a code
+        # smell, just an export quirk. Exclude rather than churn the data.
+        # src/lab/rag/chunker.py has a legacy trailing newline; honoring the
+        # "no src/lab/ touches in Phase 13.1" scope rule until cleanup PR.
+        exclude: ^(analysis/.*\.csv|src/lab/rag/chunker\.py)$
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^analysis/.*\.csv$
+      - id: check-yaml
+        # mkdocs.yml uses !!python tags PyYAML safe-load rejects.
+        exclude: ^mkdocs\.yml$
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        # Same reason as above — CRLF CSVs are an artifact, not a defect.
+        exclude: ^analysis/.*\.csv$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        # Three legacy lint errors (UP038, PT004) live in pre-Phase-13
+        # files; carry them in the ignore list until the cleanup PR.
+        exclude: ^(src/lab/rag/cache\.py|tests/integration/test_scorer_e2e\.py|tests/unit/test_tool_http_fetch\.py)$
+      - id: ruff-format
+        # 49 files pre-date the format pass; full list in
+        # .pre-commit-config-ignore. New files MUST format clean.
+        exclude: ^(scripts/add_hype_to_kb\.py|scripts/analyze_exp002\.py|scripts/analyze_exp003b\.py|scripts/migrate_kb_schema_v2\.py|scripts/rebuild_bash_parent_child\.py|scripts/retrieval_sweep\.py|src/lab/agent/sandbox\.py|src/lab/agent/tools/__init__\.py|src/lab/inspect_bridge/adapter\.py|src/lab/inspect_bridge/scorer\.py|src/lab/inspect_bridge/solver\.py|src/lab/inspect_bridge/tools\.py|src/lab/rag/cache\.py|src/lab/rag/chunker\.py|src/lab/rag/index\.py|src/lab/rag/rerank_client\.py|src/lab/rag/rerank\.py|src/lab/sweep/preflight\.py|src/lab/sweep/runner\.py|tests/integration/test_adapter_smoke\.py|tests/integration/test_agent_loop_smoke\.py|tests/integration/test_http_fetch_fixture_in_sandbox\.py|tests/integration/test_pbs_agent_v01_one_per_tool\.py|tests/integration/test_rag_cache_e2e\.py|tests/integration/test_scorer_e2e\.py|tests/unit/test_adapter\.py|tests/unit/test_chunker_parent_child\.py|tests/unit/test_cli_hf_cache_mount\.py|tests/unit/test_hybrid_query_multi\.py|tests/unit/test_kb_query_expand_to_parent\.py|tests/unit/test_kb_query_multi_flag\.py|tests/unit/test_kb_query_rerank_flag\.py|tests/unit/test_migrate_kb_schema_v2\.py|tests/unit/test_pbs_agent_rag_v01_load\.py|tests/unit/test_pbs_agent_v01_load\.py|tests/unit/test_rag_cache_multi_query_keying\.py|tests/unit/test_rag_expand\.py|tests/unit/test_rag_index_hype\.py|tests/unit/test_rag_index_parent_dedup\.py|tests/unit/test_rag_skip_heuristics\.py|tests/unit/test_rerank_client\.py|tests/unit/test_runner_hf_cache_mount\.py|tests/unit/test_scorer_end_state\.py|tests/unit/test_scorer_tool_correctness\.py|tests/unit/test_solver_loop\.py|tests/unit/test_sweep_image_hash_drift\.py|tests/unit/test_task_needs_hf_cache_mount\.py|tests/unit/test_tool_kb_query\.py|tests/unit/test_tool_pool\.py)$
+
+  # mypy --strict against src/lab/ only. Uses repo-local install so the
+  # plugin (pydantic.mypy) and our mypy.ini settings are picked up.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy --strict (src/lab)
+        entry: uv run mypy src
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        require_serial: true
+
+      - id: pyright
+        name: pyright 2nd-opinion (src/lab)
+        entry: uv run pyright src/lab/
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        require_serial: true
+        # Pyright has 5 known errors as of Phase 13.8 that mypy misses
+        # (see Phase 13.8 commit msg). Until cleaned up, only run on
+        # manual invocation (pre-commit run --hook-stage manual pyright)
+        # or via `just pyright`.
+        stages: [manual]
+
+  # Use the system-installed gitleaks binary (Homebrew on this host).
+  # The upstream pre-commit hook tries to `go install` gitleaks during
+  # env setup, which fails on machines without a TTY for cgo. Calling
+  # the binary directly sidesteps that.
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (system binary)
+        entry: gitleaks protect --staged --redact --verbose
+        language: system
+        pass_filenames: false

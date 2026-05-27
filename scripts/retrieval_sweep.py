@@ -1574,7 +1574,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         vlines.append(f"- Q1 (Qwen3 + 1500c, rpc) recall@5: {q1:.3f}")
         vlines.append(f"- Q2 (Qwen3 + 2500c, rpc) recall@5: {q2:.3f}")
         if q3_errored:
-            vlines.append(f"- Q3 (Qwen3 + no-trunc, rpc) recall@5: ERRORED (OOM expected)")
+            vlines.append("- Q3 (Qwen3 + no-trunc, rpc) recall@5: ERRORED (OOM expected)")
         else:
             vlines.append(f"- Q3 (Qwen3 + no-trunc, rpc) recall@5: {q3:.3f}")
         vlines.append(f"- Q4 (Qwen3 + 1500c, inproc) recall@5: {q4:.3f}")

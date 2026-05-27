@@ -1,0 +1,84 @@
+# Files that pre-date Phase 13.1 pre-commit adoption.
+# Listed here as documentation; the active exclude regexes
+# live in .pre-commit-config.yaml. Clean up incrementally
+# by removing files from this list + the regex once they pass
+# ruff-format / mixed-line-ending.
+
+## ruff-format (49 files):
+scripts/add_hype_to_kb.py
+scripts/analyze_exp002.py
+scripts/analyze_exp003b.py
+scripts/migrate_kb_schema_v2.py
+scripts/rebuild_bash_parent_child.py
+scripts/retrieval_sweep.py
+src/lab/agent/sandbox.py
+src/lab/agent/tools/__init__.py
+src/lab/inspect_bridge/adapter.py
+src/lab/inspect_bridge/scorer.py
+src/lab/inspect_bridge/solver.py
+src/lab/inspect_bridge/tools.py
+src/lab/rag/cache.py
+src/lab/rag/chunker.py
+src/lab/rag/index.py
+src/lab/rag/rerank_client.py
+src/lab/rag/rerank.py
+src/lab/sweep/preflight.py
+src/lab/sweep/runner.py
+tests/integration/test_adapter_smoke.py
+tests/integration/test_agent_loop_smoke.py
+tests/integration/test_http_fetch_fixture_in_sandbox.py
+tests/integration/test_pbs_agent_v01_one_per_tool.py
+tests/integration/test_rag_cache_e2e.py
+tests/integration/test_scorer_e2e.py
+tests/unit/test_adapter.py
+tests/unit/test_chunker_parent_child.py
+tests/unit/test_cli_hf_cache_mount.py
+tests/unit/test_hybrid_query_multi.py
+tests/unit/test_kb_query_expand_to_parent.py
+tests/unit/test_kb_query_multi_flag.py
+tests/unit/test_kb_query_rerank_flag.py
+tests/unit/test_migrate_kb_schema_v2.py
+tests/unit/test_pbs_agent_rag_v01_load.py
+tests/unit/test_pbs_agent_v01_load.py
+tests/unit/test_rag_cache_multi_query_keying.py
+tests/unit/test_rag_expand.py
+tests/unit/test_rag_index_hype.py
+tests/unit/test_rag_index_parent_dedup.py
+tests/unit/test_rag_skip_heuristics.py
+tests/unit/test_rerank_client.py
+tests/unit/test_runner_hf_cache_mount.py
+tests/unit/test_scorer_end_state.py
+tests/unit/test_scorer_tool_correctness.py
+tests/unit/test_solver_loop.py
+tests/unit/test_sweep_image_hash_drift.py
+tests/unit/test_task_needs_hf_cache_mount.py
+tests/unit/test_tool_kb_query.py
+tests/unit/test_tool_pool.py
+
+## mixed-line-ending (CSV analysis exports):
+analysis/EXP-002/per_cell_runs.csv
+analysis/EXP-002/per_model_scorer.csv
+analysis/EXP-002/per_model_task_passes.csv
+analysis/EXP-002/per_model_task_turns_tools.csv
+analysis/EXP-002/per_model_termination.csv
+analysis/EXP-002/per_tool_success.csv
+analysis/EXP-002/trajectory_judge.csv
+analysis/EXP-003a/best_configs.csv
+analysis/EXP-003a/pilot_raw.csv
+analysis/EXP-003a/raw.csv
+analysis/EXP-003b/faithfulness_slice.csv
+analysis/EXP-003b/kb_query_invocations.csv
+analysis/EXP-003b/per_cell_runs.csv
+analysis/EXP-003b/per_model_condition.csv
+analysis/EXP-004a/per_cell.csv
+analysis/EXP-004a/raw.csv
+analysis/EXP-004c/per_cell.csv
+analysis/EXP-004c/raw.csv
+
+## ruff lint errors (real fixes warranted, out of Phase 13.1 scope):
+src/lab/rag/cache.py  # UP038 x2
+tests/integration/test_scorer_e2e.py  # UP038
+tests/unit/test_tool_http_fetch.py  # PT004
+
+## Sibling agent (Phase 13 batch B) — not yet committed at this time:
+tests/unit/test_new_experiment.py  # PT018 x2 (PT018 in sibling test file)

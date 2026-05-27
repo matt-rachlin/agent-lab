@@ -36,4 +36,3 @@
   - glm-5.1-cloud / rag-bash-compare-test-bracket: mean end_state = 0.000 (n=4)
   - gpt-oss-120b-cloud / rag-bash-param-expansion-forms: mean end_state = 0.000 (n=4)
 - **H4: CONFIRMED**
-
