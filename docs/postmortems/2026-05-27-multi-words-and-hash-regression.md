@@ -44,7 +44,7 @@ tags:
 > `status` set to `archived` (the doc-meta schema's terminal state — there
 > is no `resolved` value); `resolved_by` is the commit recorded below.
 >
-> **resolved_by:** commit `PENDING_COMMIT_SHA` ("Fix multi-words-and-hash
+> **resolved_by:** commit `f48c517` ("Fix multi-words-and-hash
 > regression (F-009 follow-up #4): task-local hashing prompt").
 
 Date: 2026-05-27
