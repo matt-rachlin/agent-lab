@@ -81,10 +81,25 @@ class ChunkerSpec(BaseModel):
     child_target_tokens: int = 192
 
 
+class HypeSpec(BaseModel):
+    """Phase 11 (v3) — HyPE (Hypothetical Prompt Embeddings) config.
+
+    ``enabled=False`` is the default; old manifests without this field load
+    cleanly with the same default. When ``enabled=True``, ``n_questions``
+    questions per chunk are generated at index time via ``model`` and
+    embedded alongside the chunk's content.
+    """
+
+    enabled: bool = False
+    n_questions: int = 3
+    model: str = "qwen3:8b"
+
+
 class Models(BaseModel):
     embedding: EmbeddingModel = Field(default_factory=EmbeddingModel)
     enrichment: EnrichmentModel = Field(default_factory=EnrichmentModel)
     chunker: ChunkerSpec = Field(default_factory=ChunkerSpec)
+    hype: HypeSpec = Field(default_factory=HypeSpec)
 
 
 class BuildSpec(BaseModel):

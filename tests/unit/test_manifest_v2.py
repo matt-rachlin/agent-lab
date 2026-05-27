@@ -16,7 +16,10 @@ from lab.rag.manifest import Manifest, dump_manifest, load_manifest, write_manif
 
 def test_manifest_v2_defaults() -> None:
     m = Manifest(name="t", slug="t")
-    assert m.chunk_format_version == CHUNK_FORMAT_VERSION == 2
+    # CHUNK_FORMAT_VERSION may bump in future phases; just assert the
+    # manifest tracks the module constant. (Was hardcoded to 2 in Phase 9;
+    # bumped to 3 in Phase 11.)
+    assert m.chunk_format_version == CHUNK_FORMAT_VERSION
     assert m.models.chunker.mode == "flat"
     assert m.models.chunker.parent_target_tokens == 768
     assert m.models.chunker.child_target_tokens == 192
@@ -30,7 +33,7 @@ def test_manifest_v2_round_trip(tmp_path: Path) -> None:
     path = tmp_path / "manifest.yaml"
     write_manifest(path, m)
     loaded = load_manifest(path)
-    assert loaded.chunk_format_version == 2
+    assert loaded.chunk_format_version == CHUNK_FORMAT_VERSION
     assert loaded.models.chunker.mode == "parent_child"
     assert loaded.models.chunker.parent_target_tokens == 800
     assert loaded.models.chunker.child_target_tokens == 200

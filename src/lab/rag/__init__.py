@@ -22,7 +22,10 @@ KB_FORMAT_VERSION = 1
 #: Bumped to 2 in Phase 9 to mark KBs that may carry parent-child chunks.
 #: Existing v1 KBs are read-compatible — the new schema columns default to
 #: null/false so a v1 row deserialises cleanly under the v2 reader.
-CHUNK_FORMAT_VERSION = 2
+#: Bumped to 3 in Phase 11 (HyPE) to mark KBs that may carry hypothetical-
+#: question vectors alongside content vectors. v1/v2 KBs read cleanly under
+#: the v3 reader (hype_questions / hype_vectors default to null).
+CHUNK_FORMAT_VERSION = 3
 DEFAULT_EMBED_MODEL = "qwen3-embedding:8b-q8_0"
 DEFAULT_EMBED_DIMS = 4096
 FALLBACK_EMBED_MODEL = "qwen3-embedding:4b"

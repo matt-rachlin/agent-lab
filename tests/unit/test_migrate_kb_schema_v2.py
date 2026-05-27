@@ -81,16 +81,20 @@ def test_dry_run_reports_changes_without_writing(tmp_path: Path) -> None:
 
 
 def test_migrate_adds_columns_and_bumps_manifest(tmp_path: Path) -> None:
+    from lab.rag import CHUNK_FORMAT_VERSION
+
     mod = _load_script()
     kb_dir = _make_v1_kb(tmp_path)
     summary = mod.migrate(kb_dir, dry_run=False)
+    # The migration brings the schema to v2 (Phase 9 columns); the manifest
+    # bump tracks the current ``CHUNK_FORMAT_VERSION`` constant (which is 3
+    # post-Phase 11; the migration script still only adds v2 columns).
     assert summary["after_schema_version"] == 2
-    # Manifest reflects v2.
     import yaml
 
     parsed = yaml.safe_load((kb_dir / "manifest.yaml").read_text())
-    assert parsed["chunk_format_version"] == 2
-    # The columns are present on the table.
+    assert parsed["chunk_format_version"] == CHUNK_FORMAT_VERSION
+    # The Phase 9 columns are present on the table.
     import lancedb
 
     db = lancedb.connect(str(kb_dir / "index"))
@@ -99,14 +103,16 @@ def test_migrate_adds_columns_and_bumps_manifest(tmp_path: Path) -> None:
 
 
 def test_migrate_idempotent(tmp_path: Path) -> None:
+    from lab.rag import CHUNK_FORMAT_VERSION
+
     mod = _load_script()
     kb_dir = _make_v1_kb(tmp_path)
     mod.migrate(kb_dir, dry_run=False)
-    # Second run is a no-op: nothing added, manifest already 2.
+    # Second run is a no-op: nothing added, manifest already at current.
     summary = mod.migrate(kb_dir, dry_run=False)
     assert summary["columns_added"] == []
-    assert summary["manifest_chunk_format_version_before"] == 2
-    assert summary["manifest_chunk_format_version_after"] == 2
+    assert summary["manifest_chunk_format_version_before"] == CHUNK_FORMAT_VERSION
+    assert summary["manifest_chunk_format_version_after"] == CHUNK_FORMAT_VERSION
 
 
 def test_migrate_missing_manifest_errors(tmp_path: Path) -> None:

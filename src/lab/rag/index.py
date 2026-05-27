@@ -17,6 +17,7 @@ reranker (see :mod:`lab.rag.rerank`) is layered on top by default.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -64,6 +65,14 @@ def _schema(dims: int) -> pa.Schema:
             pa.field("parent_chunk_id", pa.string()),
             pa.field("child_index", pa.int32()),
             pa.field("is_parent", pa.bool_()),
+            # ---- Phase 11 (v3) HyPE fields. ----------------------------
+            # Both nullable so v1/v2 rows survive deserialisation under the
+            # v3 reader. ``hype_questions`` is a parallel list to
+            # ``hype_vectors`` (same N per row); when both are non-null and
+            # ``use_hype=True`` at query time, the dense score becomes
+            # ``max(content_cos, max(question_cos))``.
+            pa.field("hype_questions", pa.list_(pa.string())),
+            pa.field("hype_vectors", pa.list_(pa.list_(pa.float32(), dims))),
         ]
     )
 
@@ -182,6 +191,65 @@ def _rrf_fuse(
     return fused
 
 
+def _cosine(a: list[float] | None, b: list[float] | None) -> float:
+    """Plain cosine between two float vectors.
+
+    Defensive: returns 0.0 on missing inputs, mismatched dims, or zero norm.
+    Pure-Python so test fakes don't have to pull in numpy.
+    """
+    if not a or not b:
+        return 0.0
+    if len(a) != len(b):
+        return 0.0
+    dot = 0.0
+    na = 0.0
+    nb = 0.0
+    for x, y in zip(a, b, strict=False):
+        dot += x * y
+        na += x * x
+        nb += y * y
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return dot / (math.sqrt(na) * math.sqrt(nb))
+
+
+def _row_has_hype(row: dict[str, Any]) -> bool:
+    """True iff the row carries at least one usable HyPE vector."""
+    vecs = row.get("hype_vectors")
+    if not vecs:
+        return False
+    # ``vecs`` is a list of vectors; the row is "hype-enabled" if any
+    # individual entry is a non-empty sequence.
+    return any(v for v in vecs)
+
+
+def _hype_boost_dsim(
+    row: dict[str, Any],
+    qvec: list[float],
+    content_dsim: float,
+) -> float:
+    """Return ``max(content_dsim, max_question_cos)`` for a row.
+
+    ``content_dsim`` is the row's pre-normalised dense similarity (already
+    in the range used by the rest of the stage-1 pipeline). The HyPE
+    component is the raw maximum cosine across the row's stored question
+    vectors; we keep raw cosine here because HyPE is meant to *lift* the
+    dsim of an on-question match, not just compete with it. Callers that
+    don't want this behaviour pass ``use_hype=False``.
+    """
+    vecs = row.get("hype_vectors") or []
+    if not vecs:
+        return content_dsim
+    best = content_dsim
+    for v in vecs:
+        if not v:
+            continue
+        c = _cosine(qvec, v)
+        if c > best:
+            best = c
+    return best
+
+
 def _stage1_candidates(
     *,
     tbl: Any,
@@ -191,6 +259,7 @@ def _stage1_candidates(
     fusion: FusionStrategy,
     alpha: float | None,
     filter_authority: str | None,
+    use_hype: bool = False,
 ) -> list[tuple[str, float, float, float, dict[str, Any]]]:
     """Run stage-1 retrieval and return scored candidates ordered best-first.
 
@@ -209,6 +278,12 @@ def _stage1_candidates(
         max_d = max((1.0 / (1.0 + float(r.get("_distance", 1.0))) for r in dense), default=1.0)
         for r in dense[:pool_size]:
             d_sim = (1.0 / (1.0 + float(r.get("_distance", 1.0)))) / max_d
+            if use_hype and _row_has_hype(r):
+                # HyPE lift: take the best of (content-vector cosine,
+                # question-vector cosine). Operates on the normalised
+                # ``d_sim`` so we stay in the same dynamic range the rest of
+                # the pipeline expects.
+                d_sim = _hype_boost_dsim(r, qvec, d_sim)
             scored.append((r["chunk_id"], d_sim, d_sim, 0.0, r))
         return scored
 
@@ -230,6 +305,19 @@ def _stage1_candidates(
     # Per-candidate dense similarity (used for telemetry on every path).
     dense_distances = {r["chunk_id"]: float(r.get("_distance", 1.0)) for r in dense}
     d_sims_raw = {cid: 1.0 / (1.0 + d) for cid, d in dense_distances.items()}
+
+    # Phase 11 HyPE: lift each per-candidate raw dense similarity by the best
+    # question-vector cosine when the row carries HyPE vectors. We apply the
+    # boost BEFORE normalisation so a strong question match can override a
+    # weak content match (otherwise the post-normalisation cap of 1.0 would
+    # let multiple rows tie at the top). No-op when ``use_hype=False`` or
+    # the row has no hype vectors.
+    if use_hype:
+        for cid, row in seen.items():
+            if not _row_has_hype(row):
+                continue
+            d_sims_raw[cid] = _hype_boost_dsim(row, qvec, d_sims_raw.get(cid, 0.0))
+
     max_dsim = max(d_sims_raw.values()) if d_sims_raw else 1.0
     d_sims = {cid: v / max_dsim for cid, v in d_sims_raw.items()}
 
@@ -237,7 +325,19 @@ def _stage1_candidates(
     s_norms = {cid: v / max_sparse for cid, v in sparse_score_by_id.items()}
 
     if fusion == "rrf":
-        dense_ranking = [r["chunk_id"] for r in dense]
+        if use_hype:
+            # Reorder the dense ranking by the boosted ``d_sims`` so HyPE
+            # actually flips ranks at the RRF level (RRF is rank-only, so
+            # the *score* lift doesn't help unless we surface it as a
+            # position change). Rows missing from ``d_sims`` (shouldn't
+            # happen, but defensively) get a score of 0.0.
+            dense_ranking = sorted(
+                (r["chunk_id"] for r in dense),
+                key=lambda c: d_sims.get(c, 0.0),
+                reverse=True,
+            )
+        else:
+            dense_ranking = [r["chunk_id"] for r in dense]
         sparse_ranking = [all_rows[idx]["chunk_id"] for idx, _ in sparse_top]
         fused = _rrf_fuse(dense_ranking, sparse_ranking)
         scored = []
@@ -385,6 +485,15 @@ def _expand_to_parent_in_hits(tbl: Any, hits: list[Hit]) -> None:
         h.expanded_to_parent = True
 
 
+def _table_has_hype(tbl: Any) -> bool:
+    """True iff the table schema declares HyPE columns."""
+    try:
+        names = set(tbl.schema.names)
+    except Exception:
+        return False
+    return "hype_vectors" in names and "hype_questions" in names
+
+
 def hybrid_query(
     kb_dir: Path,
     query_text: str,
@@ -398,6 +507,7 @@ def hybrid_query(
     filter_authority: str | None = None,
     expand_to_parent: bool = True,
     dedupe_by_parent: bool = True,
+    use_hype: bool | None = None,
 ) -> list[Hit]:
     """Hybrid dense + sparse retrieval with optional cross-encoder rerank.
 
@@ -429,6 +539,14 @@ def hybrid_query(
     scripts). Pass ``fusion="rrf"`` explicitly to force RRF even with an alpha
     value supplied for telemetry.
 
+    Phase 11 HyPE:
+      * ``use_hype`` controls whether each candidate's dense similarity is
+        lifted to ``max(content_cos, max(question_cos))`` using the row's
+        stored hypothetical-question vectors. ``None`` (the default) means
+        "auto" — turn it on when the KB schema declares HyPE columns.
+        Pass ``False`` to force-disable (ablation), ``True`` to force-enable
+        (will be a no-op on a v1/v2 KB with empty hype_vectors).
+
     Returns ``[]`` (without calling the embedding model) if the KB has no
     index yet — so callers can smoke-test against in-progress KBs without
     burning GPU time.
@@ -458,6 +576,12 @@ def hybrid_query(
     pool = max(top_k_stage1, k, 40)
     qvec = embed_texts([query_text], model=model, batch_size=1).vectors[0]
 
+    # Phase 11: resolve use_hype. ``None`` (default) → auto-on iff the table
+    # carries HyPE columns. Explicit True/False overrides the auto-detect.
+    effective_use_hype = (
+        _table_has_hype(tbl) if use_hype is None else bool(use_hype)
+    )
+
     stage1 = _stage1_candidates(
         tbl=tbl,
         query_text=query_text,
@@ -466,6 +590,7 @@ def hybrid_query(
         fusion=fusion,
         alpha=alpha,
         filter_authority=filter_authority,
+        use_hype=effective_use_hype,
     )
     if not stage1:
         return []

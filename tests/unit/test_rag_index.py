@@ -45,6 +45,9 @@ def test_schema_has_all_columns():
         "parent_chunk_id",
         "child_index",
         "is_parent",
+        # Phase 11 v3 HyPE columns
+        "hype_questions",
+        "hype_vectors",
     }
     assert names == expected
     # vector field is a fixed-size list of float32 with the requested width
