@@ -98,3 +98,13 @@ uv run pytest tests/ -q
 Tests run without any live services - everything is monkey-patched
 against dead ports or an in-memory SQLite to verify the silent-fallback
 behavior.
+
+## Phase 15.3 verification log
+
+- 17 unit tests pass (no live services required)
+- `just dash` launches; all 5 pages return HTTP 200 in headless mode
+  (Home, Findings, Experiments, Leaderboard, Sweep_Monitor, Docs)
+- `m docs scan --zone /data/lab/code` upserts README + CLAUDE.md with
+  0 parse errors
+- pyproject.toml + justfile edits are append-only relative to sibling
+  15.1's top-of-file workspace declarations - no merge conflict
