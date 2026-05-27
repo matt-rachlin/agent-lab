@@ -177,9 +177,7 @@ def load_prompt_test_file(path: Path) -> PromptTestFile:
 
     yaml_match = _YAML_FENCE_RE.search(body)
     if not yaml_match:
-        raise ValueError(
-            f"{path}: missing fenced ```yaml block with prompt_id + tests"
-        )
+        raise ValueError(f"{path}: missing fenced ```yaml block with prompt_id + tests")
     payload = yaml.safe_load(yaml_match.group("payload")) or {}
     if not isinstance(payload, dict):
         raise ValueError(f"{path}: yaml block must be a mapping")
