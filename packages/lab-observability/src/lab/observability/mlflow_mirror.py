@@ -359,6 +359,12 @@ class MlflowMirror:
         exp = self._client.get_experiment_by_name(name)
         if exp is not None:
             exp_id = str(exp.experiment_id)
+            # If the experiment was soft-deleted (e.g. by a previous smoke
+            # test) we restore it; otherwise create_run would fail with
+            # INVALID_PARAMETER_VALUE: "must be in the 'active' state".
+            if getattr(exp, "lifecycle_stage", "active") == "deleted":
+                with contextlib.suppress(Exception):
+                    self._client.restore_experiment(exp_id)
         else:
             exp_id = str(self._client.create_experiment(name))
         self._exp_cache[name] = exp_id
