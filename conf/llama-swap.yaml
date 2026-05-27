@@ -1,0 +1,165 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mostlygeek/llama-swap/refs/heads/main/config-schema.json
+#
+# llama-swap — VRAM-aware multi-model orchestrator for the lab (Phase 19b).
+#
+# Sits between LiteLLM (port 4000) and the model servers (Ollama on 11434,
+# llama-server on per-model ports 10001+). LiteLLM routes the new Phase 19a
+# big-model traffic through this proxy on port 8080; small Ollama models
+# keep their direct LiteLLM routes unchanged.
+#
+# Strategy: legacy `groups` (not the matrix DSL) — the plan calls for
+# explicit named groups with exclusive=true semantics, which maps cleanly
+# to swap=true/exclusive=true.
+#
+# Models registered here today (2026-05-27): only those with a complete
+# GGUF on disk under /data/models/gguf/. Hermes-4.3-36B and Llama-3.3-70B
+# downloads are incomplete; xLAM-2-7b-fc-r has no upstream GGUF yet.
+# These will be added when the GGUFs land — see docs/runbooks/llama-swap-runbook.md.
+
+healthCheckTimeout: 500
+logLevel: info
+logToStdout: proxy
+startPort: 10001
+globalTTL: 600 # default unload after 10 min idle; per-model override below
+
+# Reusable command snippets.
+#
+# LLAMA_SERVER is the llama.cpp `llama-server` binary on this host. The
+# .local/bin/llama-server symlink is broken (points at a non-existent
+# build); use the real path under /data/apps/_vendor/llama.cpp/.
+#
+# LD_LIBRARY_PATH must include the build dir so the bundled
+# libggml-*.so.0 / libllama.so.0 / libmtmd.so.0 are resolved.
+macros:
+  "LLAMA_SERVER": "/data/apps/_vendor/llama.cpp/build/bin/llama-server"
+  "LD_LIB": "/data/apps/_vendor/llama.cpp/build/bin"
+  "MODELS_DIR": "/data/models/gguf"
+
+  # Common flags for medium-class models (14B-class, fits 12 GB cleanly).
+  "default_args_medium": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99"
+
+  # Common flags for the 30B-A3B MoE: full GPU offload of attention,
+  # expert tensors on CPU via `-ot` regex. Per research (plan §19b).
+  "default_args_moe_30b": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99 -ot 'exps=CPU'"
+
+  # Common flags for 20B-class MXFP4 (gpt-oss-20b). Full GPU offload.
+  "default_args_20b": "--port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99"
+
+# ---------------------------------------------------------------------------
+# models — each entry maps a model ID to a launch command and a group.
+#
+# Naming convention: the model ID here matches the litellm_id in lab.models
+# and the LiteLLM model_name in conf/litellm-config.yaml. Keeping these
+# in sync is what makes `lab agent run --model X` work end-to-end.
+# ---------------------------------------------------------------------------
+models:
+  # ---- Phase 19a additions, llama-server backend (GGUFs on disk today) ----
+
+  "qwen3-30b-a3b-moe":
+    cmd: |
+      ${LLAMA_SERVER}
+      ${default_args_moe_30b}
+      --model ${MODELS_DIR}/qwen3-30b-a3b-moe/Qwen3-30B-A3B-Q4_K_M.gguf
+      --jinja
+    env:
+      - "LD_LIBRARY_PATH=${LD_LIB}"
+    name: "Qwen3-30B-A3B (MoE, 3B active)"
+    description: "Local headline model. Q4_K_M MoE with experts on CPU."
+    ttl: 600
+
+  "gpt-oss-20b-local":
+    cmd: |
+      ${LLAMA_SERVER}
+      ${default_args_20b}
+      --model ${MODELS_DIR}/gpt-oss-20b-local/gpt-oss-20b-mxfp4.gguf
+      --jinja
+    env:
+      - "LD_LIBRARY_PATH=${LD_LIB}"
+    name: "gpt-oss 20B (local, MXFP4)"
+    description: "Local MXFP4 reasoning model, 21B total / 3.6B active."
+    ttl: 600
+
+  "phi-4-reasoning-14b":
+    cmd: |
+      ${LLAMA_SERVER}
+      ${default_args_medium}
+      --model ${MODELS_DIR}/phi-4-reasoning-14b/microsoft_Phi-4-reasoning-plus-Q4_K_M.gguf
+      --jinja
+    env:
+      - "LD_LIBRARY_PATH=${LD_LIB}"
+    name: "Phi-4 Reasoning Plus 14B"
+    description: "Math/reasoning specialist; beats DSR1-distill-70B on AIME 2025."
+    ttl: 600
+
+  # ---- Existing Ollama-backed small/medium models, proxied via llama-swap ----
+  #
+  # These already run on Ollama (port 11434). We register them in llama-swap
+  # so the matrix-group logic can evict them when a big model needs the GPU.
+  # `cmd` is a no-op shell because Ollama manages its own lifetime; we just
+  # tell llama-swap which Ollama URL to proxy to and set keep_alive=0 on
+  # every request (the lab client discipline — see runbook).
+
+  "qwen3-14b-q4":
+    cmd: "sleep infinity" # placeholder — Ollama is the real server
+    proxy: "http://127.0.0.1:11434"
+    checkEndpoint: "/api/version"
+    useModelName: "qwen3:14b-q4_K_M"
+    name: "Qwen3 14B Q4 (via Ollama)"
+    ttl: 300
+
+  "qwen3-reranker-0.6b":
+    cmd: "sleep infinity"
+    proxy: "http://127.0.0.1:8401"
+    checkEndpoint: "/healthz"
+    name: "Qwen3 Reranker 0.6B (host-side HTTP service)"
+    ttl: 0 # always-on; managed by the rerank.service systemd unit
+
+# ---------------------------------------------------------------------------
+# groups — explicit VRAM coexistence rules.
+#
+# Per plan §19b:
+#   small-tools  : rerankers + 1 small LLM, always hot
+#   medium-llm   : one of qwen3-14b-q4 / phi-4-reasoning-14b / xlam-2-7b
+#   big-llm      : qwen3-30b-a3b-moe + gpt-oss-20b-local (exclusive)
+#   ceiling-llm  : llama-3.3-70b-q4 (reserved; model not yet on disk)
+#   embedder-big : qwen3-embedding-8b-q8 (reserved; not yet registered)
+#
+# Group semantics:
+#   swap: true       — only one member can run at a time within the group
+#   exclusive: true  — loading a member evicts members of OTHER groups
+# ---------------------------------------------------------------------------
+groups:
+  "small-tools":
+    swap: false # rerankers should not evict each other
+    exclusive: false # never evict big models when a reranker is hit
+    persistent: true # keep loaded across other-group swaps
+    members:
+      - "qwen3-reranker-0.6b"
+
+  "medium-llm":
+    swap: true
+    exclusive: true
+    members:
+      - "qwen3-14b-q4"
+      - "phi-4-reasoning-14b"
+
+  "big-llm":
+    swap: true
+    exclusive: true
+    members:
+      - "qwen3-30b-a3b-moe"
+      - "gpt-oss-20b-local"
+  #
+  # ceiling-llm (llama-3.3-70b-q4): DEFERRED — GGUF not yet on disk.
+  #   Add when /data/models/gguf/llama-3.3-70b-q4/Llama-3.3-70B-Instruct-Q4_K_M.gguf
+  #   exists. Use --n-gpu-layers 21 --ctx-size 8192 -ctk q8_0 -ctv q8_0
+  #   per plan §19e.
+  #
+  # embedder-big (qwen3-embedding-8b-q8): DEFERRED — not yet pulled.
+  #
+  # hermes-4.3-36b: DEFERRED — download was interrupted, only partial on disk.
+  #   Group assignment when added: big-llm (~22 GB Q4_K_M, exclusive).
+  #
+  # xlam-2-7b-fc-r: NO UPSTREAM GGUF (re-checked 2026-05-27 against
+  #   bartowski / unsloth / mradermacher / Salesforce). Only xLAM-1
+  #   (xLAM-7b-fc-r) GGUFs exist. Track upstream.

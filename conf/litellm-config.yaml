@@ -1,8 +1,39 @@
-# LiteLLM proxy config. All traffic — local + Ollama Cloud — routes through
-# the local Ollama daemon (port 11434), which proxies cloud models via the
-# user's ed25519 signin. No OLLAMA_API_KEY required in the container.
+# LiteLLM proxy config.
+#
+# Routing matrix (Phase 19b):
+#   * Phase 19a big-model lanes (qwen3-30b-a3b-moe, gpt-oss-20b-local,
+#     phi-4-reasoning-14b, …) -> llama-swap on host port 8080. llama-swap
+#     owns the matrix-group / TTL eviction logic; clients MUST send
+#     keep_alive=0 (see docs/runbooks/llama-swap-runbook.md).
+#   * Pre-existing local Ollama models (qwen3-14b-q4, llama3.1-8b-q4, …)
+#     still route directly to Ollama on 11434 — they are fast to load and
+#     don't benefit from llama-swap's grouping.
+#   * Ollama Cloud models (gpt-oss-120b-cloud, glm-5.1-cloud, …) keep
+#     their direct routes; cloud isn't VRAM-bound.
 
 model_list:
+  # ---- Phase 19a local big models (routed through llama-swap) ----
+  - model_name: qwen3-30b-a3b-moe
+    litellm_params:
+      model: openai/qwen3-30b-a3b-moe
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 600
+
+  - model_name: gpt-oss-20b-local
+    litellm_params:
+      model: openai/gpt-oss-20b-local
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 600
+
+  - model_name: phi-4-reasoning-14b
+    litellm_params:
+      model: openai/phi-4-reasoning-14b
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 600
+
   # ---- local Ollama models (12GB-fitting) ----
   - model_name: qwen3-14b-q4
     litellm_params:
