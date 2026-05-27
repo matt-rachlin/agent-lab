@@ -121,10 +121,17 @@ table.
 - **Hybrid offload only.** ~1.8 tok/s measured wall throughput (slower
   than the research-cited 6-10 tok/s on a clean 12 GB card — see runbook
   for why); a PBS-Agent-style multi-turn task can run minutes per turn.
-- **--n-gpu-layers must be 14 on the steady-state lab box**, not the 21
-  the plan called for, because the persistent rerank server (~2.6 GB)
-  in `small-tools` cuts free headroom below 9 GB. Auto-split heuristics
-  can mis-allocate, so always pass the explicit flag.
+- **--n-gpu-layers: 14 steady-state, 16 with `ceiling-sweep-wrapper.sh`.**
+  The repo's checked-in value in `conf/llama-swap.yaml` is **16** (the
+  ceiling-mode value); steady-state runs without the wrapper must lower
+  it back to 14 or the load OOMs because the rerank server (~2.6 GB
+  persistent) eats the headroom. ngl=21 (the Phase 19e plan target)
+  doesn't fit even with the wrapper because llama.cpp reserves ~2.6 GB
+  of CUDA context that `nvidia-smi --memory.free` doesn't show. Measured
+  throughput at ngl=16 is **1.92 tok/s** (vs 1.83 at ngl=14, +5 %); the
+  wrapper's main value is operational predictability rather than raw
+  speed. Auto-split heuristics can mis-allocate, so always pass the
+  explicit flag.
 - Llama 3.3 community license — commercial OK with restrictions (no
   training-on-outputs to make competing LLMs).
 - Cold-load from NVMe is ~60-90 s (40 GB read); page-cache hit drops to ~10 s

@@ -150,16 +150,31 @@ models:
   #
   # Llama-3.3-70B-Instruct Q4_K_M GGUF, hybrid GPU+CPU offload.
   #
-  # Working ngl tuned in Phase 19e (2026-05-27): **--n-gpu-layers 14**.
-  # Plan §19e called for ngl=21 per research; smoke OOM'd (cudaMalloc
-  # 10846 MiB > 8.5 GiB free) because the rerank server in `small-tools`
-  # group is persistent (~2.6 GB), cutting effective free headroom from
-  # 12 GB → 8.5 GB. ngl=15 also OOM'd on the KV-cache allocation. At
-  # ngl=14 weights occupy ~7.4 GB GPU; KV-cache (q8_0 at ctx 8192) +
-  # scratch push resident total to ~11.7 GB (~219 MB headroom).
-  # Measured throughput at ngl=14: ~1.8 tok/s (slower than the plan's
-  # 6-10 tok/s aspiration — only 14/81 layers are GPU-resident). Still
-  # usable for offline batch eval; documented in runbook + model card.
+  # **Two valid ngl values** (Phase 19e + #73 tuning, 2026-05-27):
+  #   * ngl=14 — steady-state with rerank server resident (~2.6 GB);
+  #              measured 1.83 tok/s. Use this when running the 70B
+  #              without the ceiling-sweep wrapper.
+  #   * ngl=16 — ceiling-mode under `scripts/ceiling-sweep-wrapper.sh`
+  #              (wrapper unloads the rerank server before launch);
+  #              measured 1.92 tok/s. **This is the value below** —
+  #              swap to 14 for any run not using the wrapper or the
+  #              load OOMs.
+  #
+  # Plan §19e called for ngl=21 (per research-best on a clean 12 GB
+  # card). It doesn't fit even with the rerank server fully evicted:
+  # llama.cpp reserves ~2.6 GB of CUDA context + compute scratch that
+  # nvidia-smi's "free" counter doesn't show. Measured 2026-05-27 at
+  # ngl=17 with rerank evicted: `llama_memory_breakdown_print` reported
+  # `unaccounted: 2582 MiB` while nvidia-smi said 9373 MiB free. ngl=18
+  # OOMs at 9407 MiB, ngl=17 OOMs at the compute-scratch alloc, ngl=16
+  # is the highest that fits.
+  #
+  # Wrapper usage:
+  #     scripts/ceiling-sweep-wrapper.sh .venv/bin/lab sweep run \
+  #         conf/sweep/<sweep>.yaml --allow-slow-models
+  #
+  # See docs/runbooks/llama-swap-runbook.md §"Phase 19e — 70B
+  # quality-ceiling lane" for the full ngl/throughput/VRAM table.
   #
   # Sweep runner gates this model via --allow-slow-models (capabilities
   # contains 'slow_mode' in lab.models). See packages/lab-sweep/.../runner.py
@@ -171,7 +186,7 @@ models:
     cmd: |
       ${LLAMA_SERVER}
       --port ${PORT} --host 127.0.0.1 --ctx-size 8192
-      --n-gpu-layers 14 -ctk q8_0 -ctv q8_0
+      --n-gpu-layers 16 -ctk q8_0 -ctv q8_0
       --model ${MODELS_DIR}/llama-3.3-70b-q4/Llama-3.3-70B-Instruct-Q4_K_M.gguf
       --jinja
     env:

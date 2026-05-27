@@ -401,16 +401,91 @@ hardware (single-digit, where the medium models do 30-60 tok/s).
 Plan §19e called for ngl=21 (per research-best on a clean 12 GB card).
 The Phase 19e tuning smoke had:
 
-| ngl | Outcome | Detail |
-|-----|---------|--------|
-| 21 | OOM | `cudaMalloc 10846 MiB > free 8.5 GiB` — research assumed 12 GB total free; rerank-server-resident (~2.6 GB) cuts it to 8.5 GB |
-| 15 | OOM | weights fit (7968 MiB) but KV-cache q8_0 alloc (238 MiB) tipped it over |
-| **14** | **works** | weights 7445 MiB on GPU, KV+scratch take total to 11.7 GB / 12 GB; 219 MB headroom |
+| ngl | Outcome (rerank loaded) | Outcome (rerank evicted via wrapper, #73) |
+|-----|-------------------------|-------------------------------------------|
+| 21 | OOM (`cudaMalloc 10846 MiB > free 8.5 GiB`) | OOM (`cudaMalloc 10846 MiB > free 9.4 GiB` — nvidia-smi's free counter doesn't show llama.cpp's 2.6 GB CUDA context reservation) |
+| 18 | not measured | OOM (`9407 MiB > free 9373 MiB`) |
+| 17 | not measured | OOM at compute-buffer alloc (model loads, then compute scratch fails on 312 MiB) |
+| **16** | OOM | **works (1.92 tok/s)** — model 8428 MiB + KV 255 + compute 312 + unaccounted 2582 ≈ 11600 of 11912 |
+| 15 | OOM (weights 7968 MiB + KV q8_0 alloc 238 MiB tipped) | not measured |
+| **14** | **works (1.83 tok/s)** — weights 7445 MiB, total 11.7 GB / 12 GB; 219 MB headroom | wrapper not needed |
 
 The 12 GB physical VRAM minus persistent rerank server (~2.6 GB) is the
-hard constraint here. We could squeeze ngl up by evicting the rerank
-server, but the cost is enormous re-load for every kb_query downstream;
-ngl=14 with the rerank server resident is the better lab-wide trade.
+hard constraint here. ngl=14 with the rerank server resident is the
+default lab-wide trade.
+
+For a higher throughput ceiling sweep use the **ceiling-sweep wrapper**
+(#73, 2026-05-27). Measured 2026-05-27 with the wrapper on a freshly-
+unloaded card: **ngl=16 fits at ~1.92 tok/s** (+5 % vs ngl=14 baseline of
+1.83 tok/s). ngl=17/18/21 still OOM because llama.cpp reserves ~2.6 GB
+of CUDA context+compute that nvidia-smi's "free" counter does not show
+— the real usable budget after freeing the rerank server is ~9 GB
+(model+KV+compute), not the 9.6 GB nvidia-smi reports. ngl=16 sets the
+model buffer to 8428 MiB which is the highest that fits within that
+budget. The +5 % is modest because we only gained 2 layers; the bigger
+win is operational (a sweep can run without a manual rerank stop).
+
+```bash
+scripts/ceiling-sweep-wrapper.sh .venv/bin/lab sweep run \
+    conf/sweep/<sweep>.yaml --allow-slow-models
+
+# or for a single agent run
+scripts/ceiling-sweep-wrapper.sh .venv/bin/lab agent run \
+    --suite pbs-agent-v0.1 --task <task> \
+    --model llama-3.3-70b-q4-local --allow-slow-models
+```
+
+The wrapper POSTs `/unload` to the rerank server (`lab.rag.rerank_server`,
+systemd `rerank.service`, port 8401) which releases the cross-encoder's
+~2.6 GB of VRAM but leaves the FastAPI process alive. The next `/rerank`
+call auto-reloads. **Why a wrapper not a llama-swap config rule:** the
+rerank server is a systemd-managed process outside llama-swap's control;
+the small-tools group's `persistent: true` is llama-swap describing
+itself, it can't evict processes it doesn't own. The wrapper is option
+(b) from the #73 design notes — option (a) (llama-swap eviction) is not
+expressible against an external server.
+
+When using the wrapper, edit `conf/llama-swap.yaml` to bump
+`--n-gpu-layers 14 → 16` for the 70B entry, restart llama-swap, then
+run the sweep. **The repo's checked-in value is 16** (the ceiling
+when rerank is evicted). If the rerank server is resident at the
+moment llama-swap tries to start the model, 16 will OOM — the wrapper's
+job is to make sure it isn't. For steady-state runs without the wrapper,
+drop ngl back to 14 (the documented steady-state value).
+
+A future improvement is to make the ngl value a llama-swap macro switched
+via env var so the wrapper can flip it automatically — not done today.
+
+ngl=17, 18, 21 all OOM even with rerank evicted. Why nvidia-smi lies:
+llama.cpp's CUDA context + compute scratch buffers reserve roughly
+2.6 GB that doesn't show up in `nvidia-smi --query-gpu=memory.free`
+because it's the framework's static allocation, not a model tensor.
+Measured llama_memory_breakdown_print at ngl=17:
+`unaccounted: 2582 MiB` while nvidia-smi reported 9373 MiB free. The
+real usable budget is ~9 GB minus the 2.6 GB reserved = ~6.4 GB for
+model+KV+compute, which ngl=16 just barely meets (8428 + 255 + 312 +
+unaccounted ≈ within 9 GB free at the boundary). ngl=21 needs 10846
+MiB for the model alone, which doesn't fit. The Phase 19e plan assumed
+the nvidia-smi number was the available budget; it isn't.
+
+### Ceiling-mode VRAM math (rerank evicted via wrapper, ngl=16)
+
+| Consumer | MiB |
+|---|---|
+| Chrome + desktop apps (typical) | ~250 |
+| 70B weights at ngl=16 (GPU) | ~8,428 |
+| 70B weights (CPU mmap, 64/80 layers) | ~32,114 (DDR5) |
+| KV-cache q8_0, ctx 8192 (GPU portion) | ~255 |
+| Compute scratch | ~312 |
+| Unaccounted (CUDA ctx + reserved) | ~2,582 |
+| Total resident on GPU | ~11,600 (~280 MB headroom) |
+
+If ollama is also resident with a model loaded, the wrapper does NOT
+proactively evict it — the operator is responsible (`curl
+http://localhost:11434/api/generate -d '{"model":"...","keep_alive":0}'`).
+Ollama parking 5-9 GB on the GPU is the #1 cause of "wrapper still
+OOMs" in practice. The wrapper logs `nvidia-smi` before/after the
+unload so the operator can spot this.
 
 ### Measured smoke (2026-05-27)
 
@@ -433,11 +508,10 @@ PBS-Agent task `fs-read-and-copy` end-to-end via
 The 1.8 tok/s is slower than the plan's 6-10 tok/s aspiration. Root
 cause: only 14/81 layers run on GPU (vs the 21/81 the research assumed
 was possible). The remaining 67 layers are CPU-bound; aggregate
-throughput is dominated by the CPU pipeline. A future fix is to free
-the rerank server's VRAM during ceiling-llm sweeps (would need cross-
-group eviction in llama-swap config OR a wrapper that pauses the
-persistent reranker) — left for future work; today's plain ceiling-llm
-group doesn't do that.
+throughput is dominated by the CPU pipeline. Resolved 2026-05-27 (#73)
+via `scripts/ceiling-sweep-wrapper.sh` — see the §"Working --n-gpu-layers"
+section above for the wrapper flow and the steady-state vs ceiling-sweep
+trade-off.
 
 ### Sweep-runner `--allow-slow-models` gate
 
