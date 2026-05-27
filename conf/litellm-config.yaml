@@ -163,4 +163,33 @@ general_settings:
 
 router_settings:
   routing_strategy: simple-shuffle
-  cooldown_time: 30
+  # Cooldown was 30s; bumped to 60s so a transient cold-load 502 from
+  # llama-swap doesn't drop a model out of the routing pool for too long,
+  # but is still long enough to dodge a hot crash-loop. (Phase 19e #74.)
+  cooldown_time: 60
+  # Issue #74: cold-load 502 from llama-swap.
+  # When the big-model lane (llama-3.3-70b-q4-local, qwen3-30b-a3b-moe,
+  # gpt-oss-20b-local, phi-4-reasoning-14b) has TTL'd out, the next call
+  # forces a fresh llama.cpp process to spawn. The first 1-2s of that
+  # spawn occasionally exits prematurely (upstream process supervisor
+  # race) and llama-swap returns HTTP 502 "upstream command exited
+  # prematurely but successfully". A retry usually succeeds because the
+  # second attempt gets the now-warm process.
+  # `num_retries: 3` above counts overall attempts; `InternalServerError-
+  # Retries: 2` ensures 5xx responses (including 502 BadGateway from
+  # llama-swap) are explicitly retried before falling back. Other error
+  # classes default to LiteLLM's normal behavior.
+  retry_policy:
+    InternalServerErrorRetries: 2
+    TimeoutErrorRetries: 2
+    RateLimitErrorRetries: 2
+    AuthenticationErrorRetries: 0
+    BadRequestErrorRetries: 0
+    ContentPolicyViolationErrorRetries: 0
+  # Don't let a single 502 cool down a llama-swap-backed model immediately
+  # (it'd fall back to a smaller model and lose the experiment cell's
+  # apples-to-apples comparison). Three consecutive 5xx in a minute is
+  # still a real outage and should trip cooldown.
+  allowed_fails_policy:
+    InternalServerErrorAllowedFails: 3
+    TimeoutErrorAllowedFails: 3
