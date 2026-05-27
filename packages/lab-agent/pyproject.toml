@@ -1,0 +1,26 @@
+[project]
+name = "lab-agent"
+version = "0.0.1"
+description = "Lab agent runtime: gVisor sandbox, tool pool, MCP-style tool servers."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
+
+dependencies = [
+    "lab-core",
+    "lab-rag",
+    "mcp>=1.27.1",
+    "httpx>=0.27.0",
+]
+
+[tool.uv.sources]
+lab-core = { workspace = true }
+lab-rag = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lab"]

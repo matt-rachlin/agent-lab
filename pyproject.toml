@@ -8,6 +8,16 @@ license = { text = "MIT" }
 authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 
 dependencies = [
+    # Phase 15.1: workspace members. Each lives under packages/lab-*/src/lab/<name>
+    # and contributes to the `lab.*` PEP 420 namespace package.
+    "lab-core",
+    "lab-rag",
+    "lab-agent",
+    "lab-eval",
+    "lab-inspect",
+    "lab-sweep",
+    "lab-observability",
+    "lab-cli",
     # Core
     "pydantic>=2.9.0",
     "pydantic-settings>=2.5.0",
@@ -95,10 +105,28 @@ rag = [
 [project.scripts]
 lab = "lab.cli:app"
 
+# Phase 15.1: uv workspace declaration. Members live under packages/lab-*.
+[tool.uv.workspace]
+members = ["packages/lab-*"]
+
+[tool.uv.sources]
+lab-core = { workspace = true }
+lab-rag = { workspace = true }
+lab-agent = { workspace = true }
+lab-eval = { workspace = true }
+lab-inspect = { workspace = true }
+lab-sweep = { workspace = true }
+lab-observability = { workspace = true }
+lab-cli = { workspace = true }
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# Phase 15.1: root `lab` distribution is an umbrella that just pulls in the
+# workspace members; the source for the `lab.*` namespace lives in those.
+# Build the wheel from the (now empty after migration) src/lab to satisfy
+# hatchling's package discovery without re-shipping any modules.
 [tool.hatch.build.targets.wheel]
 packages = ["src/lab"]
 
