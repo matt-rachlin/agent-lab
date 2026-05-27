@@ -170,8 +170,12 @@ def test_hybrid_query_alpha_backcompat_routes_through_alpha_blend(
 
     monkeypatch.setattr(idx.lancedb, "connect", lambda _p: FakeDB())
     monkeypatch.setattr(idx, "_stage1_candidates", fake_stage1)
+    # ``hybrid_query`` calls the unqualified ``embed_texts`` name bound at
+    # import time in ``lab.rag.index``; patching the source module would be
+    # a no-op since the reference is already resolved.
     monkeypatch.setattr(
-        "lab.rag.embedder.embed_texts",
+        idx,
+        "embed_texts",
         lambda *a, **kw: type("R", (), {"vectors": [[0.0]]})(),
     )
 
