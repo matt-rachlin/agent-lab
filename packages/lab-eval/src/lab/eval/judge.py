@@ -73,10 +73,33 @@ def _clamp(x: float) -> float:
     return max(0.0, min(1.0, x))
 
 
+# Default max_tokens for judge completions. Reasoning models (gpt-oss-*,
+# o-series, etc.) spend most of their completion budget on
+# ``reasoning_content`` that never reaches ``message.content``; a 256-token
+# budget is consumed by the CoT and the visible JSON answer is empty, which
+# the parser surfaces as ``(0.0, "empty judge response")``. See
+# ``docs/postmortems/trajectory-judge-empty-response.md`` (Phase 17.6).
+_DEFAULT_MAX_TOKENS = 1024
+
+
 def _call_litellm(
-    *, model: str, system: str, user: str, timeout: int = 120
+    *,
+    model: str,
+    system: str,
+    user: str,
+    timeout: int = 120,
+    max_tokens: int = _DEFAULT_MAX_TOKENS,
 ) -> tuple[str, dict[str, int]]:
-    """Plain chat completion via the lab's LiteLLM proxy."""
+    """Plain chat completion via the lab's LiteLLM proxy.
+
+    Returns ``(content, usage)``. If the model returned an empty
+    ``message.content`` but populated ``reasoning_content`` (the
+    reasoning-model shape), the reasoning is returned as content so the
+    tolerant parser can still recover a ``"score": …`` JSON object from
+    it. This is the cheap fallback; the proper fix is the larger
+    ``max_tokens`` default, but the fallback is what saves a call that
+    would otherwise have wasted compute.
+    """
     settings = get_settings()
     key = _read_litellm_key()
     url = settings.litellm_url.rstrip("/") + "/v1/chat/completions"
@@ -87,13 +110,19 @@ def _call_litellm(
             {"role": "user", "content": user},
         ],
         "temperature": 0.0,
-        "max_tokens": 256,
+        "max_tokens": max_tokens,
     }
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
     r = httpx.post(url, json=body, headers=headers, timeout=timeout)
     r.raise_for_status()
     data = r.json()
-    content = ((data.get("choices") or [{}])[0]).get("message", {}).get("content", "")
+    message = ((data.get("choices") or [{}])[0]).get("message", {}) or {}
+    content = message.get("content") or ""
+    if not content.strip():
+        # Reasoning-model fallback: try ``reasoning_content``.
+        reasoning = message.get("reasoning_content") or ""
+        if reasoning.strip():
+            content = reasoning
     usage = data.get("usage") or {}
     return content, {
         "prompt_tokens": int(usage.get("prompt_tokens", 0)),
