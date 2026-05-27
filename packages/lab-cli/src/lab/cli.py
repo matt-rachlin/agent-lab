@@ -115,6 +115,46 @@ def models_sync(
     )
 
 
+@models_app.command("show")
+def models_show(
+    litellm_id: str = typer.Argument(..., help="The canonical litellm_id, e.g. qwen3-30b-a3b-moe"),
+) -> None:
+    """Show a single model registry row.
+
+    Phase 19a: added so each new model is queryable via
+    `lab models show <litellm_id>` per the phase plan.
+    """
+    import psycopg
+
+    from lab.core.settings import get_settings
+
+    sql = """
+    SELECT model_id, publisher, name, variant, quant, backend, litellm_id,
+           source_url, ollama_tag, vram_gb, context_max, output_max,
+           license, capabilities, notes, pulled_at, retired_at,
+           mlflow_model_uri
+    FROM models
+    WHERE litellm_id = %s
+    """
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute(sql, (litellm_id,))
+        row = cur.fetchone()
+        if row is None:
+            console.print(f"[red]no models row for litellm_id={litellm_id!r}[/]")
+            raise typer.Exit(code=2)
+        cols = [d[0] for d in (cur.description or [])]
+    table = Table("Field", "Value", show_lines=False)
+    for k, v in zip(cols, row, strict=True):
+        if v is None:
+            disp = "[dim]—[/]"
+        elif isinstance(v, list):
+            disp = ", ".join(map(str, v)) if v else "[dim](empty)[/]"
+        else:
+            disp = str(v)
+        table.add_row(k, disp)
+    console.print(table)
+
+
 # ---------------------------------------------------------------------------
 # sweep
 # ---------------------------------------------------------------------------
