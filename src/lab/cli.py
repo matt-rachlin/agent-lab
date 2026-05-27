@@ -547,11 +547,10 @@ def agent_run(
 
     from inspect_ai import eval as inspect_eval
     from lab.agent.sandbox import Sandbox
-    from lab.tasks.registry import Task as LabTask
-    from lab.tasks.registry import get_tasks
-
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
+    from lab.tasks.registry import Task as LabTask
+    from lab.tasks.registry import get_tasks
 
     rows = get_tasks(suite, [task])
     if not rows:
@@ -792,7 +791,6 @@ def agent_tools_test(
     """
     from lab.agent.sandbox import Sandbox, gvisor_available
     from lab.agent.tools import TOOL_SERVERS
-
     from lab.inspect_bridge.tools import _invoke_tool_via_sandbox_sync
 
     if name not in TOOL_SERVERS:

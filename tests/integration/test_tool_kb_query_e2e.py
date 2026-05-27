@@ -22,7 +22,6 @@ import pytest
 from lab.agent.sandbox import Sandbox, gvisor_available
 from lab.agent.tools import TOOL_SERVERS
 from lab.core.settings import get_settings
-
 from lab.inspect_bridge.tools import _invoke_tool_via_sandbox_sync
 
 pytestmark = pytest.mark.integration

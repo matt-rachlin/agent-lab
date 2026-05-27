@@ -595,10 +595,9 @@ def _execute_agent_cell(
     """Phase 6 path: build an Inspect task, run it, mirror the log into Postgres + MinIO."""
 
     from lab.agent.sandbox import Sandbox
-    from lab.tasks.registry import Task as LabTask
-
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
+    from lab.tasks.registry import Task as LabTask
 
     payload = cell.task_payload
 

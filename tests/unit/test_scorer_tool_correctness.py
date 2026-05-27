@@ -8,9 +8,8 @@ from typing import Any
 from inspect_ai.model import ChatMessageUser
 from inspect_ai.scorer import NOANSWER, Target
 from inspect_ai.solver import TaskState
-from lab.tasks.registry import Task
-
 from lab.inspect_bridge.scorer import tool_correctness
+from lab.tasks.registry import Task
 
 
 def _state(*, rubric: dict[str, Any] | None, turns: list[dict[str, Any]]) -> TaskState:

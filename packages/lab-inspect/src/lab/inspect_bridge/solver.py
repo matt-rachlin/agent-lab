@@ -30,7 +30,6 @@ from lab.agent.sandbox import Sandbox
 from lab.agent.tool_pool import ToolPool
 from lab.core.llm import call_litellm_chat
 from lab.core.settings import get_settings
-
 from lab.inspect_bridge.tools import discover_tool_schemas
 
 # Truncation budget for tool call inputs/outputs recorded in `turns`.

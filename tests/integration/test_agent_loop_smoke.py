@@ -56,10 +56,9 @@ def test_agent_loop_smoke_reads_a_file(pg: Any, minio_client: Any, tmp_path: Any
 
     from inspect_ai import eval as inspect_eval
     from lab.agent.sandbox import Sandbox
-    from lab.tasks.registry import Task
-
     from lab.inspect_bridge.adapter import lab_task_to_inspect
     from lab.inspect_bridge.logwriter import SweepContext, write_run_from_inspect_log
+    from lab.tasks.registry import Task
 
     note_content = "the secret is 17"
     task = Task.model_validate(

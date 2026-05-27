@@ -102,7 +102,6 @@ def test_one_task_per_tool_runs_through_harness(tool_name: str, task: Task, tmp_
 
     from inspect_ai import eval as inspect_eval
     from lab.agent.sandbox import Sandbox
-
     from lab.inspect_bridge.adapter import lab_task_to_inspect
 
     model = os.environ.get("LAB_SMOKE_AGENT_MODEL", "llama3.1-8b-q4")

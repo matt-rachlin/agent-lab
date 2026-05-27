@@ -9,10 +9,9 @@ import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_ai.scorer import NOANSWER, Target
 from inspect_ai.solver import TaskState
-from lab.tasks.registry import Task
-
 from lab.inspect_bridge import scorer as scorer_mod
 from lab.inspect_bridge.scorer import end_state
+from lab.tasks.registry import Task
 
 
 def _state(

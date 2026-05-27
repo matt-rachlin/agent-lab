@@ -17,7 +17,6 @@ cd "$(dirname "$0")/.."
 # Each entry is the path of a placeholder __init__.py that would
 # collide with the same module still living under src/lab/.
 SKELETON_INITS=(
-    packages/lab-inspect/src/lab/inspect_bridge/__init__.py
     packages/lab-sweep/src/lab/sweep/__init__.py
     packages/lab-observability/src/lab/observability/__init__.py
 )
