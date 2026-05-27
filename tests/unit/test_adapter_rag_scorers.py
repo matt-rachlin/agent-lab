@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Any
 
 from inspect_ai._util.registry import registry_info
-
 from lab.inspect_bridge.adapter import _select_scorers, _task_uses_kb_query
 from lab.tasks.registry import Task
 

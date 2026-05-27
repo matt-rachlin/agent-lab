@@ -340,7 +340,7 @@ def reliability_ratio(cells: list[Cell], model: str, scorer: str) -> tuple[float
 _MODEL_WEIGHTS: dict[str, float] = {
     "gpt-oss-20b-cloud": 1.0,
     "gpt-oss-120b-cloud": 6.0,
-    "glm-5.1-cloud": 3.0,  # rough mid-tier proxy; not in lab.quota._MODEL_WEIGHTS
+    "glm-5.1-cloud": 3.0,  # rough mid-tier proxy; not in lab.observability.quota._MODEL_WEIGHTS
     "qwen3-14b-q4": 0.5,
     "llama3.1-8b-q4": 0.3,
 }
@@ -349,7 +349,7 @@ _MODEL_WEIGHTS: dict[str, float] = {
 def per_turn_cost_and_latency(cells: list[Cell], model: str) -> tuple[float, float, int]:
     """Return (mean_cost_weight_per_turn, mean_latency_ms_per_turn, n_cells_used).
 
-    Per pre-reg: cost is proxied by `lab.quota._MODEL_WEIGHTS` when metered
+    Per pre-reg: cost is proxied by `lab.observability.quota._MODEL_WEIGHTS` when metered
     cost is $0. We use per-cell average turn cost = model_weight per turn
     (independent of token volume — it's a flat proxy in pre-reg).
     Latency per turn = total cell latency / actual_turns.

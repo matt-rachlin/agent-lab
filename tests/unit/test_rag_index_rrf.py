@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from lab.rag import RRF_K
 from lab.rag.index import _rrf_fuse, _stage1_candidates, hybrid_query
 

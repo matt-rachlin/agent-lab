@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from lab.tasks.registry import Task, load_tasks
 
 YAML_DICT_FORMAT = """

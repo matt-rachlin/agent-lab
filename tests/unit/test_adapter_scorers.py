@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from inspect_ai._util.registry import registry_info
-
 from lab.inspect_bridge.adapter import _select_scorers
 from lab.tasks.registry import Task
 

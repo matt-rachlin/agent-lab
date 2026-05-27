@@ -13,7 +13,6 @@ from typing import Any
 
 import httpx
 import pytest
-
 from lab.sweep.config import RunConfig, SweepConfig
 from lab.sweep.runner import execute_cell, expand_matrix
 from lab.tasks.registry import Task, register_tasks

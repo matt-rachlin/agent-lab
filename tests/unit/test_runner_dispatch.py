@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
 from lab.sweep.runner import _is_agent_cell
 
 

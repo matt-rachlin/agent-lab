@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from lab.tasks.registry import Task, load_tasks
+from pydantic import ValidationError
 
 
 def test_defaults_are_backwards_compatible() -> None:

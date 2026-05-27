@@ -15,7 +15,6 @@ Skips cleanly when gVisor is not available.
 from __future__ import annotations
 
 import pytest
-
 from lab.agent.sandbox import Sandbox, gvisor_available
 
 pytestmark = pytest.mark.integration

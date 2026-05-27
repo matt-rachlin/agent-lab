@@ -12,7 +12,6 @@ import time
 from typing import Any
 
 import pytest
-
 from lab.rag.cache import (
     EMBED_TTL_SEC,
     KEY_HASH_LEN,

@@ -13,6 +13,9 @@ from lab.core.manifest import capture as capture_manifest
 from lab.core.notify import get_ntfy_url, notify
 from lab.eval import apply_to_experiment, get_registry, load_evaluators_from
 from lab.eval.builtin import register_all as register_builtin_evaluators
+from lab.observability.quota import alert_if_high as quota_alert
+from lab.observability.quota import usage_window as quota_window
+from lab.observability.spend import backfill as spend_backfill
 from lab.sweep.config import load_sweep
 from lab.sweep.runner import cancel_sweep, get_sweep_status, run_sweep
 from lab.tasks.registry import list_suites, load_tasks, register_tasks
@@ -28,9 +31,6 @@ from lab.experiment import (
 )
 from lab.finding import list_findings, new_finding
 from lab.finding import sync as sync_findings
-from lab.quota import alert_if_high as quota_alert
-from lab.quota import usage_window as quota_window
-from lab.spend import backfill as spend_backfill
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()

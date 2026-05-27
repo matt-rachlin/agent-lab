@@ -15,7 +15,6 @@ import pytest
 from inspect_ai.model import ChatMessageAssistant, ChatMessageUser
 from inspect_ai.scorer import NOANSWER, Target
 from inspect_ai.solver import TaskState
-
 from lab.inspect_bridge import scorer as scorer_mod
 from lab.inspect_bridge.scorer import _normalise_1_to_5, trajectory_judge
 from lab.tasks.registry import Task

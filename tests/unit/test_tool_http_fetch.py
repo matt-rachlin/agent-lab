@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import httpx
 import pytest
-
 from lab.agent.tools import http_fetch as http_fetch_mod
 
 

@@ -11,7 +11,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from lab.agent.tools import fs_grep as fs_grep_mod
 
 

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from lab.sweep.config import (
     RunConfig,
     SweepConfig,

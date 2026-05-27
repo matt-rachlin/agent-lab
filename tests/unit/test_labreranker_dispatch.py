@@ -14,7 +14,6 @@ import time
 from typing import Any, ClassVar
 
 import pytest
-
 from lab.rag import RERANKER_ENV_VAR
 from lab.rag.rerank import LabReranker, reset_default_reranker
 from lab.rag.rerank_client import URL_ENV_VAR
