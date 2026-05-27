@@ -61,6 +61,57 @@ class SweepContext:
 _SANDBOX_HASH_PATH = Path("conf/sandbox-image.sha")
 
 
+def _aggregate_tokens(
+    *,
+    lab_agent: dict[str, Any],
+    model_usage: dict[str, Any] | None = None,
+) -> tuple[int | None, int | None]:
+    """Aggregate (tokens_in, tokens_out) for an agent cell.
+
+    Primary source is `lab_agent["turns"][*].tokens_in/tokens_out` —
+    populated by the bypass solver (`lab.inspect_bridge.solver`) directly
+    from the LiteLLM proxy's `usage` field on each `/v1/chat/completions`
+    response. The custom solver bypasses inspect_ai's own model wrapper,
+    so `sample.model_usage` is empty (issue #70: every `tokens_in`/
+    `tokens_out` was NULL in `experiment_runs` for EXP-006 agent cells).
+
+    `model_usage` is kept as a fallback in case a future code path
+    eventually goes through inspect_ai's native model interface (which
+    would populate `sample.model_usage` and leave `lab_agent.turns`
+    empty).
+
+    Returns `(None, None)` if no token counts are recoverable so the DB
+    column stays NULL rather than spuriously reading 0.
+    """
+
+    turns = lab_agent.get("turns") or []
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    for turn in turns:
+        if not isinstance(turn, dict):
+            continue
+        ti = turn.get("tokens_in")
+        to = turn.get("tokens_out")
+        if ti is not None:
+            tokens_in = (tokens_in or 0) + int(ti)
+        if to is not None:
+            tokens_out = (tokens_out or 0) + int(to)
+
+    if tokens_in is not None or tokens_out is not None:
+        return tokens_in, tokens_out
+
+    # Fallback: inspect_ai's native usage (empty for bypass-solver runs).
+    for v in (model_usage or {}).values():
+        if isinstance(v, dict):
+            ti = v.get("input_tokens")
+            to = v.get("output_tokens")
+            if ti is not None:
+                tokens_in = (tokens_in or 0) + int(ti)
+            if to is not None:
+                tokens_out = (tokens_out or 0) + int(to)
+    return tokens_in, tokens_out
+
+
 def _read_sandbox_hash() -> str | None:
     """Return the recorded sandbox image hash, or None if absent.
 
@@ -331,19 +382,10 @@ def _upsert_experiment_run(
     error = lab_agent.get("error") or extracted.get("error")
     status = "error" if error else "done"
 
-    usage = extracted.get("model_usage") or {}
-    tokens_in: int | None = None
-    tokens_out: int | None = None
-    # `model_usage` is keyed by model name; aggregate across models for the
-    # cell's totals.
-    for v in usage.values():
-        if isinstance(v, dict):
-            ti = v.get("input_tokens")
-            to = v.get("output_tokens")
-            if ti is not None:
-                tokens_in = (tokens_in or 0) + int(ti)
-            if to is not None:
-                tokens_out = (tokens_out or 0) + int(to)
+    tokens_in, tokens_out = _aggregate_tokens(
+        lab_agent=lab_agent,
+        model_usage=extracted.get("model_usage"),
+    )
     latency_ms = lab_agent.get("total_latency_ms") or 0
 
     with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
@@ -487,17 +529,10 @@ def _mirror_agent_run_to_mlflow(
         error = lab_agent.get("error") or extracted.get("error")
         status = "FAILED" if error else "FINISHED"
 
-        usage = extracted.get("model_usage") or {}
-        tokens_in: int | None = None
-        tokens_out: int | None = None
-        for v in usage.values():
-            if isinstance(v, dict):
-                ti = v.get("input_tokens")
-                to = v.get("output_tokens")
-                if ti is not None:
-                    tokens_in = (tokens_in or 0) + int(ti)
-                if to is not None:
-                    tokens_out = (tokens_out or 0) + int(to)
+        tokens_in, tokens_out = _aggregate_tokens(
+            lab_agent=lab_agent,
+            model_usage=extracted.get("model_usage"),
+        )
         metrics: dict[str, float] = {}
         latency = lab_agent.get("total_latency_ms")
         if latency is not None:

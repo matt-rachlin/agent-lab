@@ -498,3 +498,64 @@ Phase 19a models (they have Ollama tags too, just not currently exposed):
 edit `conf/litellm-config.yaml`, change the three new entries' `api_base`
 back to `http://host.containers.internal:11434` and `model:` back to the
 `ollama_chat/<tag>` form, then `systemctl --user stop llama-swap`.
+
+## LiteLLM integration
+
+### Cold-load 502 retry policy (issue #74)
+
+When the big-model lane has TTL'd out of llama-swap's pool, the next
+request forces a fresh llama.cpp process spawn. Occasionally the first
+1-2 seconds of that spawn races a supervisor signal and llama-swap
+returns:
+
+```
+HTTP 502 — unable to start process: upstream command exited prematurely but successfully
+```
+
+A second attempt almost always succeeds because the process is now
+warm. The LiteLLM config in `conf/litellm-config.yaml` handles this
+with two complementary policies under `router_settings`:
+
+```yaml
+retry_policy:
+  InternalServerErrorRetries: 2   # 5xx (incl. 502) → 2 explicit retries
+  TimeoutErrorRetries: 2
+allowed_fails_policy:
+  InternalServerErrorAllowedFails: 3   # >3 5xx/min → cooldown
+  TimeoutErrorAllowedFails: 3
+cooldown_time: 60                       # was 30; doubled for cold-load
+```
+
+Combined with `num_retries: 3` in `litellm_settings`, a transient 502
+gets up to 3 retry attempts before falling back / failing. A sustained
+outage (>3 5xx in 60 s) trips cooldown and removes the model from the
+routing pool for 60 s — same shape as before, just two-tier so a single
+cold-load 502 doesn't immediately drop the experiment cell's arm.
+
+Per-route timeouts (`timeout: 600` for 30b/14b/20b, `timeout: 1800` for
+70B) cover the worst-case cold-load + multi-minute generation.
+
+### Token-count passthrough (issue #70)
+
+LiteLLM correctly relays llama.cpp/Ollama `usage` (prompt_tokens,
+completion_tokens) on every `/v1/chat/completions`. The bug fixed in
+#70 was in the lab runner's agent path: the bypass solver
+(`lab.inspect_bridge.solver`) calls LiteLLM directly via httpx and
+records per-turn tokens into `lab_agent.turns[].tokens_in/out`, but
+`sample.model_usage` from inspect_ai remains empty (inspect's own
+model wrapper is not in the call path). The old aggregation read only
+`sample.model_usage` and silently dropped every token count.
+
+Fix: `_aggregate_tokens` in
+`packages/lab-inspect/src/lab/inspect_bridge/logwriter.py` prefers
+`lab_agent.turns` and falls back to `model_usage`. Used in 3 places:
+the DB upsert, the MLflow mirror, and the runner's CellResult build.
+
+To smoke this after a change, run any agent-mode cell and check:
+
+```bash
+psql lab -c "SELECT run_id, tokens_in, tokens_out FROM experiment_runs
+             ORDER BY started_at DESC LIMIT 5;"
+```
+
+Both columns should be non-null on every successful agent cell.

@@ -1037,18 +1037,21 @@ def _execute_agent_cell(
                     metadata = sample.metadata or {}
                     lab_agent = metadata.get("lab_agent") or {}
                 # Extract usage/latency while the .eval file is still on disk.
+                # `sample.model_usage` is empty for bypass-solver runs (the
+                # lab's custom agent loop calls LiteLLM directly via httpx,
+                # not through inspect_ai's Model wrapper). Use the shared
+                # `_aggregate_tokens` helper which prefers `lab_agent.turns`
+                # and falls back to `model_usage` (issue #70).
                 latency_ms = int(lab_agent.get("total_latency_ms") or 0)
                 usage = getattr(sample, "model_usage", None) if sample is not None else None
                 if usage is not None and hasattr(usage, "model_dump"):
                     usage = usage.model_dump()
-                tokens_in: int | None = None
-                tokens_out: int | None = None
-                for v in (usage or {}).values():
-                    if isinstance(v, dict):
-                        if v.get("input_tokens") is not None:
-                            tokens_in = (tokens_in or 0) + int(v["input_tokens"])
-                        if v.get("output_tokens") is not None:
-                            tokens_out = (tokens_out or 0) + int(v["output_tokens"])
+                from lab.inspect_bridge.logwriter import _aggregate_tokens
+
+                tokens_in, tokens_out = _aggregate_tokens(
+                    lab_agent=lab_agent,
+                    model_usage=usage,
+                )
         result = CellResult(
             run_id=cell.run_id,
             status="error" if lab_agent.get("error") else "done",
