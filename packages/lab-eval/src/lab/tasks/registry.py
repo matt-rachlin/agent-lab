@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 import psycopg
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lab.core.settings import get_settings
 
@@ -49,6 +49,10 @@ class Task(BaseModel):
     # Required input
     input: str
     system: str | None = None
+    # Phase 16.4: tasks may reference a prompt by ID instead of inlining.
+    # Exactly zero or one of {system, system_prompt_id} may be set per task;
+    # set both is rejected by the validator below.
+    system_prompt_id: str | None = None
     tools: list[dict[str, Any]] | None = None
 
     # Agent loop knobs (Phase 6). Defaults preserve single-turn no-tool behavior.
@@ -74,6 +78,15 @@ class Task(BaseModel):
         if v < 0:
             raise ValueError("tool_budget must be >= 0")
         return v
+
+    @model_validator(mode="after")
+    def _validate_system_or_prompt_id(self) -> Task:
+        if self.system is not None and self.system_prompt_id is not None:
+            raise ValueError(
+                "Task may set at most one of {system, system_prompt_id}; "
+                f"both were provided for {self.suite}/{self.slug}"
+            )
+        return self
 
 
 def load_tasks(path: Path) -> list[Task]:
@@ -127,6 +140,7 @@ def register_tasks(tasks: Iterable[Task]) -> int:
             payload = {
                 "input": task.input,
                 "system": task.system,
+                "system_prompt_id": task.system_prompt_id,
                 "tools": task.tools,
                 "max_turns": task.max_turns,
                 "tool_budget": task.tool_budget,
