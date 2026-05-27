@@ -161,6 +161,17 @@ test-int:
 check: lint fmt-check types test
     @echo "all clean"
 
+# --- benchmarks (Phase 13.3) ---
+
+# Run every bench under benchmarks/, append to history.csv, print
+# the regression summary, and write benchmarks/latest.md.
+bench:
+    uv run python -m benchmarks.runner
+
+# Quick subset — only the benches that need no GPU lease / no Ollama.
+bench-quick:
+    uv run python -m benchmarks.runner --quick
+
 # --- docs ---
 
 docs-serve:
