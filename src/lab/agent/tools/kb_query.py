@@ -67,6 +67,7 @@ def kb_query(
     fusion: str = "rrf",
     expand_to_parent: bool = True,
     dedupe_by_parent: bool = True,
+    multi_query: bool = False,
 ) -> dict[str, Any]:
     """Search a lab knowledge base for relevant passages.
 
@@ -102,6 +103,11 @@ def kb_query(
             the same parent into a single representative (max-of-children
             score). Avoids returning N children of the same section as N
             distinct results. Default True; no-op for FLAT v1 KBs.
+        multi_query: Phase 12 — expand the question into N alternate
+            phrasings via a local LLM and RRF-fuse the per-phrasing hit
+            lists. Adds ~1 LLM call + N additional retrievals per question; only
+            worth it for ambiguous queries where the user's wording may
+            not match the documentation's. Default False (explicit opt-in).
 
     Returns:
         ``{"hits": [{chunk_id, source_url, section_path, text, score,
@@ -179,6 +185,7 @@ def kb_query(
             filter_authority=authority,
             expand_to_parent=bool(expand_to_parent),
             dedupe_by_parent=bool(dedupe_by_parent),
+            multi_query=bool(multi_query),
         )
     except Exception as exc:
         return {"hits": [], "error": f"hybrid_query failed: {exc}"}

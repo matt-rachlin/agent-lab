@@ -69,12 +69,22 @@ def rerank_key(
     kb_version: str,
     top_k: int,
     rerank_model: str,
+    *,
+    multi_query: bool = False,
 ) -> str:
     """Stable key for the tier-2 rerank-result cache.
 
     ``kb_version`` is the namespace token — see :func:`kb_version_token`.
+
+    ``multi_query`` (Phase 12) is folded into the hash so that multi-query
+    expansion results don't collide with single-query results for the same
+    (query, kb_version, top_k, rerank_model). Defaults to False to keep
+    keys stable for callers that don't yet pass the flag.
     """
-    payload = f"{kb_version}|{rerank_model}|{top_k}|{_normalize_query(query)}"
+    mq_tag = "mq1" if multi_query else "mq0"
+    payload = (
+        f"{kb_version}|{rerank_model}|{top_k}|{mq_tag}|{_normalize_query(query)}"
+    )
     return f"rrk:{_sha256_short(payload)}"
 
 
@@ -231,8 +241,12 @@ class RagCache:
         kb_version: str,
         top_k: int,
         rerank_model: str,
+        *,
+        multi_query: bool = False,
     ) -> list[dict[str, Any]] | None:
-        key = rerank_key(query, kb_version, top_k, rerank_model)
+        key = rerank_key(
+            query, kb_version, top_k, rerank_model, multi_query=multi_query
+        )
         try:
             raw = self._client.get(key)
         except Exception as exc:
@@ -256,10 +270,14 @@ class RagCache:
         top_k: int,
         rerank_model: str,
         hits: list[dict[str, Any]],
+        *,
+        multi_query: bool = False,
     ) -> None:
         if not hits:
             return
-        key = rerank_key(query, kb_version, top_k, rerank_model)
+        key = rerank_key(
+            query, kb_version, top_k, rerank_model, multi_query=multi_query
+        )
         try:
             self._client.set(key, _encode_rerank(hits), ex=RERANK_TTL_SEC)
         except Exception as exc:

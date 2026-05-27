@@ -508,6 +508,7 @@ def hybrid_query(
     expand_to_parent: bool = True,
     dedupe_by_parent: bool = True,
     use_hype: bool | None = None,
+    multi_query: bool = False,
 ) -> list[Hit]:
     """Hybrid dense + sparse retrieval with optional cross-encoder rerank.
 
@@ -547,6 +548,13 @@ def hybrid_query(
         Pass ``False`` to force-disable (ablation), ``True`` to force-enable
         (will be a no-op on a v1/v2 KB with empty hype_vectors).
 
+    Phase 12 multi-query:
+      * ``multi_query`` expands the query into N alternate phrasings via a
+        local LLM, runs ``hybrid_query`` once per phrasing, and RRF-fuses
+        the result lists. Default OFF — adds one LLM call + N extra
+        retrievals per top-level question. Inner calls always run with
+        ``multi_query=False`` to prevent recursive expansion.
+
     Returns ``[]`` (without calling the embedding model) if the KB has no
     index yet — so callers can smoke-test against in-progress KBs without
     burning GPU time.
@@ -554,6 +562,25 @@ def hybrid_query(
     from lab.rag import DEFAULT_EMBED_MODEL
 
     model = model or DEFAULT_EMBED_MODEL
+
+    # Phase 12: when ``multi_query`` is set, fan out to alternate phrasings
+    # and RRF-fuse the result lists. The inner call(s) always run with
+    # ``multi_query=False`` so we can't recurse.
+    if multi_query:
+        return _hybrid_query_multi(
+            kb_dir=kb_dir,
+            query_text=query_text,
+            k=k,
+            fusion=fusion,
+            rerank=rerank,
+            top_k_stage1=top_k_stage1,
+            alpha=alpha,
+            model=model,
+            filter_authority=filter_authority,
+            expand_to_parent=expand_to_parent,
+            dedupe_by_parent=dedupe_by_parent,
+            use_hype=use_hype,
+        )
 
     # Early-return on missing/empty index: avoids hitting Ollama for an empty KB.
     if not (kb_dir / "index").exists():
@@ -694,6 +721,78 @@ def hybrid_query(
     if expand_to_parent and any(h.parent_chunk_id for h in hits):
         _expand_to_parent_in_hits(tbl, hits)
     return hits
+
+
+def _hybrid_query_multi(
+    *,
+    kb_dir: Path,
+    query_text: str,
+    k: int,
+    fusion: FusionStrategy,
+    rerank: bool,
+    top_k_stage1: int,
+    alpha: float | None,
+    model: str | None,
+    filter_authority: str | None,
+    expand_to_parent: bool,
+    dedupe_by_parent: bool,
+    use_hype: bool | None,
+) -> list[Hit]:
+    """Phase 12: multi-query expansion with RRF fusion across phrasings.
+
+    The original ``query_text`` is always retained as the first phrasing —
+    if LLM expansion fails we degrade to a single ``hybrid_query`` call
+    (no extra cost vs. ``multi_query=False``).
+    """
+    from lab.rag.expand import multi_query as _expand_multi_query
+
+    phrasings = _expand_multi_query(query_text)
+    if not phrasings:
+        phrasings = [query_text]
+
+    per_query_hits: list[list[Hit]] = []
+    for phrasing in phrasings:
+        hits = hybrid_query(
+            kb_dir,
+            phrasing,
+            k=k,
+            fusion=fusion,
+            rerank=rerank,
+            top_k_stage1=top_k_stage1,
+            alpha=alpha,
+            model=model,
+            filter_authority=filter_authority,
+            expand_to_parent=expand_to_parent,
+            dedupe_by_parent=dedupe_by_parent,
+            use_hype=use_hype,
+            multi_query=False,  # guard against recursion
+        )
+        if hits:
+            per_query_hits.append(hits)
+    if not per_query_hits:
+        return []
+
+    # RRF-fuse the hit lists by chunk_id. We keep the best :class:`Hit`
+    # object seen for each chunk_id (highest fused score becomes ``score``).
+    fused_scores: dict[str, float] = {}
+    best_hit: dict[str, Hit] = {}
+    for hits in per_query_hits:
+        for rank, h in enumerate(hits, start=1):
+            fused_scores[h.chunk_id] = fused_scores.get(h.chunk_id, 0.0) + 1.0 / (
+                RRF_K + rank
+            )
+            if h.chunk_id not in best_hit:
+                best_hit[h.chunk_id] = h
+    ordered = sorted(
+        fused_scores.items(), key=lambda kv: kv[1], reverse=True
+    )
+    out: list[Hit] = []
+    for cid, fused_score in ordered[:k]:
+        h = best_hit[cid]
+        # Rewrite ``score`` to the fused score so downstream sorts behave.
+        h.score = fused_score
+        out.append(h)
+    return out
 
 
 def count_rows(kb_dir: Path) -> int:
