@@ -101,6 +101,13 @@ rag = [
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
 ]
+dash = [
+    # Phase 15.3: streamlit eval dashboard (apps/eval-dashboard/).
+    # Opt-in so the base venv stays lean. Install with `uv sync -E dash`.
+    "streamlit>=1.40",
+    "streamlit-agraph>=0.0.45",
+    "plotly>=5.24",
+]
 
 [project.scripts]
 lab = "lab.cli:app"

@@ -229,3 +229,10 @@ kb-list:
 # Show DVC status for KBs (clean if all pointers match cached data).
 kb-status:
     uv run dvc status
+
+# --- eval dashboard (Phase 15.3) ---
+
+# Launch the local Streamlit eval dashboard at http://localhost:8501.
+# Requires the dash extra: `uv sync -E dash` (or `uv sync --all-extras`).
+dash:
+    uv run streamlit run apps/eval-dashboard/Home.py
