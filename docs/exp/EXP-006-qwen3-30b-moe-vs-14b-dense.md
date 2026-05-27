@@ -148,6 +148,7 @@ model_defaults:
   qwen3-14b-q4:
     extra:
       think: false        # match F-005 baseline (reasoning-OFF)
+      keep_alive: 0       # plumbing — see note below; non-semantic.
 ```
 
 `qwen3-30b-a3b-moe` and `gpt-oss-120b-cloud` use default settings —
@@ -156,6 +157,30 @@ default chat template, and Phase 19a's llama-swap config already
 exposes it with `-ngl 99 -ot exps=CPU`; no per-call knobs are pulled
 in this sweep. Reasoning-on/off ablation on the MoE arm is explicitly
 deferred to a follow-up (see "Out of scope").
+
+**Plumbing note on `keep_alive: 0`** (added at sweep-config commit time,
+pre-sweep): Phase 19d pre-flight surfaced a cross-orchestrator gap.
+model_pool teardown asks llama-swap to unload `qwen3-14b-q4`, but the
+litellm route for qwen3-14b-q4 goes direct-to-ollama (not via
+llama-swap; see `conf/litellm-config.yaml`). The llama-swap unload is
+therefore a no-op on ollama's VRAM. With ~8.5 GB free of 12 GB and the
+qwen3-14b-q4 arm holding ~8.1 GB on the default `keep_alive=5m`, the
+subsequent `qwen3-30b-a3b-moe` arm cannot launch (its hybrid
+`-ngl 99 -ot exps=CPU` config still needs ~2 GB on GPU for the
+attention layers) and *all* 96 MoE cells would error — tripping the
+>5% kill criterion. Setting `keep_alive=0` makes ollama unload
+immediately after each request; VRAM is reclaimed before the MoE arm
+starts. This is a between-cell VRAM-persistence knob, not an
+inference-semantic knob: the same prompt with the same temperature
+and the same weights produces the same output regardless of whether
+the model was just loaded or already resident. The H1 replication
+band of ±0.05 pp is preserved.
+
+Diverges from EXP-002 / F-005 (which used `keep_alive=5m` by default)
+**only** in this between-cell VRAM-residency setting. If H1
+**still fails** (qwen3-14b-q4 mean `end_state` outside `[0.700, 0.800]`),
+the load-bearing change to investigate first is the sandbox-image
+hash distribution (F-005 Surprise 4), not `keep_alive`.
 
 ### Tasks (12)
 
@@ -281,6 +306,28 @@ if any of the following fire during the run:
 If kill-criteria fire, the analysis script is still run on whatever
 cells completed, but every hypothesis verdict is reported as
 `INVALID — sweep killed` rather than CONFIRMED / MIXED / REFUTED.
+
+## Pre-sweep plumbing changes
+
+Two non-semantic operational fixes landed between the EXP-006 pre-reg
+commit and the sweep launch (both surfaced by the pre-flight smoke on
+each of the three model arms):
+
+1. **`llama-swap.service` listen address.** Service unit
+   `/data/lab/services/llama-swap.service` was binding to
+   `127.0.0.1:8080`. The `lab-litellm` container's network namespace
+   could not reach that loopback, so the qwen3-30b-a3b-moe arm
+   returned `400 Invalid model` (LiteLLM never reached llama-swap).
+   Bind changed to `0.0.0.0:8080`, matching the established pattern
+   for ollama. Pre-flight smoke on all three model arms confirms
+   end-to-end connectivity post-change.
+2. **`qwen3-14b-q4` keep_alive set to 0** in the sweep YAML's
+   `model_defaults`. See the plumbing note in **Per-model overrides**
+   above. The litellm-side config (`keep_alive=5m` for direct-ollama
+   models) is preserved for other sweeps; the override is sweep-local.
+
+Both changes were applied before any sweep cell ran; nothing about
+the sweep result is post-hoc adjusted by them.
 
 ## Confounders to control
 

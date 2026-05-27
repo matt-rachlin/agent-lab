@@ -34,10 +34,23 @@ configs:
 # Per-model overrides. The dense baseline arm matches the EXP-002 / F-005
 # configuration exactly (reasoning OFF) for H1 replication. The MoE arm
 # uses stock defaults (reasoning-ON ablation is out of scope per plan).
+#
+# `keep_alive: 0` on the qwen3-14b-q4 arm: Phase 19d pre-flight surfaced
+# that model_pool teardown asks llama-swap to unload qwen3-14b-q4, but the
+# litellm route for that model goes direct-to-ollama (not via llama-swap),
+# so the llama-swap unload is a no-op on ollama VRAM. With ~8.5 GB free of
+# 12 GB and qwen3-14b-q4 holding ~8.1 GB on keep_alive=5m, the next model
+# arm (qwen3-30b-a3b-moe, needs >2 GB on GPU for its attention layers)
+# cannot launch and all MoE cells fail. Setting keep_alive=0 makes ollama
+# unload immediately after each request — VRAM is reclaimed before the
+# MoE arm starts. This does NOT change inference outcomes (same prompt,
+# same temperature, same weights); it only affects between-cell VRAM
+# persistence. H1 replication band of ±0.05 pp is unaffected.
 model_defaults:
   qwen3-14b-q4:
     extra:
       think: false
+      keep_alive: 0
 
 seeds: [1, 2, 3, 4, 5, 6, 7, 8]
 
