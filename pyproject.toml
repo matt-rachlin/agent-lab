@@ -61,6 +61,12 @@ dependencies = [
     "python-ulid>=3.0.0",
     "platformdirs>=4.3.6",
     "ruamel.yaml>=0.18.0",
+    # Phase 16 observability runtime: structured logging + OTel tracing.
+    # structlog gives us JSON-mode logs joinable with Prometheus / Tempo;
+    # the OTLP gRPC exporter ships spans to the Tempo service in
+    # /data/lab/services/compose.yml.
+    "structlog>=24.4.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
 ]
 
 [project.optional-dependencies]

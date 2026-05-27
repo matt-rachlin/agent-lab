@@ -20,6 +20,17 @@ from lab.eval.golden import (
     load_golden,
     save_golden,
 )
+from lab.eval.prompt_tests import (
+    DEFAULT_TESTS_ROOT,
+    ModelCaller,
+    PromptTest,
+    PromptTestFile,
+    PromptTestResult,
+    load_prompt_test_dir,
+    load_prompt_test_file,
+    run_prompt_test,
+    run_prompt_test_file,
+)
 from lab.eval.prompts import (
     PromptMeta,
     PromptNotFoundError,
@@ -29,13 +40,18 @@ from lab.eval.prompts import (
 
 __all__ = [
     "DEFAULT_GOLDEN_ROOT",
+    "DEFAULT_TESTS_ROOT",
     "EvalResult",
     "Evaluator",
     "GoldenComparison",
     "GoldenOutput",
+    "ModelCaller",
     "PromptMeta",
     "PromptNotFoundError",
     "PromptRegistry",
+    "PromptTest",
+    "PromptTestFile",
+    "PromptTestResult",
     "RegisteredEvaluator",
     "apply_to_experiment",
     "apply_to_runs",
@@ -47,5 +63,9 @@ __all__ = [
     "golden_path",
     "load_evaluators_from",
     "load_golden",
+    "load_prompt_test_dir",
+    "load_prompt_test_file",
+    "run_prompt_test",
+    "run_prompt_test_file",
     "save_golden",
 ]

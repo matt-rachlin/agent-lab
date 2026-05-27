@@ -22,10 +22,15 @@ import contextlib
 import json
 import subprocess
 import threading
+import time
 from types import TracebackType
 from typing import Any, Self
 
 from lab.agent.sandbox import Sandbox
+from lab.observability.log import get_logger
+from lab.observability.tracing import current_span_attrs, span
+
+log = get_logger(__name__)
 
 
 class ToolPoolError(RuntimeError):
@@ -231,15 +236,52 @@ class ToolPool:
     def invoke(self, module: str, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call `tool_name` on the pooled `module`, spawning if needed."""
 
-        server = self._get_or_spawn(module)
-        if not server.is_alive():
-            # The previous server crashed (stderr message landed in the log
-            # at start of `_recv`). Drop it, spawn fresh, retry the call
-            # once. If the fresh server also crashes, we surface that error
-            # up the stack — don't loop forever.
-            self._discard(module)
-            server = self._get_or_spawn(module)
-        return server.invoke(tool_name, arguments)
+        with span(
+            "tool_call",
+            **{"tool.name": tool_name, "tool.module": module},
+        ):
+            t0 = time.monotonic()
+            try:
+                server = self._get_or_spawn(module)
+                if not server.is_alive():
+                    # The previous server crashed (stderr message landed in
+                    # the log at start of `_recv`). Drop it, spawn fresh,
+                    # retry the call once. If the fresh server also
+                    # crashes, surface that error up the stack — don't loop
+                    # forever.
+                    log.warning(
+                        "tool_pool_server_restart",
+                        tool=tool_name,
+                        module=module,
+                    )
+                    self._discard(module)
+                    server = self._get_or_spawn(module)
+                result = server.invoke(tool_name, arguments)
+                latency_ms = int((time.monotonic() - t0) * 1000)
+                current_span_attrs(**{"tool.latency_ms": latency_ms})
+                log.debug(
+                    "tool_call_done",
+                    tool=tool_name,
+                    module=module,
+                    latency_ms=latency_ms,
+                )
+                return result
+            except Exception as exc:
+                latency_ms = int((time.monotonic() - t0) * 1000)
+                current_span_attrs(
+                    **{
+                        "tool.latency_ms": latency_ms,
+                        "tool.error": str(exc),
+                    }
+                )
+                log.warning(
+                    "tool_call_failed",
+                    tool=tool_name,
+                    module=module,
+                    latency_ms=latency_ms,
+                    error=str(exc),
+                )
+                raise
 
     def stop(self) -> None:
         """Tear down every pooled server. Idempotent."""

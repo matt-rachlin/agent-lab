@@ -32,6 +32,10 @@ from lab.agent.tool_pool import ToolPool
 from lab.core.llm import call_litellm_chat
 from lab.core.settings import get_settings
 from lab.inspect_bridge.tools import discover_tool_schemas
+from lab.observability.log import get_logger
+from lab.observability.tracing import current_span_attrs, span
+
+log = get_logger(__name__)
 
 # Truncation budget for tool call inputs/outputs recorded in `turns`.
 _TURN_PAYLOAD_CAP = 4096
@@ -391,85 +395,122 @@ def model_with_tools(
         try:
             for turn_idx in range(max_turns):
                 turn_started = time.monotonic()
-                try:
-                    resp, latency_ms = call_litellm_chat(
-                        settings=settings,
-                        litellm_key=litellm_key,
-                        model=model,
-                        messages=_serialise_messages(chat),
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        tools=tool_specs or None,
-                        extra=extra,
-                    )
-                except Exception as exc:
-                    error = f"litellm call failed at turn {turn_idx}: {exc}"
-                    terminated_reason = "litellm_error"
-                    turns.append(
-                        {
-                            "turn": turn_idx,
-                            "error": error,
-                            "latency_ms": int((time.monotonic() - turn_started) * 1000),
+                with span(
+                    "agent_turn",
+                    **{"lab.turn": turn_idx, "lab.model": model},
+                ):
+                    try:
+                        with span("litellm_call", **{"lab.model": model}):
+                            resp, latency_ms = call_litellm_chat(
+                                settings=settings,
+                                litellm_key=litellm_key,
+                                model=model,
+                                messages=_serialise_messages(chat),
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                tools=tool_specs or None,
+                                extra=extra,
+                            )
+                            current_span_attrs(**{"lab.latency_ms": latency_ms})
+                    except Exception as exc:
+                        error = f"litellm call failed at turn {turn_idx}: {exc}"
+                        terminated_reason = "litellm_error"
+                        log.warning(
+                            "agent_turn_litellm_failed",
+                            turn=turn_idx,
+                            model=model,
+                            error=str(exc),
+                        )
+                        turns.append(
+                            {
+                                "turn": turn_idx,
+                                "error": error,
+                                "latency_ms": int((time.monotonic() - turn_started) * 1000),
+                            }
+                        )
+                        break
+
+                    actual_turns += 1
+                    choice = (resp.get("choices") or [{}])[0]
+                    assistant_msg = (choice or {}).get("message") or {}
+                    content_text = assistant_msg.get("content") or ""
+                    tool_calls = assistant_msg.get("tool_calls") or []
+                    usage = resp.get("usage") or {}
+                    current_span_attrs(
+                        **{
+                            "lab.tokens_in": usage.get("prompt_tokens"),
+                            "lab.tokens_out": usage.get("completion_tokens"),
+                            "lab.tool_calls_requested": len(tool_calls),
                         }
                     )
-                    break
 
-                actual_turns += 1
-                choice = (resp.get("choices") or [{}])[0]
-                assistant_msg = (choice or {}).get("message") or {}
-                content_text = assistant_msg.get("content") or ""
-                tool_calls = assistant_msg.get("tool_calls") or []
-                usage = resp.get("usage") or {}
+                    # Echo the assistant message into the running conversation
+                    # (with normalised shape — strip provider-specific extras).
+                    chat.append(
+                        {
+                            "role": "assistant",
+                            "content": content_text,
+                            "tool_calls": tool_calls or None,
+                        }
+                    )
 
-                # Echo the assistant message into the running conversation
-                # (with normalised shape — strip provider-specific extras).
-                chat.append(
-                    {
-                        "role": "assistant",
-                        "content": content_text,
-                        "tool_calls": tool_calls or None,
+                    turn_entry: dict[str, Any] = {
+                        "turn": turn_idx,
+                        "latency_ms": latency_ms,
+                        "tokens_in": usage.get("prompt_tokens"),
+                        "tokens_out": usage.get("completion_tokens"),
+                        "content_preview": _truncate(content_text, cap=512),
+                        "tool_calls_requested": len(tool_calls),
                     }
-                )
 
-                turn_entry: dict[str, Any] = {
-                    "turn": turn_idx,
-                    "latency_ms": latency_ms,
-                    "tokens_in": usage.get("prompt_tokens"),
-                    "tokens_out": usage.get("completion_tokens"),
-                    "content_preview": _truncate(content_text, cap=512),
-                    "tool_calls_requested": len(tool_calls),
-                }
+                    if not tool_calls:
+                        turns.append(turn_entry)
+                        terminated_reason = "model_finished"
+                        log.info(
+                            "agent_turn_finished",
+                            turn=turn_idx,
+                            terminated="model_finished",
+                            latency_ms=latency_ms,
+                        )
+                        break
 
-                if not tool_calls:
+                    if remaining_budget <= 0:
+                        turn_entry["budget_exhausted"] = True
+                        turns.append(turn_entry)
+                        terminated_reason = "budget_exhausted"
+                        log.info(
+                            "agent_turn_finished",
+                            turn=turn_idx,
+                            terminated="budget_exhausted",
+                            latency_ms=latency_ms,
+                        )
+                        break
+
+                    tool_msgs, tool_entries, n_called = _execute_tool_calls(
+                        tool_calls=tool_calls,
+                        pool=pool,
+                        tool_modules=tool_modules,
+                        remaining_budget=remaining_budget,
+                    )
+                    tool_call_count += n_called
+                    remaining_budget -= n_called
+                    turn_entry["tool_calls"] = tool_entries
                     turns.append(turn_entry)
-                    terminated_reason = "model_finished"
-                    break
 
-                if remaining_budget <= 0:
-                    turn_entry["budget_exhausted"] = True
-                    turns.append(turn_entry)
-                    terminated_reason = "budget_exhausted"
-                    break
+                    # Append tool results to the conversation for the next turn.
+                    chat.extend(tool_msgs)
+                    log.debug(
+                        "agent_turn_done",
+                        turn=turn_idx,
+                        tool_calls=n_called,
+                        latency_ms=latency_ms,
+                    )
 
-                tool_msgs, tool_entries, n_called = _execute_tool_calls(
-                    tool_calls=tool_calls,
-                    pool=pool,
-                    tool_modules=tool_modules,
-                    remaining_budget=remaining_budget,
-                )
-                tool_call_count += n_called
-                remaining_budget -= n_called
-                turn_entry["tool_calls"] = tool_entries
-                turns.append(turn_entry)
-
-                # Append tool results to the conversation for the next turn.
-                chat.extend(tool_msgs)
-
-                if remaining_budget <= 0 and turn_idx + 1 < max_turns:
-                    # We delivered the results but won't take another tool
-                    # turn — let the model see those results and write a
-                    # final assistant message. Continue the loop.
-                    pass
+                    if remaining_budget <= 0 and turn_idx + 1 < max_turns:
+                        # We delivered the results but won't take another tool
+                        # turn — let the model see those results and write a
+                        # final assistant message. Continue the loop.
+                        pass
             else:
                 terminated_reason = "max_turns_reached"
         finally:

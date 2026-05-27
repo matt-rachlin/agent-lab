@@ -10,6 +10,11 @@ authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 dependencies = [
     "lab-core",
     "mlflow>=2.18.0",
+    # Phase 16: structured logging + OTel tracing surface.
+    "structlog>=24.4.0",
+    "opentelemetry-api>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
 ]
 
 [tool.uv.sources]

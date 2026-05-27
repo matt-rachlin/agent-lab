@@ -30,6 +30,10 @@ from psycopg.types.json import Json
 
 from lab.core.minio_io import run_key, upload_bytes
 from lab.core.settings import get_settings
+from lab.observability.log import get_logger
+from lab.observability.tracing import span
+
+log = get_logger(__name__)
 
 
 @dataclass
@@ -430,26 +434,38 @@ def _upsert_agent_log(
         )
 
 
-def write_run_from_inspect_log(log: Any, sweep_context: SweepContext) -> str:
+def write_run_from_inspect_log(log_obj: Any, sweep_context: SweepContext) -> str:
     """Persist one cell's run to MinIO + Postgres.
 
     Returns the MinIO key the trajectory was uploaded to.
     """
 
-    extracted = _extract_sample_metadata(log)
-    data = _trajectory_bytes(ctx=sweep_context, extracted=extracted)
-    key = run_key(sweep_context.run_id, "trajectory.jsonl")
-    trace_uri = upload_bytes(key=key, data=data, content_type="application/x-ndjson")
-    _upsert_experiment_run(ctx=sweep_context, extracted=extracted, trajectory_key=trace_uri)
-    _upsert_agent_log(
-        run_id_=sweep_context.run_id,
-        trajectory_key=trace_uri,
-        compact_turns=_compact_turns(extracted.get("lab_agent") or {}),
-        score_breakdown=extracted.get("score_breakdown"),
-    )
-    # Phase 15.2: additive MLflow mirror. Best-effort, never blocks the
-    # canonical Postgres / MinIO writes above.
-    _mirror_agent_run_to_mlflow(ctx=sweep_context, extracted=extracted, trace_uri=trace_uri)
+    log.debug("write_run_start", run_id=sweep_context.run_id)
+    with span(
+        "logwriter.write_run",
+        **{
+            "lab.run_id": sweep_context.run_id,
+            "lab.experiment_slug": sweep_context.experiment_slug,
+        },
+    ):
+        extracted = _extract_sample_metadata(log_obj)
+        data = _trajectory_bytes(ctx=sweep_context, extracted=extracted)
+        key = run_key(sweep_context.run_id, "trajectory.jsonl")
+        with span("logwriter.upload_trajectory"):
+            trace_uri = upload_bytes(key=key, data=data, content_type="application/x-ndjson")
+        with span("logwriter.upsert_postgres"):
+            _upsert_experiment_run(ctx=sweep_context, extracted=extracted, trajectory_key=trace_uri)
+            _upsert_agent_log(
+                run_id_=sweep_context.run_id,
+                trajectory_key=trace_uri,
+                compact_turns=_compact_turns(extracted.get("lab_agent") or {}),
+                score_breakdown=extracted.get("score_breakdown"),
+            )
+        # Phase 15.2: additive MLflow mirror. Best-effort, never blocks the
+        # canonical Postgres / MinIO writes above.
+        with span("logwriter.mlflow_mirror"):
+            _mirror_agent_run_to_mlflow(ctx=sweep_context, extracted=extracted, trace_uri=trace_uri)
+    log.debug("write_run_done", run_id=sweep_context.run_id, trace_uri=trace_uri)
     return trace_uri
 
 

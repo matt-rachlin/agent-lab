@@ -25,15 +25,45 @@ from lab.experiment import (
 )
 from lab.finding import list_findings, new_finding
 from lab.finding import sync as sync_findings
+from lab.observability.log import configure_logging as _configure_logging
 from lab.observability.quota import alert_if_high as quota_alert
 from lab.observability.quota import usage_window as quota_window
 from lab.observability.spend import backfill as spend_backfill
+from lab.observability.tracing import configure_tracing as _configure_tracing
 from lab.sweep.config import load_sweep
 from lab.sweep.runner import cancel_sweep, get_sweep_status, run_sweep
 from lab.tasks.registry import list_suites, load_tasks, register_tasks
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
+
+
+@app.callback()
+def _root(
+    log_level: str = typer.Option(
+        "INFO",
+        "--log-level",
+        envvar="LAB_LOG_LEVEL",
+        help="stdlib log level for the structured logger (DEBUG/INFO/WARNING/ERROR).",
+    ),
+    log_json: bool | None = typer.Option(
+        None,
+        "--log-json/--no-log-json",
+        envvar="LAB_LOG_JSON",
+        help="Force JSON-mode logs. Default: auto (JSON off-TTY, console on-TTY).",
+    ),
+) -> None:
+    """Lab CLI entrypoint — wires structured logging + OTel tracing once.
+
+    Idempotent: subcommands that re-enter the lab through the same process
+    won't re-wire. The OTel exporter target defaults to
+    ``http://localhost:4317`` (Tempo); override with
+    ``LAB_OTEL_EXPORTER_URL`` or set it to ``none`` to disable export
+    while still keeping span creation in-process.
+    """
+
+    _configure_logging(level=log_level, json_mode=log_json)
+    _configure_tracing()
 
 
 # ---------------------------------------------------------------------------

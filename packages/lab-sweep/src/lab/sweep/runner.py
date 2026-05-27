@@ -30,10 +30,13 @@ from lab.core.gpu_lease import force_release, gpu_lease
 from lab.core.gpu_lease import status as gpu_lease_status
 from lab.core.manifest import capture as capture_manifest
 from lab.core.settings import get_settings
+from lab.observability.log import bind_run_context, clear_run_context, get_logger
+from lab.observability.tracing import current_span_attrs, span
 from lab.sweep.config import RunConfig, SweepConfig, config_hash, run_id
 from lab.tasks.registry import get_tasks
 
 console = Console()
+log = get_logger(__name__)
 
 
 # ----------------------------------------------------------------------------
@@ -95,7 +98,7 @@ def _write_pidfile(slug: str) -> Path | None:
         path.write_text(f"{os.getpid()}\n", encoding="utf-8")
         return path
     except OSError as exc:
-        console.log(f"[yellow]could not write sweep pidfile: {exc}")
+        log.warning("sweep_pidfile_write_failed", slug=slug, error=str(exc))
         return None
 
 
@@ -144,13 +147,13 @@ def _install_signal_handlers(slug: str) -> None:
             return
         _shutdown_requested = True
         sig_name = signal.Signals(signum).name
-        console.log(f"[yellow]received {sig_name}; releasing GPU lease and exiting")
+        log.warning("sweep_shutdown_signal", signal=sig_name, slug=slug)
         try:
             holder, _ttl = gpu_lease_status()
             if holder:
                 force_release()
         except Exception as exc:
-            console.log(f"[red]lease release failed: {exc}")
+            log.error("gpu_lease_release_failed", slug=slug, error=str(exc))
         _clear_pidfile(slug)
         sys.exit(0)
 
@@ -515,34 +518,78 @@ def execute_cell(
     or `tool_budget > 0` go through Inspect.
     """
 
-    manifest = capture_manifest(
-        extra={
-            "kind": "sweep_run",
-            "experiment_slug": cell.experiment_slug,
-            "model": cell.model_litellm_id,
-            "task_slug": cell.task_slug,
-            "config_hash": cell.config_hash,
-            "seed": cell.seed,
-            "run_id": cell.run_id,
-        }
+    is_agent = _is_agent_cell(cell.task_payload)
+    bind_run_context(
+        run_id=cell.run_id,
+        experiment_slug=cell.experiment_slug,
+        model=cell.model_litellm_id,
+        task=cell.task_slug,
+        seed=cell.seed,
+        config_hash=cell.config_hash,
     )
+    try:
+        with span(
+            "sweep_cell",
+            **{
+                "lab.run_id": cell.run_id,
+                "lab.experiment_slug": cell.experiment_slug,
+                "lab.model": cell.model_litellm_id,
+                "lab.task": cell.task_slug,
+                "lab.seed": cell.seed,
+                "lab.config_hash": cell.config_hash,
+                "lab.path": "agent" if is_agent else "single_turn",
+            },
+        ):
+            log.info("sweep_cell_started", path="agent" if is_agent else "single_turn")
+            with span("manifest_capture"):
+                manifest = capture_manifest(
+                    extra={
+                        "kind": "sweep_run",
+                        "experiment_slug": cell.experiment_slug,
+                        "model": cell.model_litellm_id,
+                        "task_slug": cell.task_slug,
+                        "config_hash": cell.config_hash,
+                        "seed": cell.seed,
+                        "run_id": cell.run_id,
+                    }
+                )
 
-    if _is_agent_cell(cell.task_payload):
-        return _execute_agent_cell(
-            cell=cell,
-            manifest_sha=manifest.sha,
-            timeout=timeout,
-            model_default_extra=model_default_extra,
-        )
+            if is_agent:
+                result = _execute_agent_cell(
+                    cell=cell,
+                    manifest_sha=manifest.sha,
+                    timeout=timeout,
+                    model_default_extra=model_default_extra,
+                )
+            else:
+                result = _execute_single_turn(
+                    cell=cell,
+                    litellm_key=litellm_key,
+                    timeout=timeout,
+                    manifest_sha=manifest.sha,
+                    model_default_system=model_default_system,
+                    model_default_extra=model_default_extra,
+                )
 
-    return _execute_single_turn(
-        cell=cell,
-        litellm_key=litellm_key,
-        timeout=timeout,
-        manifest_sha=manifest.sha,
-        model_default_system=model_default_system,
-        model_default_extra=model_default_extra,
-    )
+            current_span_attrs(
+                **{
+                    "lab.status": result.status,
+                    "lab.latency_ms": result.latency_ms,
+                    "lab.tokens_in": result.tokens_in,
+                    "lab.tokens_out": result.tokens_out,
+                }
+            )
+            log.info(
+                "sweep_cell_finished",
+                status=result.status,
+                latency_ms=result.latency_ms,
+                tokens_in=result.tokens_in,
+                tokens_out=result.tokens_out,
+                error=result.error,
+            )
+            return result
+    finally:
+        clear_run_context()
 
 
 def _execute_single_turn(
@@ -578,8 +625,13 @@ def _execute_single_turn(
 
     try:
         if _is_local_backend(cell.model_backend):
-            with gpu_lease(
-                f"sweep:{cell.experiment_slug}:{cell.model_litellm_id}", ttl_sec=timeout + 60
+            with (
+                span("gpu_lease_acquire", **{"lab.model": cell.model_litellm_id}),
+                gpu_lease(
+                    f"sweep:{cell.experiment_slug}:{cell.model_litellm_id}",
+                    ttl_sec=timeout + 60,
+                ),
+                span("litellm_call", **{"lab.model": cell.model_litellm_id}),
             ):
                 resp_json, latency_ms = _call_litellm(
                     settings=settings,
@@ -589,15 +641,18 @@ def _execute_single_turn(
                     config=cell_config_for_call,
                     timeout=timeout,
                 )
+                current_span_attrs(**{"lab.latency_ms": latency_ms})
         else:
-            resp_json, latency_ms = _call_litellm(
-                settings=settings,
-                litellm_key=litellm_key,
-                model=cell.model_litellm_id,
-                messages=messages,
-                config=cell.config,
-                timeout=timeout,
-            )
+            with span("litellm_call", **{"lab.model": cell.model_litellm_id}):
+                resp_json, latency_ms = _call_litellm(
+                    settings=settings,
+                    litellm_key=litellm_key,
+                    model=cell.model_litellm_id,
+                    messages=messages,
+                    config=cell.config,
+                    timeout=timeout,
+                )
+                current_span_attrs(**{"lab.latency_ms": latency_ms})
 
         usage = resp_json.get("usage") or {}
         message = ((resp_json.get("choices") or [{}])[0]).get("message") or {}
@@ -615,6 +670,10 @@ def _execute_single_turn(
             raw_response=resp_json,
         )
     except Exception as exc:  # any failure → record error, don't crash sweep
+        log.error(
+            "single_turn_cell_error",
+            error=f"{type(exc).__name__}: {exc}",
+        )
         result = CellResult(
             run_id=cell.run_id,
             status="error",
@@ -629,25 +688,30 @@ def _execute_single_turn(
 
     trace_path: str | None = None
     if result.raw_response is not None:
-        try:
-            trace_path = _persist_trace(
-                run_id_=cell.run_id,
-                payload={
-                    "run_id": cell.run_id,
-                    "experiment_slug": cell.experiment_slug,
-                    "manifest_sha": manifest_sha,
-                    "model": cell.model_litellm_id,
-                    "task_slug": cell.task_slug,
-                    "config": cell.config.model_dump(),
-                    "seed": cell.seed,
-                    "input_messages": messages,
-                    "response_text": result.response_text,
-                    "raw_response": result.raw_response,
-                    "latency_ms": result.latency_ms,
-                },
-            )
-        except Exception as exc:
-            console.print(f"[yellow]trace upload failed for {cell.run_id}: {exc}")
+        with span("persist"):
+            try:
+                trace_path = _persist_trace(
+                    run_id_=cell.run_id,
+                    payload={
+                        "run_id": cell.run_id,
+                        "experiment_slug": cell.experiment_slug,
+                        "manifest_sha": manifest_sha,
+                        "model": cell.model_litellm_id,
+                        "task_slug": cell.task_slug,
+                        "config": cell.config.model_dump(),
+                        "seed": cell.seed,
+                        "input_messages": messages,
+                        "response_text": result.response_text,
+                        "raw_response": result.raw_response,
+                        "latency_ms": result.latency_ms,
+                    },
+                )
+            except Exception as exc:
+                log.warning(
+                    "trace_upload_failed",
+                    run_id=cell.run_id,
+                    error=str(exc),
+                )
 
     _insert_run(cell=cell, result=result, manifest_sha=manifest_sha, trace_path=trace_path)
     return result
@@ -823,9 +887,16 @@ def _execute_agent_cell(
             # therefore happen INSIDE the TemporaryDirectory `with` block.
             with tempfile.TemporaryDirectory(prefix="lab-inspect-") as log_dir:
                 if _is_local_backend(cell.model_backend):
-                    with gpu_lease(
-                        f"sweep:{cell.experiment_slug}:{cell.model_litellm_id}",
-                        ttl_sec=timeout + 60,
+                    with (
+                        span(
+                            "gpu_lease_acquire",
+                            **{"lab.model": cell.model_litellm_id},
+                        ),
+                        gpu_lease(
+                            f"sweep:{cell.experiment_slug}:{cell.model_litellm_id}",
+                            ttl_sec=timeout + 60,
+                        ),
+                        span("inspect_eval", **{"lab.model": cell.model_litellm_id}),
                     ):
                         logs = inspect_eval(
                             inspect_task,
@@ -836,21 +907,23 @@ def _execute_agent_cell(
                             log_realtime=False,
                         )
                 else:
-                    logs = inspect_eval(
-                        inspect_task,
-                        display="none",
-                        log_samples=True,
-                        log_dir=log_dir,
-                        log_format="json",
-                        log_realtime=False,
-                    )
-                log = logs[0] if logs else None
-                if log is None:
+                    with span("inspect_eval", **{"lab.model": cell.model_litellm_id}):
+                        logs = inspect_eval(
+                            inspect_task,
+                            display="none",
+                            log_samples=True,
+                            log_dir=log_dir,
+                            log_format="json",
+                            log_realtime=False,
+                        )
+                eval_log = logs[0] if logs else None
+                if eval_log is None:
                     raise RuntimeError("inspect_ai.eval returned no logs")
-                trace_uri = write_run_from_inspect_log(log, sweep_ctx)
+                with span("persist"):
+                    trace_uri = write_run_from_inspect_log(eval_log, sweep_ctx)
                 # Read back the aggregated metrics we just upserted so the
                 # in-memory CellResult matches what's in the DB.
-                samples = getattr(log, "samples", None) or []
+                samples = getattr(eval_log, "samples", None) or []
                 sample = samples[0] if samples else None
                 lab_agent: dict[str, Any] = {}
                 if sample is not None:
@@ -881,6 +954,11 @@ def _execute_agent_cell(
             raw_response={"trajectory_key": trace_uri, "lab_agent": lab_agent},
         )
     except Exception as exc:
+        log.error(
+            "agent_cell_error",
+            run_id=cell.run_id,
+            error=f"{type(exc).__name__}: {exc}",
+        )
         result = CellResult(
             run_id=cell.run_id,
             status="error",
@@ -992,6 +1070,13 @@ def run_sweep(
                             f"at_cell={cell.run_id}; "
                             f"aborting sweep after {summary['executed']} cells"
                         )
+                        log.error(
+                            "sweep_image_hash_drift",
+                            starting=starting_image_hash,
+                            current=current_image_hash,
+                            at_cell=cell.run_id,
+                            executed=summary["executed"],
+                        )
                         raise ImageHashDriftError(
                             "sandbox image hash drifted mid-sweep: "
                             f"starting={starting_image_hash}, "
@@ -1018,6 +1103,14 @@ def run_sweep(
                     summary["errors"] += 1
                     progress.console.log(
                         f"[red]ERROR[/] {cell.model_litellm_id} {cell.task_slug} seed={cell.seed}: {result.error}"
+                    )
+                    log.error(
+                        "sweep_cell_error",
+                        model=cell.model_litellm_id,
+                        task=cell.task_slug,
+                        seed=cell.seed,
+                        run_id=cell.run_id,
+                        error=result.error,
                     )
                 progress.update(bar, advance=1)
     finally:
@@ -1051,7 +1144,7 @@ def run_sweep(
             tags=[tag],
         )
     except Exception as exc:
-        console.log(f"[yellow]notify failed: {exc}")
+        log.warning("sweep_notify_failed", error=str(exc))
 
     return summary
 
@@ -1125,7 +1218,7 @@ def cancel_sweep(slug: str, *, release_lease: bool = True) -> dict[str, Any]:
             os.kill(pid, signal.SIGTERM)
             signaled = pid
         except (ProcessLookupError, PermissionError) as exc:
-            console.log(f"[yellow]could not signal pid {pid}: {exc}")
+            log.warning("sweep_cancel_signal_failed", pid=pid, slug=slug, error=str(exc))
     released = False
     if release_lease:
         # Brief grace period for the signal handler; then force-release as a backstop.
@@ -1135,7 +1228,7 @@ def cancel_sweep(slug: str, *, release_lease: bool = True) -> dict[str, Any]:
             if holder:
                 released = force_release()
         except Exception as exc:
-            console.log(f"[yellow]lease release failed: {exc}")
+            log.error("gpu_lease_release_failed", slug=slug, error=str(exc))
     _clear_pidfile(slug)
     return {"signaled": signaled, "released_lease": released}
 
