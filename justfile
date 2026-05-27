@@ -204,3 +204,28 @@ adr NUM TITLE:
     f="docs/adr/ADR-{{NUM}}-$slug.md"; \
     cp docs/_templates/adr.md "$f"; \
     echo "created $f"
+
+# --- KB versioning (Phase 15.4) ---
+
+# Publish current KB state to DVC remote. The KB data must live at
+# kbs/<KB>/{index,chunks}/ (with symlinks at ~/db/kb/<KB>/{index,chunks}
+# pointing back into the lab repo). `dvc add` re-hashes; `dvc push`
+# uploads new blobs to MinIO bucket `lab-dvc`.
+kb-publish KB:
+    uv run dvc add kbs/{{KB}}/index kbs/{{KB}}/chunks
+    uv run dvc push kbs/{{KB}}/index.dvc kbs/{{KB}}/chunks.dvc
+    git add kbs/{{KB}}/index.dvc kbs/{{KB}}/chunks.dvc kbs/{{KB}}/.gitignore
+    @echo "DVC pointer staged. git commit when ready."
+
+# Pull a KB from DVC remote into kbs/<KB>/. Restores the index + chunks
+# dirs from MinIO based on the committed .dvc pointer files.
+kb-pull KB:
+    uv run dvc pull kbs/{{KB}}/index.dvc kbs/{{KB}}/chunks.dvc
+
+# List KBs tracked by DVC.
+kb-list:
+    @ls kbs/*/index.dvc 2>/dev/null | sed 's|kbs/||;s|/index.dvc||' || echo "no KBs tracked"
+
+# Show DVC status for KBs (clean if all pointers match cached data).
+kb-status:
+    uv run dvc status
