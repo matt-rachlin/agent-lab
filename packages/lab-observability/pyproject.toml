@@ -9,6 +9,7 @@ authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 
 dependencies = [
     "lab-core",
+    "mlflow>=2.18.0",
 ]
 
 [tool.uv.sources]

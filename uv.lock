@@ -2796,10 +2796,14 @@ version = "0.0.1"
 source = { editable = "packages/lab-observability" }
 dependencies = [
     { name = "lab-core" },
+    { name = "mlflow" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "lab-core", editable = "packages/lab-core" }]
+requires-dist = [
+    { name = "lab-core", editable = "packages/lab-core" },
+    { name = "mlflow", specifier = ">=2.18.0" },
+]
 
 [[package]]
 name = "lab-rag"
