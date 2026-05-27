@@ -1,0 +1,45 @@
+# EXP-006 — Qwen3-30B-A3B (MoE) vs qwen3-14b-q4 (dense) on PBS-Agent v0.1
+# Plan: docs/exp/EXP-006-qwen3-30b-moe-vs-14b-dense.md
+# Parent: F-005 (EXP-002) baseline at qwen3-14b-q4 / think:false, end_state=0.750.
+# 12 tasks × 3 models × 1 config × 8 seeds = 288 cells.
+# Estimated wall time: ~2 hr (per plan §19d).
+
+experiment:
+  slug: EXP-006
+  title: "Qwen3-30B-A3B (MoE) vs qwen3-14b-q4 (dense) on PBS-Agent v0.1 — does local MoE close the local-vs-cloud end_state gap?"
+  hypothesis: "Four pre-registered hypotheses: H1 replicates F-005 qwen3-14b-q4 baseline end_state=0.750 ± 0.05; H2 qwen3-30b-a3b-moe end_state ≥ 0.850 (≥10pp lift); H3 gap_closure := (moe - dense) / (cloud - dense) ≥ 0.50; H4 moe tool_correctness ≥ 0.95."
+  plan_path: docs/exp/EXP-006-qwen3-30b-moe-vs-14b-dense.md
+
+tasks:
+  suite: pbs-agent-v0.1
+  # No slugs filter — pick up all 12 PBS-Agent v0.1 tasks, same as EXP-002.
+
+# Models in declared order. Outer-loop-by-model keeps locals first so each
+# model warms once per sweep; Phase 19c model_pool handles llama-swap
+# pre-flight + eviction for the qwen3-30b-a3b-moe arm.
+models:
+  - qwen3-14b-q4
+  - qwen3-30b-a3b-moe
+  - gpt-oss-120b-cloud
+
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+    # Runner dispatches to the agent path automatically when
+    # task.max_turns > 1, which is true for all 12 PBS-Agent v0.1 tasks.
+
+# Per-model overrides. The dense baseline arm matches the EXP-002 / F-005
+# configuration exactly (reasoning OFF) for H1 replication. The MoE arm
+# uses stock defaults (reasoning-ON ablation is out of scope per plan).
+model_defaults:
+  qwen3-14b-q4:
+    extra:
+      think: false
+
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]
+
+max_concurrency: 1
+request_timeout_sec: 600
