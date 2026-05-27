@@ -20,9 +20,7 @@ tasks:
       fs_read tool, then write a one-sentence plain-English explanation of
       what the function does to a new file 'explanation.txt' using fs_write
       mode='create'. Reply with 'done'.
-    system: |
-      You are an assistant with filesystem tool access. Read code before
-      describing it.
+    system_prompt_id: agent_system_v1
     tools:
       - name: fs_read
       - name: fs_write
@@ -62,9 +60,7 @@ tasks:
       integers (1 through 100 inclusive). Then write the resulting integer
       (as a plain decimal string, no extra text) to a new file 'answer.txt'
       using fs_write mode='create'. Reply with 'done'.
-    system: |
-      You are an assistant with Python and filesystem tool access. Use
-      python_eval for computation rather than guessing.
+    system_prompt_id: agent_system_v1
     tools:
       - name: python_eval
       - name: fs_write
@@ -103,9 +99,7 @@ tasks:
       to replace the file's contents with a corrected version that calls
       print with 'great' instead. Verify by running it with
       shell_exec ('python3 <path>'). Reply with the captured stdout.
-    system: |
-      You are a debugging assistant with filesystem and shell access. Use
-      tools to locate and verify; do not guess.
+    system_prompt_id: debug_assistant_v1
     tools:
       - name: fs_grep
       - name: fs_read

@@ -36,10 +36,7 @@ tasks:
       sequence — no surrounding text, no quotes, no whitespace before or
       after) to a new file at path 'operator.txt' using fs_write with
       mode='create'. Then reply with 'done'.
-    system: |
-      You are a research assistant with retrieval and filesystem tools.
-      Always call kb_query before answering bash questions; do not rely
-      on memory.
+    system_prompt_id: rag_grounded_v1
     tools:
       - name: kb_query
       - name: fs_write
@@ -76,9 +73,7 @@ tasks:
       these four parameter-expansion forms with their literal syntax:
       "${parameter:-word}", "${parameter:=word}", "${#parameter}", and
       "${parameter:offset:length}". Reply with 'done'.
-    system: |
-      You are a research assistant with retrieval and filesystem tools.
-      kb_query before answering. Quote exact syntax from the source.
+    system_prompt_id: rag_grounded_v1
     tools:
       - name: kb_query
       - name: fs_write
@@ -113,9 +108,7 @@ tasks:
       construct. Then write a comparison to 'compare.md' using fs_write
       with mode='create'. The file MUST contain BOTH of these literal
       tokens somewhere: '[[ ]]' AND 'word splitting'. Reply with 'done'.
-    system: |
-      You are a bash expert with retrieval tools. Always quote precise
-      facts from kb_query rather than guessing.
+    system_prompt_id: bash_expert_grounded_v1
     tools:
       - name: kb_query
       - name: fs_write
@@ -153,9 +146,7 @@ tasks:
             mode='create'), and
         (b) reply to me with the source_url of one of the retrieved
             chunks — the full URL, not a paraphrase.
-    system: |
-      You are a research assistant. Always call kb_query and cite sources
-      verbatim — never paraphrase a URL.
+    system_prompt_id: rag_grounded_v1
     tools:
       - name: kb_query
       - name: fs_write
@@ -200,9 +191,7 @@ tasks:
       formulations). In your final response, list the chunk_ids of the
       hits you would consult to answer the question 'How do I write a
       bash for loop?'.
-    system: |
-      You are a retrieval-augmented assistant. Always start by calling
-      kb_query; cite chunk_ids verbatim from the results.
+    system_prompt_id: rag_grounded_v1
     tools:
       - name: kb_query
     max_turns: 4
@@ -250,10 +239,7 @@ tasks:
       not present in the retrieved passages — if the chunks don't
       explain a point clearly, say so. Also write the answer to
       'answer.txt' via fs_write mode='create'.
-    system: |
-      You are a careful research assistant. Ground every claim in the
-      retrieved passages. If the passages don't cover a point, admit it
-      rather than guessing.
+    system_prompt_id: rag_grounded_v1
     tools:
       - name: kb_query
       - name: fs_write

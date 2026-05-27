@@ -25,9 +25,7 @@ tasks:
       from /workspace/message.txt to avoid any encoding mismatch). Write
       the 64-character hex digest (lowercase, no extra text or newline) to
       a new file 'hash.txt' via fs_write mode='create'. Reply with 'done'.
-    system: |
-      You are an assistant with filesystem and Python tool access. Use
-      python_eval for hashing rather than guessing the digest.
+    system_prompt_id: agent_system_v1
     tools:
       - name: fs_read
       - name: python_eval
@@ -62,9 +60,7 @@ tasks:
       Use python_eval to compute the arithmetic mean (Python: sum(xs)/len(xs))
       as a floating-point value. Write the mean (e.g. '12.5') to a new file
       'mean.txt' via fs_write mode='create'. Reply with the mean.
-    system: |
-      You are an assistant with filesystem and Python tool access. Compute
-      numerically; never approximate.
+    system_prompt_id: agent_system_v1
     tools:
       - name: fs_read
       - name: python_eval

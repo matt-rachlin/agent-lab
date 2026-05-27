@@ -18,9 +18,7 @@ tasks:
       Read the file at path 'source.txt' using the fs_read tool. Then write
       its EXACT contents to a new file at path 'copy.txt' using the fs_write
       tool with mode='create'. Finally, reply with the word 'done'.
-    system: |
-      You are an assistant with filesystem tool access. Always use the
-      provided tools — never guess file contents.
+    system_prompt_id: agent_system_v1
     tools:
       - name: fs_read
       - name: fs_write
@@ -51,9 +49,7 @@ tasks:
       to find the single line that contains the token 'SECRET_VALUE='. Then
       write JUST that one line (no path prefix, no quotes) to a new file at
       path 'secret.txt' using fs_write mode='create'. Reply with 'done'.
-    system: |
-      You are an assistant with filesystem tool access. Use fs_grep to
-      locate content rather than reading every file individually.
+    system_prompt_id: agent_system_v1
     tools:
       - name: fs_grep
       - name: fs_read
@@ -90,9 +86,7 @@ tasks:
         sum,<SUM>
       where <SUM> is the sum of the integers. Use fs_write mode='create'.
       Reply with 'done' when finished.
-    system: |
-      You are an assistant with filesystem tool access. Compute carefully
-      and write the EXACT format requested.
+    system_prompt_id: agent_system_v1
     tools:
       - name: fs_read
       - name: fs_write

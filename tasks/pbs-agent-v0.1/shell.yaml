@@ -18,9 +18,7 @@ tasks:
       lines (run something like 'wc -l < lines.txt'). Then write the
       resulting count (a plain integer, no extra text) to a new file
       'count.txt' via fs_write mode='create'. Reply with 'done'.
-    system: |
-      You are an assistant with shell and filesystem tool access. Use the
-      shell to query file properties.
+    system_prompt_id: agent_system_v1
     tools:
       - name: shell_exec
       - name: fs_write
@@ -49,9 +47,7 @@ tasks:
       field), one per line, sorted alphabetically. Capture the result and
       write it to a new file 'levels.txt' via fs_write mode='create'.
       Reply with 'done'.
-    system: |
-      You are a shell-savvy assistant. Use pipelines like `cut`, `sort -u`,
-      and `awk` to slice text efficiently.
+    system_prompt_id: agent_system_v1
     tools:
       - name: shell_exec
       - name: fs_write

@@ -22,9 +22,7 @@ tasks:
       the integer value of that field and write it (as plain text, no JSON
       braces, no extra whitespace) to a new file 'uptime.txt' via fs_write
       mode='create'. Reply with 'done'.
-    system: |
-      You are an assistant with HTTP and filesystem tool access. Always
-      use http_fetch when asked to GET a URL.
+    system_prompt_id: tool_use_system_v1
     tools:
       - name: http_fetch
       - name: fs_write
@@ -59,9 +57,7 @@ tasks:
       times the word 'TODO' appears in the response body. Write the count
       (a plain integer) to a new file 'todo_count.txt' via fs_write
       mode='create'. Reply with the count.
-    system: |
-      You are an assistant with HTTP, filesystem, and Python tool access.
-      Use python_eval for counting if helpful.
+    system_prompt_id: tool_use_system_v1
     tools:
       - name: http_fetch
       - name: fs_write
