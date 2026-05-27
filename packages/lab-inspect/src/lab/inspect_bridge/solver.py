@@ -18,6 +18,7 @@ mode is visible after the fact.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 import uuid
@@ -35,6 +36,7 @@ from inspect_ai.tool import Tool
 from lab.agent.sandbox import Sandbox
 from lab.agent.tool_pool import ToolPool
 from lab.core.llm import call_litellm_chat
+from lab.core.model_pool import ModelPool, PipelineModelPlan, PipelineStep
 from lab.core.settings import get_settings
 from lab.inspect_bridge.tools import discover_tool_schemas
 from lab.observability.log import get_logger
@@ -360,6 +362,35 @@ def model_with_tools(
         for msg in state.messages:
             chat.append(_chat_message_to_dict(msg))
 
+        # Phase 19c — declare a per-turn pipeline plan so llama-swap can
+        # pre-flight the model into the page cache and we get explicit
+        # eviction at solve() end. One step per turn; predictive load
+        # fires after each turn for turn+1. Best-effort: failures are
+        # swallowed by ModelPool internals so the solver path never
+        # gates inference on llama-swap health.
+        model_pool: ModelPool | None = None
+        side_models: list[str] = []
+        if task_meta is not None and getattr(task_meta, "tools", None):
+            for spec in task_meta.tools or []:
+                if isinstance(spec, dict) and spec.get("name") == "kb_query":
+                    side_models = ["qwen3-embedding", "qwen3-reranker-0.6b"]
+                    break
+        try:
+            model_pool = ModelPool(llama_swap_url=settings.llama_swap_url)
+            plan_steps = [
+                PipelineStep(name=f"turn_{i}", models=[model, *side_models])
+                for i in range(max(max_turns, 1))
+            ]
+            pipeline_id = f"agent-{uuid.uuid4().hex[:8]}"
+            model_pool.declare(PipelineModelPlan(pipeline_id=pipeline_id, steps=plan_steps))
+        except Exception as exc:
+            log.warning(
+                "solver_model_pool_declare_failed",
+                model=model,
+                error=str(exc),
+            )
+            model_pool = None
+
         pool: ToolPool | None = None
         tools: list[Tool] = []
         if sandbox is not None and task_meta is not None and tool_budget > 0:
@@ -400,6 +431,9 @@ def model_with_tools(
         try:
             for turn_idx in range(max_turns):
                 turn_started = time.monotonic()
+                if model_pool is not None:
+                    with contextlib.suppress(Exception):
+                        model_pool.step_start(f"turn_{turn_idx}")
                 with span(
                     "agent_turn",
                     **{"lab.turn": turn_idx, "lab.model": model},
@@ -516,6 +550,10 @@ def model_with_tools(
                         # turn — let the model see those results and write a
                         # final assistant message. Continue the loop.
                         pass
+                # End of turn — fire predictive load for turn+1 (Phase 19c).
+                if model_pool is not None:
+                    with contextlib.suppress(Exception):
+                        model_pool.step_complete(f"turn_{turn_idx}")
             else:
                 terminated_reason = "max_turns_reached"
         finally:
@@ -527,6 +565,11 @@ def model_with_tools(
             workspace_snapshot = _snapshot_predicate_files(task_meta, sandbox)
             if pool is not None:
                 pool.stop()
+            # Phase 19c — evict the cell's models so the next cell starts
+            # with a clean VRAM slot. Errors are swallowed by ModelPool.
+            if model_pool is not None:
+                with contextlib.suppress(Exception):
+                    model_pool.teardown()
 
         # Replace state.messages with the final conversation so Inspect
         # scorers and downstream tooling see what actually happened.

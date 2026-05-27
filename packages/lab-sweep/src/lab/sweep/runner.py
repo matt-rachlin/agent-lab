@@ -29,6 +29,7 @@ from rich.progress import (
 from lab.core.gpu_lease import force_release, gpu_lease
 from lab.core.gpu_lease import status as gpu_lease_status
 from lab.core.manifest import capture as capture_manifest
+from lab.core.model_pool import ModelPool, plan_for_cell
 from lab.core.settings import get_settings
 from lab.observability.log import bind_run_context, clear_run_context, get_logger
 from lab.observability.tracing import current_span_attrs, span
@@ -522,6 +523,7 @@ def execute_cell(
     timeout: int,
     model_default_system: str | None = None,
     model_default_extra: dict[str, Any] | None = None,
+    model_pool: ModelPool | None = None,
 ) -> CellResult:
     """Execute one matrix cell.
 
@@ -529,9 +531,37 @@ def execute_cell(
     unchanged) and the multi-turn agent path (Phase 6+). The fast path is
     preserved bit-for-bit - only cells whose task declares `max_turns > 1`
     or `tool_budget > 0` go through Inspect.
+
+    If ``model_pool`` is provided (Phase 19c), declare a per-cell pipeline
+    plan before dispatch and tear it down after. The plan triggers
+    llama-swap pre-flight so the GGUF lands in the page cache, and
+    explicit eviction post-cell so the VRAM is free for the next cell.
+    Failures inside the model_pool are swallowed by design — the
+    inference call below will trigger its own load if pre-flight no-op'd.
     """
 
     is_agent = _is_agent_cell(cell.task_payload)
+
+    # Phase 19c — declare per-cell pipeline plan so llama-swap pre-flights
+    # the model into the page cache and we get explicit eviction at
+    # cell-end. ``plan_for_cell`` derives side-models (embedder, reranker)
+    # from the task's tools spec.
+    if model_pool is not None:
+        try:
+            plan = plan_for_cell(
+                pipeline_id=cell.run_id,
+                model_id=cell.model_litellm_id,
+                tools=cell.task_payload.get("tools") if is_agent else None,
+            )
+            model_pool.declare(plan)
+            model_pool.step_start("cell")
+        except Exception as exc:
+            log.warning(
+                "sweep_model_pool_declare_failed",
+                run_id=cell.run_id,
+                error=str(exc),
+            )
+
     bind_run_context(
         run_id=cell.run_id,
         experiment_slug=cell.experiment_slug,
@@ -603,6 +633,19 @@ def execute_cell(
             return result
     finally:
         clear_run_context()
+        # Phase 19c — explicit eviction of the cell's model_pool plan.
+        # Failures are swallowed inside teardown(); we wrap defensively
+        # in case the pool object itself is mid-failure state.
+        if model_pool is not None:
+            try:
+                model_pool.step_complete("cell")
+                model_pool.teardown()
+            except Exception as exc:
+                log.warning(
+                    "sweep_model_pool_teardown_failed",
+                    run_id=cell.run_id,
+                    error=str(exc),
+                )
 
 
 def _execute_single_turn(
@@ -1024,10 +1067,46 @@ def run_sweep(
     )
     if dry_run:
         console.print("[yellow]dry-run: not executing")
+        # Phase 19c — log the model_pool plan for the first cell so an
+        # operator can confirm pre-flight/predictive-load wiring is right
+        # without paying the cost of an actual run.
+        if todo:
+            sample = todo[0]
+            sample_plan = plan_for_cell(
+                pipeline_id=sample.run_id,
+                model_id=sample.model_litellm_id,
+                tools=sample.task_payload.get("tools")
+                if _is_agent_cell(sample.task_payload)
+                else None,
+            )
+            log.info(
+                "sweep_dry_run_model_pool_plan",
+                pipeline_id=sample_plan.pipeline_id,
+                models=sample_plan.unique_models(),
+                steps=len(sample_plan.steps),
+            )
+            console.print(
+                f"[cyan]model_pool plan (sample cell):[/] "
+                f"pipeline_id={sample_plan.pipeline_id} "
+                f"models={sample_plan.unique_models()}"
+            )
         return {"total": len(cells), "done": len(done), "todo": len(todo), "executed": 0}
 
     _install_signal_handlers(spec.experiment.slug)
     _write_pidfile(spec.experiment.slug)
+
+    # Phase 19c — single ModelPool for the entire sweep; each cell
+    # re-declares its plan. The pool itself is a thin HTTP client, so
+    # sharing across cells is fine. Failures in the pool degrade
+    # gracefully (the cell's own inference call triggers loads if
+    # llama-swap is down).
+    _settings = get_settings()
+    model_pool: ModelPool | None
+    try:
+        model_pool = ModelPool(llama_swap_url=_settings.llama_swap_url)
+    except Exception as exc:
+        log.warning("sweep_model_pool_init_failed", error=str(exc))
+        model_pool = None
 
     # Group by model to minimize swap cost (outer = model)
     todo_sorted = sorted(
@@ -1113,6 +1192,7 @@ def run_sweep(
                     timeout=spec.request_timeout_sec,
                     model_default_system=model_default_system,
                     model_default_extra=model_default_extra,
+                    model_pool=model_pool,
                 )
                 summary["executed"] += 1
                 if result.status == "error":

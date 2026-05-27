@@ -189,6 +189,66 @@ curl -s -X POST http://localhost:8080/api/unload-all
   llama-swap.yaml uses the real path under `/data/apps/_vendor/`
   directly. Don't rely on the symlink.
 
+## Phase 19c — `lab.core.model_pool` integration
+
+The lab now ships a thin client (`lab.core.model_pool.ModelPool`) that
+sits in front of every sweep cell and agent solve(). It does three
+things:
+
+1. **Pre-flight pass** — on `declare(plan)`, fires one `max_tokens=1`
+   completion at each model so its GGUF lands in the OS page cache,
+   then immediately `POST /api/models/unload/<id>` so the VRAM frees
+   for the cell's real work. Cold-NVMe → warm-DDR5 on the second
+   load.
+2. **Predictive load** — on `step_complete(name)`, fire-and-forget
+   warm of the *next* step's first model in a daemon thread.
+3. **Explicit eviction** — `teardown()` walks the plan and unloads
+   each model. Without this we wait for the per-model `ttl` (default
+   600 s) before the slot frees up.
+
+Wired in:
+
+- `lab.sweep.runner.execute_cell(...)` — per-cell, with
+  `kb_query` triggering side-models (embedder, reranker).
+- `lab.inspect_bridge.solver.model_with_tools(...)` — per-turn
+  inside the multi-turn agent loop.
+- CLI: `lab agent run --pipeline-plan-only` prints the JSON plan that
+  would be declared, without loading anything.
+
+Network failures inside the pool are logged and swallowed. The
+inference call later in the pipeline will trigger its own load if
+llama-swap is down, just paying the cold-cache penalty.
+
+### CUDA fragmentation discipline
+
+Set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` everywhere
+PyTorch is involved. This is in `.env.example` and the lab's `.env`
+(loaded by `pydantic-settings` in `lab.core.settings` via SettingsConfigDict).
+Ollama and llama.cpp don't use PyTorch — they're pure C++ + GGUF mmap —
+so the variable is a no-op for those processes. It matters for:
+
+- the Phase 7 reranker host service (sentence-transformers / torch)
+- any future fine-tuning code path (Phase 18)
+- ad-hoc `lab/scripts/*.py` that does `from_pretrained(...)`
+
+Without it, hot-swap between big PyTorch models eventually fragments
+the allocator and triggers an OOM on the next load.
+
+If you ever do a raw `torch.load(...)` or `from_pretrained(...)` in a
+sub-agent (i.e. NOT through llama-swap/Ollama), apply the eviction
+discipline on the way out:
+
+```python
+del model              # drop the Python ref so the C++ destructor fires
+torch.cuda.empty_cache()
+gc.collect()
+```
+
+Skipping this on a 30B-class model leaves multiple GB pinned in the
+PyTorch allocator's free list, invisible to `nvidia-smi`'s "used" but
+unavailable to the next model. ModelPool already handles llama-swap-
+managed models; this discipline is only relevant for raw-torch sites.
+
 ## Rollback
 
 If llama-swap misbehaves, revert LiteLLM to direct Ollama for the

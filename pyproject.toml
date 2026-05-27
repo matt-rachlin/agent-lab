@@ -153,6 +153,7 @@ asyncio_mode = "auto"
 markers = [
     "integration: requires live Postgres/Valkey/MinIO/Ollama",
     "slow: tests that take >2s",
+    "requires_gpu_idle: needs the GPU lease free (skip when EXP-* sweep running)",
 ]
 
 [tool.pyright]

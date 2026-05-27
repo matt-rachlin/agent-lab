@@ -612,6 +612,15 @@ def agent_run(
     no_persist: bool = typer.Option(
         False, "--no-persist", help="Skip MinIO/Postgres write — useful for local debugging"
     ),
+    pipeline_plan_only: bool = typer.Option(
+        False,
+        "--pipeline-plan-only",
+        help=(
+            "Print the lab.core.model_pool PipelineModelPlan JSON that "
+            "would be declared for this task+model (Phase 19c) and exit "
+            "without loading anything."
+        ),
+    ),
 ) -> None:
     """Run a single agent cell end-to-end via the Inspect harness.
 
@@ -661,6 +670,27 @@ def agent_run(
             "description": payload.get("description"),
         }
     )
+
+    # Phase 19c — `--pipeline-plan-only` short-circuits before any sandbox
+    # or model load. Prints the JSON plan to stdout so an operator (or a
+    # debugging script) can confirm what the model_pool would pre-flight
+    # without paying any actual cost.
+    #
+    # The `is True` check is deliberate: when this function is invoked
+    # directly from Python (as the unit tests do), Typer's default
+    # OptionInfo object is truthy and would erroneously trigger the
+    # short-circuit. Strict-True keeps tests that pass nothing here
+    # working unchanged.
+    if pipeline_plan_only is True:
+        from lab.core.model_pool import plan_for_cell
+
+        plan = plan_for_cell(
+            pipeline_id=f"adhoc-{lab_task.slug}",
+            model_id=model,
+            tools=lab_task.tools,
+        )
+        console.print_json(plan.model_dump_json())
+        return
 
     sandbox_cfg = lab_task.sandbox or {}
     network = sandbox_cfg.get("network", "none")

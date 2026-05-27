@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     ollama_local_url: str = Field(default="http://localhost:11434")
     ollama_cloud_url: str = Field(default="https://ollama.com")
 
+    # Phase 19b/19c — llama-swap multi-model orchestrator. The
+    # :class:`lab.core.model_pool.ModelPool` defaults to this URL for
+    # pre-flight / predictive-load / teardown calls.
+    llama_swap_url: str = Field(default="http://localhost:8080")
+
 
 _settings: Settings | None = None
 

@@ -91,6 +91,26 @@ models:
     description: "Math/reasoning specialist; beats DSR1-distill-70B on AIME 2025."
     ttl: 600
 
+  # Hermes 4.3 36B — landed 2026-05-27. ~21 GB Q4_K_M; full GPU offload
+  # is too tight on 12 GB (would need most of VRAM + leave no headroom
+  # for KV cache), so we use hybrid offload via -ngl. Per research:
+  # 36B Q4 needs roughly 22 GB raw + 1-2 GB KV, fits with offload at
+  # ~30 layers (rough estimate; tune after first smoke). Assigned to
+  # big-llm group (exclusive) because it competes for the same lane
+  # as qwen3-30b-a3b-moe / gpt-oss-20b-local.
+  "hermes-4.3-36b":
+    cmd: |
+      ${LLAMA_SERVER}
+      --port ${PORT} --host 127.0.0.1 --ctx-size 8192
+      --n-gpu-layers 30 -ctk q8_0 -ctv q8_0
+      --model ${MODELS_DIR}/hermes-4.3-36b/NousResearch_Hermes-4.3-36B-Q4_K_M.gguf
+      --jinja
+    env:
+      - "LD_LIBRARY_PATH=${LD_LIB}"
+    name: "Hermes 4.3 36B (Q4_K_M, hybrid offload)"
+    description: "High-context generalist, 512K context, reliable JSON tool calling."
+    ttl: 600
+
   # ---- Existing Ollama-backed small/medium models, proxied via llama-swap ----
   #
   # These already run on Ollama (port 11434). We register them in llama-swap
@@ -149,16 +169,13 @@ groups:
     members:
       - "qwen3-30b-a3b-moe"
       - "gpt-oss-20b-local"
+      - "hermes-4.3-36b" # added Phase 19c, GGUF landed 2026-05-27
   #
-  # ceiling-llm (llama-3.3-70b-q4): DEFERRED — GGUF not yet on disk.
-  #   Add when /data/models/gguf/llama-3.3-70b-q4/Llama-3.3-70B-Instruct-Q4_K_M.gguf
-  #   exists. Use --n-gpu-layers 21 --ctx-size 8192 -ctk q8_0 -ctv q8_0
-  #   per plan §19e.
+  # ceiling-llm (llama-3.3-70b-q4): DEFERRED — GGUF on disk but adding
+  #   to llama-swap is a Phase 19e task per plan.
+  #   Use --n-gpu-layers 21 --ctx-size 8192 -ctk q8_0 -ctv q8_0.
   #
   # embedder-big (qwen3-embedding-8b-q8): DEFERRED — not yet pulled.
-  #
-  # hermes-4.3-36b: DEFERRED — download was interrupted, only partial on disk.
-  #   Group assignment when added: big-llm (~22 GB Q4_K_M, exclusive).
   #
   # xlam-2-7b-fc-r: NO UPSTREAM GGUF (re-checked 2026-05-27 against
   #   bartowski / unsloth / mradermacher / Salesforce). Only xLAM-1
