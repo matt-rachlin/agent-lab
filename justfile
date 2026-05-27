@@ -251,3 +251,15 @@ papers-add-stub ID:
 # List all cached papers.
 papers-list:
     @ls ~/research/papers/ 2>/dev/null | grep -v README || echo "(no papers cached)"
+
+# --- DuckDB analytics cache (Phase 16.6) ---
+
+# Refresh the local DuckDB analytics cache at ~/.cache/lab/analytics.duckdb.
+# Mirrors experiments / experiment_runs / eval_results / agent_logs / findings
+# / models / tasks from Postgres for sub-second ad-hoc queries.
+analyze-refresh:
+    uv run python -m tools.refresh_analytics_cache
+
+# Force-refresh the analytics cache regardless of staleness.
+analyze-refresh-force:
+    uv run python -m tools.refresh_analytics_cache --force
