@@ -1,0 +1,17 @@
+model,category,n,mean_accuracy
+glm-5.1-cloud,multiple,200,0.9400
+glm-5.1-cloud,parallel,200,0.9200
+glm-5.1-cloud,parallel_multiple,200,0.8800
+glm-5.1-cloud,simple,400,0.9425
+gpt-oss-120b-cloud,multiple,200,0.8950
+gpt-oss-120b-cloud,parallel,200,0.0000
+gpt-oss-120b-cloud,parallel_multiple,200,0.0000
+gpt-oss-120b-cloud,simple,400,0.8575
+gpt-oss-20b-cloud,multiple,200,0.8800
+gpt-oss-20b-cloud,parallel,200,0.0000
+gpt-oss-20b-cloud,parallel_multiple,200,0.0000
+gpt-oss-20b-cloud,simple,400,0.8600
+qwen3-14b-q4,multiple,200,0.9350
+qwen3-14b-q4,parallel,200,0.8850
+qwen3-14b-q4,parallel_multiple,200,0.8750
+qwen3-14b-q4,simple,400,0.9275
