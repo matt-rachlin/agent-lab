@@ -143,7 +143,17 @@ Local-only sweep, all through llama-swap:
 Total realistic estimate: **~11 hr**. Worst case (every cell hits
 max_tokens): substantially more. Cost: $0 (local only).
 
-## Hypotheses
+## Method
+
+See § Setup above for matrix + config + per-model overrides. The
+sweep dispatches to ``_execute_bfcl_cell`` in the lab sweep runner
+(same code path as EXP-005), which issues a single tool-calling
+LiteLLM request per cell and grades inline via the vendored AST
+checker. No second ``lab eval apply`` pass is required. Statistics
+are computed by ``scripts/analyze_exp005_followup.py`` against the
+``EXP-005-local-followup`` slug.
+
+## Hypothesis
 
 All four hypotheses are evaluated at greedy decoding on the same
 1000 cells per model. No multi-seed averaging.
@@ -203,6 +213,29 @@ to PBS-Agent re-confirmation — BFCL is a single benchmark and
 ADR-promotion would require a second confirming surface). If false,
 F-011-supplement reports "dense-local default
 (qwen3-14b-q4) is unchanged on BFCL; no ADR triggered."
+
+## Success / failure criteria
+
+Each hypothesis is judged independently. EXP-005-local-followup is
+**measurement, not promotion** — it produces an F-011 supplement
+(F-011-supplement-local-arms) rather than promoting or demoting any
+model.
+
+- **H1 confirmed** ⇔ for every new local M in
+  {qwen3-30b-a3b-moe, phi-4-reasoning-14b, hermes-4.3-36b},
+  `0.9250 (glm-5.1-cloud) - mean(M.bfcl_ast_match) >= 0.10`.
+  Otherwise REFUTED (per-model details reported).
+- **H2 confirmed** ⇔
+  `0.50 <= mean(qwen3-30b-a3b-moe.bfcl_ast_match) <= 0.95` AND
+  `0.50 <= mean(phi-4-reasoning-14b.bfcl_ast_match) <= 0.95`.
+  Otherwise REFUTED.
+- **H3 confirmed** ⇔ for every new model, per-category means
+  satisfy `simple >= multiple >= parallel >= parallel_multiple`
+  (ties allowed). Otherwise REFUTED (per-model breakdown is the
+  finding).
+- **H4 confirmed** ⇔
+  `max(mean(new_local.bfcl_ast_match)) >= 0.910 (qwen3-14b-q4
+  baseline from EXP-005)`. Otherwise REFUTED.
 
 ## Decision rule
 
