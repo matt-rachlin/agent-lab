@@ -1,0 +1,65 @@
+# EXP-005-local-followup — BFCL v3 local follow-up
+# Plan: docs/exp/EXP-005-local-followup.md
+# Adds the 3 local models the original EXP-005 dropped: qwen3-30b-a3b-moe,
+# phi-4-reasoning-14b, hermes-4.3-36b. Same 1000 BFCL AST examples, same
+# greedy-1024 config, same single seed. 3 × 1000 = 3000 cells.
+
+experiment:
+  slug: EXP-005-local-followup
+  title: "BFCL v3 external benchmark — follow-up: 3 dropped local models (MoE + phi + hermes)"
+  hypothesis: >-
+    H1 (replication of EXP-005-H1): cloud_best (glm-5.1-cloud, from EXP-005,
+    0.925) beats each of qwen3-30b-a3b-moe, phi-4-reasoning-14b, and
+    hermes-4.3-36b by >= 10pp on bfcl_ast_match overall. H2 (measurement gate
+    on dense local + MoE): the dense-local baseline qwen3-14b-q4 from
+    EXP-005 (0.910) bounds the three new locals from above on overall —
+    specifically qwen3-30b-a3b-moe and phi-4-reasoning-14b are within
+    [0.50, 0.95] (community-tier range for 14B-30B locals with reasoning
+    disabled). H3: per-category profile simple >= multiple >= parallel >=
+    parallel_multiple holds for every new model. H4: any of the 3 new
+    locals matches or beats qwen3-14b-q4 (0.910) on overall — refutation
+    means the dense default stays the right pick for tool use on this
+    suite.
+  plan_path: docs/exp/EXP-005-local-followup.md
+
+tasks:
+  suite: bfcl-v3-ast
+  # No slugs filter — full 1000 examples across 4 AST categories,
+  # identical to EXP-005.
+
+# Outer-loop-by-model so each model warms once. Order chosen to swap
+# from smallest to largest (phi 14B Q4 -> qwen3-30b MoE A3B -> hermes
+# 36B Q4_K_M) so the page cache fills in a useful order and llama-swap
+# evicts cleanly between arms.
+models:
+  - phi-4-reasoning-14b
+  - qwen3-30b-a3b-moe
+  - hermes-4.3-36b
+
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+
+# `think: false` on the MoE arm matches the F-009 / F-010 reasoning-off
+# convention (per commit 1141dc1 "Fix MoE tool-emission gap": without
+# this knob qwen3-30b-a3b-moe emits a reasoning prelude and fires zero
+# tool calls). phi-4-reasoning-14b is a reasoning model by design — we
+# leave reasoning ON, which is the on-leaderboard configuration.
+# hermes-4.3-36b ships reasoning-aware but defaults to reasoning OFF
+# for tool-use; no override needed.
+model_defaults:
+  qwen3-30b-a3b-moe:
+    extra:
+      think: false
+
+# BFCL is a single-pass benchmark — no inter-trial averaging.
+seeds: [1]
+
+max_concurrency: 1
+# 600s is the LiteLLM proxy per-model timeout for the llama-swap lane;
+# hermes 36B at ~8 tok/s × 1024 max output = ~130s worst case, well
+# under the budget.
+request_timeout_sec: 600

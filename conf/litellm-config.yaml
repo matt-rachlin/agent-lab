@@ -34,6 +34,13 @@ model_list:
       api_key: dummy
       timeout: 600
 
+  - model_name: hermes-4.3-36b
+    litellm_params:
+      model: openai/hermes-4.3-36b
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 600
+
   # ---- Phase 19e quality-ceiling lane (routed through llama-swap) ----
   # Long timeout (1800s = 30min) because 70B hybrid offload runs ~6-10
   # tok/s; a single PBS-Agent turn at 1024 output tokens is 100-170s,
