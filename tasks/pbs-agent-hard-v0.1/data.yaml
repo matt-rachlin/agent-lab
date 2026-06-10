@@ -30,7 +30,7 @@ tasks:
         <region>,<total>
       where <total> is formatted to 2 decimal places (e.g. South,1020.50).
       No extra text, no newline after the value.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -81,7 +81,7 @@ tasks:
 
       Write the p95 latency as a plain integer (milliseconds, no "ms" suffix,
       no other text) to /workspace/result.txt.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -133,7 +133,7 @@ tasks:
 
       Write their name (exactly as it appears in the JSON) to
       /workspace/result.txt — no extra text, no trailing newline.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -195,7 +195,7 @@ tasks:
 
       Write the count as a plain integer to /workspace/result.txt.
       No extra text.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -243,7 +243,7 @@ tasks:
 
       Write its product_name (exactly as in the CSV) to /workspace/result.txt.
       No extra text, no trailing newline.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -291,7 +291,7 @@ tasks:
         MISMATCH:<payment_id>
         UNEXPECTED:<payment_id>
       where each value is the relevant ID. No extra text.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -357,7 +357,7 @@ tasks:
 
       Find the product with the highest score. Write its name (exactly as in
       products.csv) to /workspace/result.txt. No extra text, no trailing newline.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -432,7 +432,7 @@ tasks:
 
       Write the median as a plain integer to /workspace/result.txt.
       No extra text, no trailing newline.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write

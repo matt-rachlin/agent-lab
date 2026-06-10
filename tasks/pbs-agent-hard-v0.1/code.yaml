@@ -27,7 +27,7 @@ tasks:
       3. Write the resulting node order as a comma-separated string
          (e.g. "A,B,C") to 'answer.txt' using fs_write mode='create'.
       Write ONLY the comma-separated node names, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -80,7 +80,7 @@ tasks:
       4. Write the result to 'answer.txt' as semicolon-separated intervals,
          each interval as "start,end" — for example: "1,5;6,11"
       Write ONLY the interval string, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -134,7 +134,7 @@ tasks:
       4. Write the get-results as a comma-separated string to 'answer.txt'
          via fs_write mode='create', in the order the gets appear.
       Write ONLY the comma-separated integers, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -182,7 +182,7 @@ tasks:
       5. Write the integer result of fib(10) to 'answer.txt' via fs_write
          mode='create'.
       Write ONLY the integer, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -237,7 +237,7 @@ tasks:
       3. Write the name of that function to 'answer.txt' via fs_write
          mode='create'.
       Write ONLY the function name, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -301,7 +301,7 @@ tasks:
       Round the result to 2 decimal places.
       Write the result to 'answer.txt' via fs_write mode='create'.
       Write ONLY the number (e.g. "17.98"), no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -386,7 +386,7 @@ tasks:
       5. Write the result of evaluating "2 + 3 * 4 + (5 + 2) * 3" to
          'answer.txt' via fs_write mode='create'.
       Write ONLY the integer result, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -476,7 +476,7 @@ tasks:
       4. Compute the shortest-path distance from node 'A' to node 'E'.
       5. Write the integer distance to 'answer.txt' via fs_write mode='create'.
       Write ONLY the integer, no extra text or newlines.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write

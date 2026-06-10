@@ -23,7 +23,7 @@ tasks:
       5. Format each output line as: source count  (space-separated, e.g. "auth-service 4")
 
       Write the result (3 lines, no blank lines) to /workspace/out.txt via fs_write.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -76,7 +76,7 @@ tasks:
       Use shell_exec to sum the SALARY values for all employees in the ENG department,
       skipping the header row. Write the result (a single integer, no extra text) to
       /workspace/out.txt via fs_write.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -122,7 +122,7 @@ tasks:
       4. Do NOT include a header line in the output.
 
       Write the result to /workspace/out.txt via fs_write.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -186,7 +186,7 @@ tasks:
          For ties in total, sort by username ascending.
 
       Write the result to /workspace/out.txt via fs_write (one user per line).
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -247,7 +247,7 @@ tasks:
       3. Output lines as: section:key — sorted alphabetically ascending.
 
       Write the result to /workspace/out.txt via fs_write (one entry per line).
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -329,7 +329,7 @@ tasks:
          (e.g. "GET /api/data/export 8528 50.0").
 
       Write the 3 lines to /workspace/out.txt via fs_write.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -394,7 +394,7 @@ tasks:
          /workspace/out.txt via fs_write.
 
       The assembled text must be reproduced character-for-character.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read
@@ -441,7 +441,7 @@ tasks:
          For ties in median, sort dept name ascending.
 
       Write the result to /workspace/out.txt via fs_write (one dept per line).
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: shell_exec
       - name: fs_read

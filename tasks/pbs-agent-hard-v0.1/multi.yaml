@@ -33,7 +33,7 @@ tasks:
       4. Write the username (and nothing else) to 'output/top_error_user.txt'
          using fs_write mode='create'.
       Reply with 'done' when the file is written.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -86,7 +86,7 @@ tasks:
       decimal number (e.g. "183060.00") to the path specified in the config's
       "output" field using fs_write mode='create'.
       Reply with the net revenue value.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -138,7 +138,7 @@ tasks:
       Write the net revenue as a plain integer (no commas, no currency symbol)
       to 'output/net_revenue.txt' using fs_write mode='create'.
       Reply with the net revenue.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: http_fetch
       - name: fs_write
@@ -193,7 +193,7 @@ tasks:
       Write the final number (e.g. "21.50") to 'output/sensor_mean.txt'
       using fs_write mode='create'.
       Reply with the value and which file was skipped.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -248,7 +248,7 @@ tasks:
       Write the count as a plain integer to 'output/anomaly_count.txt'
       using fs_write mode='create'.
       Reply with the count and which indices were flagged.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -292,7 +292,7 @@ tasks:
       Write its name (exactly as it appears in the product JSON, nothing else)
       to 'output/cheapest_product.txt' using fs_write mode='create'.
       Reply with the product name and its final price.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: http_fetch
       - name: fs_write
@@ -348,7 +348,7 @@ tasks:
       6. Write the file path (e.g. "src/auth.py") to 'output/priority_file.txt'
          using fs_write mode='create'.
       Reply with the file path and its weighted score.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write
@@ -435,7 +435,7 @@ tasks:
       Write the mean (e.g. "260.0") to 'output/avg_labeled_duration.txt'
       using fs_write mode='create'.
       Reply with the mean and which sessions were included.
-    system_prompt_id: tool_use_system_v1
+    system_prompt_id: tool_use_system_v2
     tools:
       - name: fs_read
       - name: fs_write

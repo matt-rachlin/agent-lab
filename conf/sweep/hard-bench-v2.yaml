@@ -1,0 +1,22 @@
+# Hard-suite validation + ranking: the 3 strong contenders on the new 32-task
+# difficulty-range suite. Seed 1 first (validate tasks are solvable + scorer
+# works, get first ranking); expand seeds/models after.
+experiment:
+  slug: HARD-BENCH-002
+  title: "Hard agentic suite: gemma4 vs Qwen3-Coder-30B vs Devstral-24B (pbs-agent-hard-v0.1)"
+  hypothesis: "A strict act-dont-narrate system prompt (v2) closes Devstral-24B's gap without hurting models that already act."
+tasks:
+  suite: pbs-agent-hard-v0.1
+models:
+  - gemma4-12b
+  - qwen3-coder-30b
+  - devstral-24b
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800
