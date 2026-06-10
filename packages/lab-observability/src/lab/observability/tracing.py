@@ -240,6 +240,16 @@ def current_span_attrs(**attrs: Any) -> None:
 _MLFLOW_TRACING_ENABLED = False
 
 
+def _settings_mlflow_url() -> str | None:
+    """Resolve the lab MLflow URL from settings (matches MlflowMirror)."""
+    try:
+        from lab.core.settings import get_settings
+
+        return get_settings().mlflow_url or None
+    except Exception:
+        return None
+
+
 def configure_mlflow_tracing(tracking_uri: str | None, experiment: str) -> bool:
     """Enable dual-emit of ``span()`` into MLflow Tracing for ``experiment``.
 
@@ -249,13 +259,16 @@ def configure_mlflow_tracing(tracking_uri: str | None, experiment: str) -> bool:
     """
     global _MLFLOW_TRACING_ENABLED  # noqa: PLW0603 - module-level config flag by design
     _MLFLOW_TRACING_ENABLED = False
-    if os.environ.get("LAB_MLFLOW_TRACE", "1") == "0" or not tracking_uri:
+    if os.environ.get("LAB_MLFLOW_TRACE", "1") == "0":
+        return False
+    uri = tracking_uri or os.environ.get("LAB_MLFLOW_URL") or _settings_mlflow_url()
+    if not uri:
         return False
     try:
         os.environ.setdefault("MLFLOW_ENABLE_ASYNC_TRACE_LOGGING", "false")
         import mlflow
 
-        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_tracking_uri(uri)
         mlflow.set_experiment(experiment)
         _MLFLOW_TRACING_ENABLED = True
     except Exception:
