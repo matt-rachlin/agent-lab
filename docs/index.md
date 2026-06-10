@@ -46,4 +46,4 @@ lab analyze report SLUG      # markdown report for an experiment
 
 ## Status
 
-See [`BUILD_LOG.md`](file:///home/m/.local/portfolio-staging/BUILD_LOG.md) for current phase and recent activity, and [`RESEARCH_OPS_PLAN.md`](file:///home/m/.local/portfolio-staging/RESEARCH_OPS_PLAN.md) for the master plan.
+See [`BUILD_LOG.md`](file:///home/m/.local/portfolio-staging/BUILD_LOG.md) for current phase and recent activity, and the master plan for the master plan.
