@@ -186,7 +186,7 @@ models:
     cmd: |
       ${LLAMA_SERVER}
       --port ${PORT} --host 127.0.0.1 --ctx-size 8192
-      --n-gpu-layers 16 -ctk q8_0 -ctv q8_0
+      --n-gpu-layers 10 -ctk q8_0 -ctv q8_0
       --model ${MODELS_DIR}/llama-3.3-70b-q4/Llama-3.3-70B-Instruct-Q4_K_M.gguf
       --jinja
     env:
