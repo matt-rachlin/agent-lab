@@ -521,6 +521,33 @@ def _mirror_cell_to_mlflow(
         if tool_call_count is not None:
             metrics["tool_call_count"] = float(tool_call_count)
 
+        # Mirror eval scores (bfcl/exact/regex/json/judge/...) from eval_results so
+        # single-turn & BFCL cells log their scores, not just latency/tokens. The
+        # path-specific executor writes eval_results before this mirror runs; the
+        # agent path logs score from the trajectory footer instead.
+        with contextlib.suppress(Exception):
+            with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT ev.name, er.score FROM eval_results er "
+                    "JOIN evaluators ev ON ev.evaluator_id = er.evaluator_id "
+                    "WHERE er.run_id = %s AND er.score IS NOT NULL",
+                    (cell.run_id,),
+                )
+                evs = {name: float(sc) for name, sc in cur.fetchall()}
+            for name, sc in evs.items():
+                metrics[f"score.{name}"] = sc
+            if evs and "score" not in metrics:
+                primary = (
+                    "bfcl_ast_match",
+                    "exact_match",
+                    "regex_match",
+                    "json_valid",
+                    "llm_judge_quality",
+                )
+                metrics["score"] = next(
+                    (evs[pk] for pk in primary if pk in evs), sum(evs.values()) / len(evs)
+                )
+
         tags: dict[str, str] = {
             "model_backend": cell.model_backend,
             "config_hash": cell.config_hash,
