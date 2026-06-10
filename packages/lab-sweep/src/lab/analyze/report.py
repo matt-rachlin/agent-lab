@@ -27,6 +27,54 @@ def _md_table(rows: list[dict[str, Any]]) -> str:
     return "\n".join([header, sep, *body]) + "\n"
 
 
+def _pass_rates_from_mlflow(experiment_slug: str) -> list[dict[str, Any]]:
+    """Per-model pass rate from the MLflow `score` metric. Used for agent-path
+    experiments, whose scores live in the trajectory footer -> MLflow rather
+    than in eval_results. Best-effort: returns [] on any failure."""
+    from collections import defaultdict
+
+    try:
+        import mlflow
+        from mlflow.tracking import MlflowClient
+
+        from lab.core.settings import get_settings
+
+        mlflow.set_tracking_uri(get_settings().mlflow_url)
+        exp = mlflow.get_experiment_by_name(experiment_slug)
+        if exp is None:
+            return []
+        runs = MlflowClient().search_runs([exp.experiment_id], max_results=5000)
+        agg: dict[str, list[float]] = defaultdict(list)
+        for run in runs:
+            sc = run.data.metrics.get("score")
+            if sc is None:
+                continue
+            agg[run.data.tags.get("lab.model", "?")].append(float(sc))
+        return [
+            {
+                "model": model,
+                "evaluator": "score (MLflow)",
+                "n": len(scores),
+                "pass_rate": round(sum(scores) / len(scores), 3),
+            }
+            for model, scores in sorted(agg.items())
+        ]
+    except Exception:
+        return []
+
+
+def _eval_pass_rate_table(experiment_slug: str, by_eval: list[dict[str, object]]) -> str:
+    if by_eval:
+        return _md_table(by_eval)
+    rows = _pass_rates_from_mlflow(experiment_slug)
+    if rows:
+        return (
+            "_No `eval_results` for this experiment (agent-path scores live in "
+            "MLflow). Pass rates from the MLflow `score` metric:_\n\n" + _md_table(rows)
+        )
+    return "_(no eval_results — run `lab eval apply` first)_\n"
+
+
 def make_report(experiment_slug: str) -> str:
     by_model = summary_by_model_simple(experiment_slug)
     by_model_cfg = summary_by_model_config(experiment_slug)
@@ -45,7 +93,7 @@ def make_report(experiment_slug: str) -> str:
         _md_table(by_model_cfg),
         "## Evaluator pass rates",
         "",
-        _md_table(by_eval) if by_eval else "_(no eval_results — run `lab eval apply` first)_\n",
+        _eval_pass_rate_table(experiment_slug, by_eval),
     ]
 
     # If evaluators have been applied, include reliability summary for the most-applied evaluator

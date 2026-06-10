@@ -383,8 +383,13 @@ def model_with_tools(
         else:
             try:
                 model_pool = ModelPool(llama_swap_url=settings.llama_swap_url)
+                # llama-swap registers big models without the litellm `-local`
+                # suffix (e.g. llama-3.3-70b-q4, not ...-local); using the litellm
+                # id makes preflight/warm 400. Ollama-backed models are skipped
+                # above via model_backend, so this only affects llama-swap models.
+                pool_model = model.removesuffix("-local")
                 plan_steps = [
-                    PipelineStep(name=f"turn_{i}", models=[model, *side_models])
+                    PipelineStep(name=f"turn_{i}", models=[pool_model, *side_models])
                     for i in range(max(max_turns, 1))
                 ]
                 pipeline_id = f"agent-{uuid.uuid4().hex[:8]}"
