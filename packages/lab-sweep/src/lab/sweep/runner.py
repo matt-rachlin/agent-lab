@@ -1393,6 +1393,10 @@ def run_sweep(
         f"[bold]sweep[/]: experiment={spec.experiment.slug} "
         f"cells={len(cells)} done={len(done)} todo={len(todo)}"
     )
+    if not dry_run:
+        from lab.observability.tracing import configure_mlflow_tracing
+
+        configure_mlflow_tracing(os.environ.get("LAB_MLFLOW_URL"), spec.experiment.slug)
     if dry_run:
         console.print("[yellow]dry-run: not executing")
         # Phase 19c — log the model_pool plan for the first cell so an

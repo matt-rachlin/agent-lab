@@ -40,8 +40,10 @@ from opentelemetry.sdk.trace.sampling import (
 from opentelemetry.trace import Span, Status, StatusCode
 
 __all__ = [
+    "configure_mlflow_tracing",
     "configure_tracing",
     "current_span_attrs",
+    "flush_mlflow_traces",
     "get_tracer",
     "is_configured",
     "span",
@@ -182,7 +184,7 @@ def get_tracer() -> trace.Tracer:
 def _coerce_attr(value: Any) -> str | int | float | bool:
     """Coerce a value to an OTel-allowed attribute type."""
 
-    if isinstance(value, (str, int, float, bool)):
+    if isinstance(value, str | int | float | bool):
         return value
     if value is None:
         return ""
@@ -201,7 +203,7 @@ def span(name: str, **attrs: Any) -> Iterator[Span]:
 
     tracer = get_tracer()
     coerced = {k: _coerce_attr(v) for k, v in attrs.items() if v is not None}
-    with tracer.start_as_current_span(name, attributes=coerced) as s:
+    with tracer.start_as_current_span(name, attributes=coerced) as s, _mlflow_span(name, coerced):
         try:
             yield s
         except BaseException as exc:
@@ -225,3 +227,98 @@ def current_span_attrs(**attrs: Any) -> None:
         if value is None:
             continue
         s.set_attribute(key, _coerce_attr(value))
+    if _MLFLOW_TRACING_ENABLED:
+        _mlflow_current_span_attrs(attrs)
+
+
+# --- MLflow Tracing dual-emit (best-effort) -----------------------------------
+# When configure_mlflow_tracing() succeeds, every `span()` also opens an MLflow
+# span, mirroring the OTel hierarchy (sweep:* -> agent_turn -> litellm_call /
+# tool:*) into MLflow Tracing so it shows in the experiment's Traces tab.
+# Strictly best-effort: any MLflow failure is swallowed and never affects the
+# OTel span or the agent run.
+_MLFLOW_TRACING_ENABLED = False
+
+
+def configure_mlflow_tracing(tracking_uri: str | None, experiment: str) -> bool:
+    """Enable dual-emit of ``span()`` into MLflow Tracing for ``experiment``.
+
+    Returns True when enabled. Disabled (False) if LAB_MLFLOW_TRACE=0, no
+    tracking_uri, or MLflow init fails. Forces synchronous trace export so a
+    trace lands on the server as each root span ends.
+    """
+    global _MLFLOW_TRACING_ENABLED  # noqa: PLW0603 - module-level config flag by design
+    _MLFLOW_TRACING_ENABLED = False
+    if os.environ.get("LAB_MLFLOW_TRACE", "1") == "0" or not tracking_uri:
+        return False
+    try:
+        os.environ.setdefault("MLFLOW_ENABLE_ASYNC_TRACE_LOGGING", "false")
+        import mlflow
+
+        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_experiment(experiment)
+        _MLFLOW_TRACING_ENABLED = True
+    except Exception:
+        _MLFLOW_TRACING_ENABLED = False
+    return _MLFLOW_TRACING_ENABLED
+
+
+def flush_mlflow_traces() -> None:
+    """Best-effort flush of buffered MLflow traces."""
+    if not _MLFLOW_TRACING_ENABLED:
+        return
+    with contextlib.suppress(Exception):
+        import mlflow
+
+        fn = getattr(mlflow, "flush_trace_async_logging", None)
+        if callable(fn):
+            fn()
+
+
+@contextlib.contextmanager
+def _mlflow_span(name: str, attrs: dict[str, Any]) -> Iterator[None]:
+    """Mirror an OTel span into MLflow. No-op when disabled; never raises."""
+    if not _MLFLOW_TRACING_ENABLED:
+        yield
+        return
+    cm = None
+    sp = None
+    try:
+        import mlflow
+
+        cm = mlflow.start_span(name=name)
+        sp = cm.__enter__()
+        if sp is not None and attrs:
+            with contextlib.suppress(Exception):
+                sp.set_attributes(attrs)
+    except Exception:
+        cm = None
+        sp = None
+    try:
+        yield
+    except BaseException as exc:
+        if cm is not None:
+            with contextlib.suppress(Exception):
+                if sp is not None:
+                    sp.set_attributes({"error.type": type(exc).__name__, "error.message": str(exc)})
+                cm.__exit__(type(exc), exc, exc.__traceback__)
+            cm = None
+        raise
+    finally:
+        if cm is not None:
+            with contextlib.suppress(Exception):
+                cm.__exit__(None, None, None)
+
+
+def _mlflow_current_span_attrs(attrs: dict[str, Any]) -> None:
+    """Bolt attributes onto the active MLflow span. Best-effort."""
+    with contextlib.suppress(Exception):
+        import mlflow
+
+        sp = mlflow.get_current_active_span()
+        if sp is None:
+            return
+        coerced = {k: _coerce_attr(v) for k, v in attrs.items() if v is not None}
+        if coerced:
+            with contextlib.suppress(Exception):
+                sp.set_attributes(coerced)
