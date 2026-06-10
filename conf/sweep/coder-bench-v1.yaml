@@ -1,0 +1,22 @@
+# Local coding-agent head-to-head: gemma4-12b vs the two Qwen coders, same
+# config (react, 4096 tok, temp 0, 3 seeds) on the PBS agent suite. Llama-3.3-70B
+# (58% known, slow + broken tool-calls) referenced separately.
+experiment:
+  slug: CODER-BENCH-001
+  title: "Local coding agents: gemma4-12b vs Qwen3-Coder-30B vs Qwen2.5-Coder-32B (pbs-agent-v0.1)"
+  hypothesis: "A coding-specialized 30-32B model beats the general gemma4-12b on local agentic coding tasks."
+tasks:
+  suite: pbs-agent-v0.1
+models:
+  - gemma4-12b
+  - qwen3-coder-30b
+  - qwen2.5-coder-32b-q4_k_m
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800
