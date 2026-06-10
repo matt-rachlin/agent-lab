@@ -126,10 +126,10 @@ tasks:
       compute net revenue. Tests http_fetch chaining over a fixture index
       with 4 dependent fetches plus arithmetic aggregation.
     input: |
-      Use http_fetch to GET http://reports.example.com/api/index.json.
+      Use http_fetch to GET http://example.com/api/index.json.
       This returns a JSON object with a "reports" array of URL paths.
 
-      For each path in that array, fetch http://reports.example.com<path>
+      For each path in that array, fetch http://example.com<path>
       to retrieve a quarterly report JSON with "sales" and "returns" fields.
 
       Sum all "sales" values and all "returns" values across all four reports.
@@ -146,20 +146,20 @@ tasks:
     max_turns: 14
     tool_budget: 16
     sandbox:
-      network: ["reports.example.com"]
+      network: ["example.com"]
       env:
-        LAB_HTTP_ALLOWLIST: "reports.example.com"
+        LAB_HTTP_ALLOWLIST: "example.com"
         LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
       workspace_files:
-        "_http_fixtures/reports.example.com/api/index.json": |
+        "_http_fixtures/example.com/api/index.json": |
           {"reports": ["/api/reports/q1.json", "/api/reports/q2.json", "/api/reports/q3.json", "/api/reports/q4.json"]}
-        "_http_fixtures/reports.example.com/api/reports/q1.json": |
+        "_http_fixtures/example.com/api/reports/q1.json": |
           {"quarter": "Q1", "sales": 142500, "returns": 3200, "region": "NA"}
-        "_http_fixtures/reports.example.com/api/reports/q2.json": |
+        "_http_fixtures/example.com/api/reports/q2.json": |
           {"quarter": "Q2", "sales": 189000, "returns": 4100, "region": "NA"}
-        "_http_fixtures/reports.example.com/api/reports/q3.json": |
+        "_http_fixtures/example.com/api/reports/q3.json": |
           {"quarter": "Q3", "sales": 203400, "returns": 5800, "region": "NA"}
-        "_http_fixtures/reports.example.com/api/reports/q4.json": |
+        "_http_fixtures/example.com/api/reports/q4.json": |
           {"quarter": "Q4", "sales": 267800, "returns": 7200, "region": "NA"}
     success_predicate:
       type: workspace_file_contains
@@ -276,13 +276,13 @@ tasks:
       + 1 discount table), cross-document join, and arithmetic. Expert-level
       HTTP chaining.
     input: |
-      Use http_fetch to GET http://shop.example.com/api/catalog.json.
+      Use http_fetch to GET http://example.org/api/catalog.json.
       This returns {"product_ids": [101, 102, 103, 104, 105]}.
 
-      For each product_id, GET http://shop.example.com/api/products/<id>.json
+      For each product_id, GET http://example.org/api/products/<id>.json
       to retrieve {"id", "name", "category", "price"}.
 
-      Also GET http://shop.example.com/api/discounts.json which returns a map
+      Also GET http://example.org/api/discounts.json which returns a map
       of category -> discount percentage (integer, e.g. 15 means 15% off).
 
       Compute each product's final price:
@@ -300,24 +300,24 @@ tasks:
     max_turns: 18
     tool_budget: 20
     sandbox:
-      network: ["shop.example.com"]
+      network: ["example.org"]
       env:
-        LAB_HTTP_ALLOWLIST: "shop.example.com"
+        LAB_HTTP_ALLOWLIST: "example.org"
         LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
       workspace_files:
-        "_http_fixtures/shop.example.com/api/catalog.json": |
+        "_http_fixtures/example.org/api/catalog.json": |
           {"product_ids": [101, 102, 103, 104, 105]}
-        "_http_fixtures/shop.example.com/api/products/101.json": |
+        "_http_fixtures/example.org/api/products/101.json": |
           {"id": 101, "name": "Alpha Widget", "category": "electronics", "price": 299.99}
-        "_http_fixtures/shop.example.com/api/products/102.json": |
+        "_http_fixtures/example.org/api/products/102.json": |
           {"id": 102, "name": "Beta Gadget", "category": "tools", "price": 89.50}
-        "_http_fixtures/shop.example.com/api/products/103.json": |
+        "_http_fixtures/example.org/api/products/103.json": |
           {"id": 103, "name": "Gamma Device", "category": "electronics", "price": 449.00}
-        "_http_fixtures/shop.example.com/api/products/104.json": |
+        "_http_fixtures/example.org/api/products/104.json": |
           {"id": 104, "name": "Delta Kit", "category": "tools", "price": 124.75}
-        "_http_fixtures/shop.example.com/api/products/105.json": |
+        "_http_fixtures/example.org/api/products/105.json": |
           {"id": 105, "name": "Epsilon Module", "category": "components", "price": 67.20}
-        "_http_fixtures/shop.example.com/api/discounts.json": |
+        "_http_fixtures/example.org/api/discounts.json": |
           {"electronics": 15, "tools": 10, "components": 5}
     success_predicate:
       type: workspace_file_contains
@@ -425,7 +425,7 @@ tasks:
       For each session_id, compute duration = end.ts - start.ts (in seconds).
       Ignore sessions without both a start and end event.
 
-      Use http_fetch to GET http://meta.example.com/api/session_metadata.json.
+      Use http_fetch to GET http://example.net/api/session_metadata.json.
       This returns {"sessions": {<session_id>: {"labeled": bool, "user": str}, ...}}.
 
       Filter to sessions where labeled == true.
@@ -444,9 +444,9 @@ tasks:
     max_turns: 16
     tool_budget: 18
     sandbox:
-      network: ["meta.example.com"]
+      network: ["example.net"]
       env:
-        LAB_HTTP_ALLOWLIST: "meta.example.com"
+        LAB_HTTP_ALLOWLIST: "example.net"
         LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
       workspace_files:
         "data/events.jsonl": |
@@ -461,7 +461,7 @@ tasks:
           {"ts": 1700000500, "session_id": "s4", "event": "start"}
           {"ts": 1700000540, "session_id": "s3", "event": "end"}
           {"ts": 1700000620, "session_id": "s4", "event": "end"}
-        "_http_fixtures/meta.example.com/api/session_metadata.json": |
+        "_http_fixtures/example.net/api/session_metadata.json": |
           {"sessions": {"s1": {"labeled": true, "user": "alice"}, "s2": {"labeled": false, "user": "bob"}, "s3": {"labeled": true, "user": "carol"}, "s4": {"labeled": true, "user": "alice"}}}
     success_predicate:
       type: workspace_file_contains
