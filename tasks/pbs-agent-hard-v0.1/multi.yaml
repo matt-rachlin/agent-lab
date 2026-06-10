@@ -1,0 +1,469 @@
+# PBS-Agent-Hard v0.1 — MULTI category tasks.
+#
+# 8 long-horizon tasks requiring chained tool use, intermediate state,
+# and structured reasoning. 3 hard, 5 expert. All answers verified.
+
+suite: pbs-agent-hard-v0.1
+category: multi
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: multi-etl-log-user-join
+    difficulty: hard
+    description: |
+      ETL pipeline: parse a structured access log, aggregate per-user error
+      counts, join with a users CSV, and identify the username with the
+      highest error rate. Tests fs_read × 2 + python_eval + fs_write chaining
+      with cross-file join logic.
+    input: |
+      You have two files: 'logs/access.log' and 'data/users.csv'.
+
+      The access log has lines of the form:
+        <timestamp> user=<id> status=<code> path=<path>
+
+      'data/users.csv' maps user_id to username and team.
+
+      Your job:
+      1. Use fs_read to read both files.
+      2. Use python_eval to parse the log, compute the error rate (status >= 400)
+         for each user_id as errors/total_requests, then join with users.csv to
+         get the username.
+      3. Find the username with the highest error rate.
+      4. Write the username (and nothing else) to 'output/top_error_user.txt'
+         using fs_write mode='create'.
+      Reply with 'done' when the file is written.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "logs/access.log": |
+          2024-01-15T10:01:23 user=42 status=200 path=/api/data
+          2024-01-15T10:01:45 user=17 status=500 path=/api/upload
+          2024-01-15T10:02:11 user=42 status=200 path=/api/search
+          2024-01-15T10:02:33 user=99 status=404 path=/api/missing
+          2024-01-15T10:03:00 user=17 status=200 path=/api/data
+          2024-01-15T10:03:15 user=42 status=500 path=/api/upload
+          2024-01-15T10:03:44 user=99 status=200 path=/api/data
+          2024-01-15T10:04:02 user=17 status=500 path=/api/data
+          2024-01-15T10:04:20 user=42 status=200 path=/api/search
+          2024-01-15T10:05:00 user=99 status=500 path=/api/upload
+        "data/users.csv": |
+          user_id,username,team
+          42,alice,backend
+          17,bob,frontend
+          99,carol,backend
+    success_predicate:
+      type: workspace_file_contains
+      path: output/top_error_user.txt
+      substring: "bob"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-config-driven-transform
+    difficulty: hard
+    description: |
+      Config-driven ETL: read a JSON config specifying which field to filter,
+      which field to aggregate, and a tax rate to apply; then read a CSV of
+      sales records; filter rows by the config's region, sum gross revenue,
+      apply the tax rate, and write net revenue. Tests multi-file read,
+      config-driven computation, and structured output.
+    input: |
+      Read 'config/pipeline.json' to discover the transformation parameters.
+      Then read 'data/sales.csv'.
+
+      The config specifies:
+        - filter_field / filter_value: only process rows where filter_field == filter_value
+        - input_field: the numeric column to aggregate (sum)
+        - apply_tax_rate: fraction to deduct (net = gross * (1 - tax_rate))
+        - output: path to write the result
+
+      Compute the net revenue for the filtered rows and write it as a plain
+      decimal number (e.g. "183060.00") to the path specified in the config's
+      "output" field using fs_write mode='create'.
+      Reply with the net revenue value.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "config/pipeline.json": |
+          {
+            "input_field": "revenue",
+            "filter_field": "region",
+            "filter_value": "EMEA",
+            "apply_tax_rate": 0.19,
+            "output": "results/net_revenue.txt"
+          }
+        "data/sales.csv": |
+          id,region,revenue,category
+          101,EMEA,45000,software
+          102,APAC,32000,hardware
+          103,EMEA,78000,services
+          104,EMEA,12000,software
+          105,NA,55000,services
+          106,APAC,19000,software
+          107,EMEA,91000,hardware
+    success_predicate:
+      type: workspace_file_contains
+      path: results/net_revenue.txt
+      substring: "183060.00"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-http-index-aggregate
+    difficulty: hard
+    description: |
+      Multi-hop HTTP fetch: GET an index JSON that lists report URLs, then
+      fetch each report, sum sales and returns across all quarters, and
+      compute net revenue. Tests http_fetch chaining over a fixture index
+      with 4 dependent fetches plus arithmetic aggregation.
+    input: |
+      Use http_fetch to GET http://reports.example.com/api/index.json.
+      This returns a JSON object with a "reports" array of URL paths.
+
+      For each path in that array, fetch http://reports.example.com<path>
+      to retrieve a quarterly report JSON with "sales" and "returns" fields.
+
+      Sum all "sales" values and all "returns" values across all four reports.
+      Compute net_revenue = total_sales - total_returns.
+
+      Write the net revenue as a plain integer (no commas, no currency symbol)
+      to 'output/net_revenue.txt' using fs_write mode='create'.
+      Reply with the net revenue.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: http_fetch
+      - name: fs_write
+      - name: python_eval
+    max_turns: 14
+    tool_budget: 16
+    sandbox:
+      network: ["reports.example.com"]
+      env:
+        LAB_HTTP_ALLOWLIST: "reports.example.com"
+        LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
+      workspace_files:
+        "_http_fixtures/reports.example.com/api/index.json": |
+          {"reports": ["/api/reports/q1.json", "/api/reports/q2.json", "/api/reports/q3.json", "/api/reports/q4.json"]}
+        "_http_fixtures/reports.example.com/api/reports/q1.json": |
+          {"quarter": "Q1", "sales": 142500, "returns": 3200, "region": "NA"}
+        "_http_fixtures/reports.example.com/api/reports/q2.json": |
+          {"quarter": "Q2", "sales": 189000, "returns": 4100, "region": "NA"}
+        "_http_fixtures/reports.example.com/api/reports/q3.json": |
+          {"quarter": "Q3", "sales": 203400, "returns": 5800, "region": "NA"}
+        "_http_fixtures/reports.example.com/api/reports/q4.json": |
+          {"quarter": "Q4", "sales": 267800, "returns": 7200, "region": "NA"}
+    success_predicate:
+      type: workspace_file_contains
+      path: output/net_revenue.txt
+      substring: "782400"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-manifest-validate-compute
+    difficulty: hard
+    description: |
+      Manifest-driven validation pipeline: read a manifest JSON to discover
+      which files to process and what fields are required, read each sensor
+      file, validate schema (skip malformed), compute the mean of means across
+      valid sensors, and write the result. Requires discovery → validate →
+      compute → write with error recovery on a bad file.
+    input: |
+      Read 'manifest.json'. It contains:
+        - "files": list of file paths to process
+        - "required_fields": list of fields each file must have
+        - "aggregate": the aggregation operation ("mean")
+
+      For each file in the manifest's "files" list:
+        1. Read the file (they are JSON).
+        2. Check that all required_fields are present. If a file is missing
+           any required field, skip it and note the error — do NOT abort.
+        3. For valid files, compute the arithmetic mean of the "readings" array.
+
+      After processing all files, compute the overall mean of the per-sensor
+      means (valid sensors only). Round to 2 decimal places.
+
+      Write the final number (e.g. "21.50") to 'output/sensor_mean.txt'
+      using fs_write mode='create'.
+      Reply with the value and which file was skipped.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 14
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "manifest.json": |
+          {
+            "files": ["data/sensors/sensor_a.json", "data/sensors/sensor_b.json", "data/sensors/sensor_c.json"],
+            "required_fields": ["sensor_id", "readings", "unit"],
+            "aggregate": "mean"
+          }
+        "data/sensors/sensor_a.json": |
+          {"sensor_id": "A1", "readings": [23.1, 24.5, 22.8, 25.0, 23.7], "unit": "celsius"}
+        "data/sensors/sensor_b.json": |
+          {"sensor_id": "B1", "readings": [18.9, 19.2, 20.1, 18.5], "unit": "celsius"}
+        "data/sensors/sensor_c.json": |
+          {"sensor_id": "C1", "readings": [31.2, 32.0, 30.5, 31.8, 32.5, 31.0]}
+    success_predicate:
+      type: workspace_file_contains
+      path: output/sensor_mean.txt
+      substring: "21.50"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-anomaly-detection-script
+    difficulty: hard
+    description: |
+      Parameterized script execution: read a params.json for algorithm settings,
+      read a time-series data file, implement a sliding-window z-score anomaly
+      detector with those parameters via python_eval, count anomalies, and write
+      the count. Tests reading two files, implementing a non-trivial algorithm
+      from spec, and correctly parameterizing it.
+    input: |
+      Read 'params.json' to get the algorithm configuration:
+        - "window_size": int — look-back window for computing mean/std
+        - "threshold": float — flag if |x - window_mean| > threshold * window_std
+        - "output_format": "count" — write the integer count of flagged points
+
+      Read 'data/timeseries.json' — a JSON object with a "values" array of floats.
+
+      Implement a sliding-window anomaly detector:
+        For each point i starting at index window_size:
+          window = values[i - window_size : i]
+          mu = mean(window)
+          sigma = stdev(window)
+          if sigma > 0 and abs(values[i] - mu) > threshold * sigma:
+            flag as anomaly
+
+      Count the total number of flagged anomalies.
+      Write the count as a plain integer to 'output/anomaly_count.txt'
+      using fs_write mode='create'.
+      Reply with the count and which indices were flagged.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 14
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "params.json": |
+          {"window_size": 5, "threshold": 2.0, "output_format": "count"}
+        "data/timeseries.json": |
+          {"values": [10.1, 10.3, 10.2, 10.4, 10.1, 10.2, 25.7, 10.3, 10.1, 10.5, 10.2, 10.0, 10.3, 10.4, 10.1, 31.2, 10.2, 10.3, 10.1, 10.4]}
+    success_predicate:
+      type: workspace_file_contains
+      path: output/anomaly_count.txt
+      substring: "2"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-http-catalog-pricing
+    difficulty: hard
+    description: |
+      Multi-hop HTTP pricing: fetch a product catalog index, fetch each product
+      page, fetch a discount table, apply category discounts, and identify the
+      cheapest product. Requires 7 sequential HTTP fetches (1 index + 5 products
+      + 1 discount table), cross-document join, and arithmetic. Expert-level
+      HTTP chaining.
+    input: |
+      Use http_fetch to GET http://shop.example.com/api/catalog.json.
+      This returns {"product_ids": [101, 102, 103, 104, 105]}.
+
+      For each product_id, GET http://shop.example.com/api/products/<id>.json
+      to retrieve {"id", "name", "category", "price"}.
+
+      Also GET http://shop.example.com/api/discounts.json which returns a map
+      of category -> discount percentage (integer, e.g. 15 means 15% off).
+
+      Compute each product's final price:
+        final_price = price * (1 - discount_pct / 100)
+
+      Find the product with the LOWEST final price.
+      Write its name (exactly as it appears in the product JSON, nothing else)
+      to 'output/cheapest_product.txt' using fs_write mode='create'.
+      Reply with the product name and its final price.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: http_fetch
+      - name: fs_write
+      - name: python_eval
+    max_turns: 18
+    tool_budget: 20
+    sandbox:
+      network: ["shop.example.com"]
+      env:
+        LAB_HTTP_ALLOWLIST: "shop.example.com"
+        LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
+      workspace_files:
+        "_http_fixtures/shop.example.com/api/catalog.json": |
+          {"product_ids": [101, 102, 103, 104, 105]}
+        "_http_fixtures/shop.example.com/api/products/101.json": |
+          {"id": 101, "name": "Alpha Widget", "category": "electronics", "price": 299.99}
+        "_http_fixtures/shop.example.com/api/products/102.json": |
+          {"id": 102, "name": "Beta Gadget", "category": "tools", "price": 89.50}
+        "_http_fixtures/shop.example.com/api/products/103.json": |
+          {"id": 103, "name": "Gamma Device", "category": "electronics", "price": 449.00}
+        "_http_fixtures/shop.example.com/api/products/104.json": |
+          {"id": 104, "name": "Delta Kit", "category": "tools", "price": 124.75}
+        "_http_fixtures/shop.example.com/api/products/105.json": |
+          {"id": 105, "name": "Epsilon Module", "category": "components", "price": 67.20}
+        "_http_fixtures/shop.example.com/api/discounts.json": |
+          {"electronics": 15, "tools": 10, "components": 5}
+    success_predicate:
+      type: workspace_file_contains
+      path: output/cheapest_product.txt
+      substring: "Epsilon Module"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-grep-weighted-todo
+    difficulty: hard
+    description: |
+      Codebase analysis with weighted scoring: use shell_exec or fs_grep to
+      discover which source files contain TODO comments, read a priority map
+      JSON, count TODOs per file, compute weighted scores (count × weight),
+      and identify the highest-priority file. Requires discovery → read each
+      found file → join with external weights → rank.
+    input: |
+      You have a small codebase under 'src/' with Python files, and a
+      'config/priority_map.json' that assigns an integer weight to each file.
+
+      Your task:
+      1. Use fs_grep (or shell_exec with grep) to find all files under 'src/'
+         that contain the string "TODO".
+      2. For each file that contains TODOs, use fs_read to read it and count
+         the total occurrences of "TODO" in that file.
+      3. Read 'config/priority_map.json' to get the weight for each file.
+      4. Compute weighted_score = todo_count * weight for each file.
+      5. Find the file with the HIGHEST weighted score.
+      6. Write the file path (e.g. "src/auth.py") to 'output/priority_file.txt'
+         using fs_write mode='create'.
+      Reply with the file path and its weighted score.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: shell_exec
+      - name: python_eval
+    max_turns: 16
+    tool_budget: 18
+    sandbox:
+      workspace_files:
+        "src/auth.py": |
+          # Authentication module
+          # TODO: implement refresh token logic
+          # TODO: add rate limiting
+          def login(user, password):
+              pass  # TODO: hash the password
+
+          def logout(session_id):
+              pass
+        "src/database.py": |
+          # Database layer
+          def connect(dsn):
+              pass
+
+          def query(sql):
+              # TODO: add connection pooling
+              pass
+
+          def insert(table, data):
+              pass
+        "src/api.py": |
+          # API handlers
+          # TODO: add authentication middleware
+          # TODO: add request logging
+          # TODO: add rate limiting
+          # TODO: add response caching
+          def handle_request(req):
+              pass
+
+          def handle_error(err):
+              pass
+        "src/utils.py": |
+          # Utilities
+          def format_date(d):
+              pass
+
+          def parse_config(path):
+              pass
+        "config/priority_map.json": |
+          {
+            "src/auth.py": 3,
+            "src/database.py": 2,
+            "src/api.py": 1,
+            "src/utils.py": 1
+          }
+    success_predicate:
+      type: workspace_file_contains
+      path: output/priority_file.txt
+      substring: "src/auth.py"
+
+  # -------------------------------------------------------------------------
+  - slug: multi-event-session-http-enrich
+    difficulty: hard
+    description: |
+      Multi-phase event log pipeline: parse a JSONL event stream to compute
+      per-session durations, fetch session metadata via HTTP to get labels,
+      filter to labeled sessions, compute average duration, and write the
+      result. Requires JSONL parsing, session aggregation, HTTP enrichment,
+      cross-document filter, and arithmetic — 4 distinct data-processing phases.
+    input: |
+      Read 'data/events.jsonl' — one JSON object per line with fields:
+        ts (unix timestamp), session_id (string), event ("start"|"action"|"end")
+
+      For each session_id, compute duration = end.ts - start.ts (in seconds).
+      Ignore sessions without both a start and end event.
+
+      Use http_fetch to GET http://meta.example.com/api/session_metadata.json.
+      This returns {"sessions": {<session_id>: {"labeled": bool, "user": str}, ...}}.
+
+      Filter to sessions where labeled == true.
+      Compute the arithmetic mean duration of those labeled sessions.
+      Round to 1 decimal place.
+
+      Write the mean (e.g. "260.0") to 'output/avg_labeled_duration.txt'
+      using fs_write mode='create'.
+      Reply with the mean and which sessions were included.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: http_fetch
+      - name: python_eval
+    max_turns: 16
+    tool_budget: 18
+    sandbox:
+      network: ["meta.example.com"]
+      env:
+        LAB_HTTP_ALLOWLIST: "meta.example.com"
+        LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
+      workspace_files:
+        "data/events.jsonl": |
+          {"ts": 1700000000, "session_id": "s1", "event": "start"}
+          {"ts": 1700000050, "session_id": "s2", "event": "start"}
+          {"ts": 1700000120, "session_id": "s1", "event": "action"}
+          {"ts": 1700000180, "session_id": "s3", "event": "start"}
+          {"ts": 1700000240, "session_id": "s2", "event": "action"}
+          {"ts": 1700000300, "session_id": "s1", "event": "end"}
+          {"ts": 1700000360, "session_id": "s3", "event": "action"}
+          {"ts": 1700000420, "session_id": "s2", "event": "end"}
+          {"ts": 1700000500, "session_id": "s4", "event": "start"}
+          {"ts": 1700000540, "session_id": "s3", "event": "end"}
+          {"ts": 1700000620, "session_id": "s4", "event": "end"}
+        "_http_fixtures/meta.example.com/api/session_metadata.json": |
+          {"sessions": {"s1": {"labeled": true, "user": "alice"}, "s2": {"labeled": false, "user": "bob"}, "s3": {"labeled": true, "user": "carol"}, "s4": {"labeled": true, "user": "alice"}}}
+    success_predicate:
+      type: workspace_file_contains
+      path: output/avg_labeled_duration.txt
+      substring: "260.0"

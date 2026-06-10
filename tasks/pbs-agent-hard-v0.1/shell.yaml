@@ -1,0 +1,465 @@
+suite: pbs-agent-hard-v0.1
+category: shell
+
+tasks:
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-top-error-sources
+    difficulty: medium
+    description: |
+      Parse a structured application log, filter to ERROR lines, extract the
+      bracketed source component from each, count occurrences per source, then
+      output the top 3 sources by error count (descending) as "source count"
+      pairs. Tests grep+regex extraction+sort+uniq pipeline.
+    input: |
+      The workspace has a file 'app.log'. Each line has the format:
+        TIMESTAMP LEVEL [source-component] message
+
+      Use shell_exec to:
+      1. Filter lines where LEVEL is ERROR (exact word, second whitespace-separated field).
+      2. Extract the bracketed source component (e.g. [auth-service] → auth-service).
+      3. Count occurrences per source.
+      4. Output the top 3 sources by count, descending. For ties, sort alphabetically ascending.
+      5. Format each output line as: source count  (space-separated, e.g. "auth-service 4")
+
+      Write the result (3 lines, no blank lines) to /workspace/out.txt via fs_write.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "app.log": |
+          2026-01-10T08:00:01 ERROR [auth-service] login failed for user=alice
+          2026-01-10T08:00:02 INFO  [web-server] GET /api/v1/users 200
+          2026-01-10T08:00:03 ERROR [db-pool] connection timeout pool=primary
+          2026-01-10T08:00:04 ERROR [auth-service] login failed for user=bob
+          2026-01-10T08:00:05 ERROR [cache] eviction threshold exceeded
+          2026-01-10T08:00:06 ERROR [db-pool] connection timeout pool=replica
+          2026-01-10T08:00:07 INFO  [web-server] GET /api/v1/health 200
+          2026-01-10T08:00:08 ERROR [auth-service] token expired user=carol
+          2026-01-10T08:00:09 ERROR [queue] consumer lag threshold exceeded
+          2026-01-10T08:00:10 ERROR [db-pool] deadlock detected
+          2026-01-10T08:00:11 WARN  [web-server] slow response 2300ms
+          2026-01-10T08:00:12 ERROR [cache] memory pressure high
+          2026-01-10T08:00:13 ERROR [auth-service] invalid credentials user=dave
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "auth-service 4"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "db-pool 3"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cache 2"
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-dept-salary-sum
+    difficulty: medium
+    description: |
+      Parse a space-aligned employee table, filter rows by department, and sum
+      a numeric salary column. Tests awk field extraction on whitespace-delimited
+      data with a header row.
+    input: |
+      The workspace has a file 'employees.txt' with columns:
+        NAME (two words)  DEPT  SALARY
+
+      The columns are space-separated; NAME is always two words (first + last).
+      So DEPT is the 3rd field and SALARY is the 4th field when splitting by whitespace.
+
+      Use shell_exec to sum the SALARY values for all employees in the ENG department,
+      skipping the header row. Write the result (a single integer, no extra text) to
+      /workspace/out.txt via fs_write.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "employees.txt": |
+          NAME            DEPT    SALARY
+          Alice Johnson   ENG     92500
+          Bob Smith       MKT     67800
+          Carol Williams  ENG     105000
+          Dave Brown      HR      58200
+          Eve Davis       ENG     88750
+          Frank Miller    MKT     72300
+          Grace Wilson    HR      61500
+          Hank Moore      ENG     97200
+    success_predicate:
+      type: workspace_file_contains
+      path: out.txt
+      substring: "383450"
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-multifile-dedup-latest
+    difficulty: hard
+    description: |
+      Merge three CSV shards with overlapping IDs. Each ID may appear in multiple
+      shards with different timestamps and values. Keep the record with the latest
+      timestamp per ID, then output id,value pairs sorted by id numerically
+      ascending. Tests multi-file processing, deduplication by field comparison,
+      and numeric sort.
+    input: |
+      The workspace has three CSV files: shard1.csv, shard2.csv, shard3.csv.
+      Each has columns: id,ts,value  (header on first line).
+      Some IDs appear in multiple shards with different timestamps (ISO-8601).
+
+      Task:
+      1. Merge all records from all three shards.
+      2. For each ID, keep only the record with the LATEST timestamp (lexicographic
+         comparison of ISO-8601 strings is valid here).
+      3. Output lines in the format: id,value — sorted by id numerically ascending.
+      4. Do NOT include a header line in the output.
+
+      Write the result to /workspace/out.txt via fs_write.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "shard1.csv": |
+          id,ts,value
+          1001,2026-03-01T09:00:00,42
+          1002,2026-03-01T09:05:00,17
+          1003,2026-03-01T09:10:00,88
+          1005,2026-03-01T09:15:00,55
+        "shard2.csv": |
+          id,ts,value
+          1002,2026-03-01T10:00:00,19
+          1004,2026-03-01T09:08:00,33
+          1005,2026-03-01T08:55:00,61
+          1006,2026-03-01T09:20:00,74
+        "shard3.csv": |
+          id,ts,value
+          1001,2026-03-01T08:50:00,40
+          1003,2026-03-01T11:00:00,91
+          1004,2026-03-01T09:08:00,33
+          1007,2026-03-01T09:25:00,29
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "1001,42"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "1002,19"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "1003,91"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "1007,29"
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-session-duration-per-user
+    difficulty: hard
+    description: |
+      Parse an interleaved connect/disconnect event log to reconstruct per-user
+      total connected time. CONNECT events carry user identity; DISCONNECT events
+      carry session ID and duration in seconds. Must join across event types by
+      session ID, accumulate per user, and sort output by total descending.
+    input: |
+      The workspace has 'sessions.log'. Each line is one of:
+        TIMESTAMP CONNECT  session=<id> user=<name>
+        TIMESTAMP DISCONNECT session=<id> duration=<seconds>
+
+      Task:
+      1. For each DISCONNECT event, look up the user from the corresponding
+         CONNECT event (matching session= value).
+      2. Sum all duration values per user.
+      3. Output lines as: username total_seconds — sorted by total descending.
+         For ties in total, sort by username ascending.
+
+      Write the result to /workspace/out.txt via fs_write (one user per line).
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "sessions.log": |
+          2026-04-15T10:00:05 CONNECT  session=s001 user=alice
+          2026-04-15T10:00:12 CONNECT  session=s002 user=bob
+          2026-04-15T10:00:45 DISCONNECT session=s001 duration=40
+          2026-04-15T10:01:03 CONNECT  session=s003 user=carol
+          2026-04-15T10:01:30 DISCONNECT session=s002 duration=78
+          2026-04-15T10:02:00 CONNECT  session=s004 user=alice
+          2026-04-15T10:02:15 DISCONNECT session=s003 duration=72
+          2026-04-15T10:02:45 CONNECT  session=s005 user=bob
+          2026-04-15T10:03:10 DISCONNECT session=s004 duration=70
+          2026-04-15T10:03:30 CONNECT  session=s006 user=dave
+          2026-04-15T10:04:00 DISCONNECT session=s005 duration=75
+          2026-04-15T10:04:15 CONNECT  session=s007 user=carol
+          2026-04-15T10:04:30 DISCONNECT session=s006 duration=60
+          2026-04-15T10:05:00 DISCONNECT session=s007 duration=45
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "bob 153"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "carol 117"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "alice 110"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "dave 60"
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-sensitive-config-keys
+    difficulty: hard
+    description: |
+      Parse an INI-style config file, identify keys whose names suggest
+      sensitive credentials (matching key, password, secret, or token
+      case-insensitively), and output section:key pairs sorted alphabetically.
+      Tests multi-section INI parsing and regex-based key filtering in a pipeline.
+    input: |
+      The workspace has 'config.ini'. It uses standard INI format:
+        [section-name]
+        key = value
+
+      Task:
+      1. Parse every section and key-value pair.
+      2. Find keys whose name (left of '=') matches any of these patterns
+         (case-insensitive): key, password, secret, token
+         (substring match — e.g. "api_key", "auth_token", "secret_key" all qualify).
+      3. Output lines as: section:key — sorted alphabetically ascending.
+
+      Write the result to /workspace/out.txt via fs_write (one entry per line).
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "config.ini": |
+          [database]
+          host = db.internal
+          port = 5432
+          password = s3cr3tDBpass!
+          connection_string = postgresql://admin:hunter2@db.internal/prod
+
+          [cache]
+          host = cache.internal
+          port = 6379
+          auth_token = RedisT0k3n#99
+          password = cach3Pass
+
+          [api]
+          endpoint = https://api.internal
+          api_key = sk-abc123XYZ789
+          timeout = 30
+          retry_count = 3
+
+          [storage]
+          bucket = my-prod-bucket
+          access_key = AKIAIOSFODNN7EXAMPLE
+          secret_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+          region = us-east-1
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "api:api_key"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cache:auth_token"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cache:password"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "database:password"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "storage:access_key"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "storage:secret_key"
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-access-log-slow-error-endpoints
+    difficulty: hard
+    description: |
+      Multi-stage access log analysis: parse Apache-style logs to compute per-endpoint
+      average response time and error rate, then filter to endpoints with >10% error
+      rate (4xx/5xx), sort surviving endpoints by average response time descending,
+      and emit the top 3 with rounded integer average ms and one-decimal error percent.
+      Requires careful multi-pass aggregation.
+    input: |
+      The workspace has 'access.log'. Format per line (quoted request field):
+        IP - - [timestamp] "METHOD /path STATUS RESPONSE_MS"
+
+      Task:
+      1. Parse METHOD, /path, STATUS (integer), RESPONSE_MS (integer) from each line.
+         The endpoint key is "METHOD /path" (e.g. "GET /api/users").
+      2. For each endpoint, compute:
+         a. Average response time in ms (round to nearest integer).
+         b. Error rate = (lines with STATUS >= 400) / (total lines) * 100.
+      3. Keep only endpoints where error_rate > 10.0 (strictly greater than).
+      4. Sort remaining endpoints by average_ms DESCENDING.
+      5. Output the top 3 lines, each formatted as:
+           ENDPOINT AVG_MS ERROR_PCT
+         where AVG_MS is a rounded integer and ERROR_PCT is formatted to 1 decimal place
+         (e.g. "GET /api/data/export 8528 50.0").
+
+      Write the 3 lines to /workspace/out.txt via fs_write.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "access.log": |
+          10.0.0.1 - - [10/Jun/2026:10:00:01 +0000] "GET /api/users 200 142"
+          10.0.0.2 - - [10/Jun/2026:10:00:02 +0000] "POST /api/login 200 523"
+          10.0.0.3 - - [10/Jun/2026:10:00:03 +0000] "GET /api/data/export 500 8823"
+          10.0.0.1 - - [10/Jun/2026:10:00:04 +0000] "GET /api/users 200 156"
+          10.0.0.4 - - [10/Jun/2026:10:00:05 +0000] "GET /api/data/export 200 7654"
+          10.0.0.2 - - [10/Jun/2026:10:00:06 +0000] "POST /api/login 401 89"
+          10.0.0.3 - - [10/Jun/2026:10:00:07 +0000] "GET /api/report 200 3421"
+          10.0.0.1 - - [10/Jun/2026:10:00:08 +0000] "GET /api/data/export 500 9102"
+          10.0.0.5 - - [10/Jun/2026:10:00:09 +0000] "GET /api/report 500 4100"
+          10.0.0.2 - - [10/Jun/2026:10:00:10 +0000] "GET /api/users 200 133"
+          10.0.0.4 - - [10/Jun/2026:10:00:11 +0000] "POST /api/login 200 498"
+          10.0.0.3 - - [10/Jun/2026:10:00:12 +0000] "GET /api/data/export 200 8901"
+          10.0.0.1 - - [10/Jun/2026:10:00:13 +0000] "GET /api/report 200 2980"
+          10.0.0.5 - - [10/Jun/2026:10:00:14 +0000] "GET /api/users 200 148"
+          10.0.0.2 - - [10/Jun/2026:10:00:15 +0000] "POST /api/login 429 31"
+          10.0.0.3 - - [10/Jun/2026:10:00:16 +0000] "GET /api/data/export 500 9455"
+          10.0.0.4 - - [10/Jun/2026:10:00:17 +0000] "GET /api/report 200 3200"
+          10.0.0.1 - - [10/Jun/2026:10:00:18 +0000] "POST /api/login 200 511"
+          10.0.0.5 - - [10/Jun/2026:10:00:19 +0000] "GET /api/users 404 22"
+          10.0.0.2 - - [10/Jun/2026:10:00:20 +0000] "GET /api/data/export 200 7233"
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "GET /api/data/export 8528 50.0"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "GET /api/report 3425 25.0"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "POST /api/login 330 40.0"
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-fragment-reassembly
+    difficulty: hard
+    description: |
+      Reassemble a text message from numbered fragment files stored in random
+      order. Fragment files are named frag_NN.dat (zero-padded two-digit
+      sequence number). The agent must list, sort numerically, concatenate in
+      order, and write the assembled text. Tests directory listing, numeric sort,
+      and multi-file concatenation without introducing extra whitespace.
+    input: |
+      The workspace directory 'fragments/' contains files named frag_NN.dat
+      where NN is a zero-padded two-digit sequence number (01, 02, ...).
+      Each file contains a fragment of a sentence with NO trailing newline.
+
+      Task:
+      1. List all files in fragments/.
+      2. Sort them by their numeric sequence number (01 before 02, etc.).
+      3. Concatenate their contents in that order with no separators between fragments.
+      4. Write the assembled text (exactly, with a single trailing newline) to
+         /workspace/out.txt via fs_write.
+
+      The assembled text must be reproduced character-for-character.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "fragments/frag_03.dat": "tion is the mother of "
+        "fragments/frag_07.dat": "ion leads to clarity."
+        "fragments/frag_01.dat": "Simplifica"
+        "fragments/frag_05.dat": "n. Clear th"
+        "fragments/frag_02.dat": "tion is powerful. Repeti"
+        "fragments/frag_06.dat": "inking and communicat"
+        "fragments/frag_04.dat": "inventio"
+    success_predicate:
+      type: workspace_file_contains
+      path: out.txt
+      substring: "Simplification is powerful. Repetition is the mother of invention. Clear thinking and communication leads to clarity."
+
+  # ---------------------------------------------------------------------------
+  - slug: shell-tsv-dedup-median-by-dept
+    difficulty: hard
+    description: |
+      Multi-pass TSV transformation pipeline: normalize mixed-case names to Title
+      Case, deduplicate employee records by ID keeping the highest score, then
+      compute the median score per department and output results sorted by median
+      descending. Requires handling even-length sets (median = average of two
+      middle values) and precise numeric formatting.
+    input: |
+      The workspace has 'employees.tsv' (tab-separated, first line is header:
+      id, name, dept, score).
+
+      Pipeline:
+      1. Skip the header row. Parse each row's id, name, dept, score fields.
+      2. Normalize each name to Title Case (each word capitalized).
+      3. Deduplicate by id: if an id appears multiple times, keep only the record
+         with the HIGHEST score (any name/dept value for that id is fine).
+      4. Group the surviving records by dept and compute the median score:
+         - Odd count: middle value when sorted.
+         - Even count: average of the two middle values (may be a decimal like 77.5).
+      5. Output lines as: dept:median — sorted by median DESCENDING.
+         Format median as integer if whole (e.g. 91), or with one decimal if fractional (e.g. 77.5).
+         For ties in median, sort dept name ascending.
+
+      Write the result to /workspace/out.txt via fs_write (one dept per line).
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "employees.tsv": "id\tname\tdept\tscore\nE001\talice JOHNSON\tEngineering\t87\nM001\tBob smith\tMarketing\t72\nE002\tCAROL Williams\tEngineering\t94\nH001\tdave BROWN\tHR\t65\nE001\talice johnson\tEngineering\t91\nM002\teve DAVIS\tMarketing\t83\nE003\tFRANK miller\tEngineering\t78\nH002\tGRACE wilson\tHR\t70\nM001\tbob SMITH\tMarketing\t68\nE002\tcarol WILLIAMS\tEngineering\t89\n"
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "Engineering:91"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "Marketing:77.5"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "HR:67.5"

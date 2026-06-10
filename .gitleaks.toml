@@ -1,0 +1,11 @@
+# Extend gitleaks' default rules but allowlist the benchmark task fixtures —
+# tasks under tasks/ intentionally embed fake credentials/config (e.g. the
+# "find sensitive config keys" agent task) as test data, not real secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Benchmark task fixtures contain intentional fake credentials"
+paths = [
+  '''tasks/.*''',
+]

@@ -213,6 +213,8 @@ def _eval_single_predicate(
     ptype = predicate.get("type")
     if ptype is None:
         return 0.0, "predicate missing 'type'"
+    if ptype == "all_of":
+        return _eval_all_of_predicate(predicate, snapshot)
     if ptype in {
         "workspace_file_exists",
         "workspace_file_equals",

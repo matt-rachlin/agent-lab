@@ -1,0 +1,466 @@
+# PBS-Agent-Hard v0.1 — DATA category tasks.
+#
+# Eight tasks covering CSV joins/aggregation, log parsing, JSON reshaping,
+# duplicate detection, derived metrics, reconciliation, multi-file pipelines,
+# and JSONL stream analysis. Designed to require correct filtering, grouping,
+# ordering, and edge-case handling.
+
+suite: pbs-agent-hard-v0.1
+category: data
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: data-csv-join-revenue-by-region
+    difficulty: medium
+    description: |
+      Join two CSVs (orders + customers) on customer_id, filter to completed
+      orders only, aggregate total revenue per region, and report the region
+      with the highest completed revenue. Tests join logic and status filtering.
+    input: |
+      You have two CSV files in your workspace:
+        data/orders.csv    — columns: order_id, customer_id, amount, status
+        data/customers.csv — columns: customer_id, name, region
+
+      Join them on customer_id. Consider ONLY orders with status="completed".
+      Sum the amount for each region. Find the region with the highest total
+      completed revenue.
+
+      Write a single line to /workspace/result.txt in exactly this format:
+        <region>,<total>
+      where <total> is formatted to 2 decimal places (e.g. South,1020.50).
+      No extra text, no newline after the value.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "data/orders.csv": |
+          order_id,customer_id,amount,status
+          1001,C01,250.00,completed
+          1002,C02,180.50,completed
+          1003,C03,430.00,cancelled
+          1004,C01,90.00,completed
+          1005,C04,320.75,completed
+          1006,C02,150.00,refunded
+          1007,C05,200.00,completed
+          1008,C03,510.00,completed
+          1009,C04,75.50,cancelled
+          1010,C05,640.00,completed
+        "data/customers.csv": |
+          customer_id,name,region
+          C01,Alice,North
+          C02,Bob,South
+          C03,Carol,East
+          C04,Dave,North
+          C05,Eve,South
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "South,1020.50"
+
+  # -------------------------------------------------------------------------
+  - slug: data-log-parse-p95-latency
+    difficulty: medium
+    description: |
+      Parse a structured access log (space-separated fields including level,
+      method, endpoint, HTTP status, and latency). Compute the p95 latency
+      (ceil(0.95*n)-th value in sorted order) across ALL requests and write
+      it. Tests log parsing and percentile arithmetic.
+    input: |
+      Your workspace contains data/access.log. Each line has the format:
+        <timestamp> <LEVEL> <METHOD> <endpoint> <status> <latency>ms
+
+      Parse every line. Sort all latency values ascending. Compute the p95
+      latency using the formula: value at index ceil(0.95 * n) - 1 (0-based)
+      where n is the total number of log lines.
+
+      Write the p95 latency as a plain integer (milliseconds, no "ms" suffix,
+      no other text) to /workspace/result.txt.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "data/access.log": |
+          2024-01-15T08:00:01Z INFO  GET /api/users 200 45ms
+          2024-01-15T08:00:03Z INFO  GET /api/products 200 120ms
+          2024-01-15T08:00:05Z ERROR GET /api/orders 500 2340ms
+          2024-01-15T08:00:07Z INFO  POST /api/users 201 88ms
+          2024-01-15T08:00:09Z INFO  GET /api/products 200 95ms
+          2024-01-15T08:00:11Z ERROR GET /api/users 503 1200ms
+          2024-01-15T08:00:13Z INFO  GET /api/orders 200 310ms
+          2024-01-15T08:00:15Z INFO  DELETE /api/users 200 55ms
+          2024-01-15T08:00:17Z INFO  GET /api/products 200 78ms
+          2024-01-15T08:00:19Z ERROR POST /api/orders 500 890ms
+          2024-01-15T08:00:21Z INFO  GET /api/users 200 42ms
+          2024-01-15T08:00:23Z INFO  GET /api/products 200 105ms
+          2024-01-15T08:00:25Z INFO  GET /api/orders 200 220ms
+          2024-01-15T08:00:27Z INFO  PUT /api/users 200 67ms
+          2024-01-15T08:00:29Z INFO  GET /api/products 200 130ms
+          2024-01-15T08:00:31Z ERROR GET /api/orders 500 3100ms
+          2024-01-15T08:00:33Z INFO  GET /api/users 200 39ms
+          2024-01-15T08:00:35Z INFO  GET /api/products 200 112ms
+          2024-01-15T08:00:37Z INFO  POST /api/users 201 77ms
+          2024-01-15T08:00:39Z INFO  GET /api/orders 200 185ms
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "2340"
+
+  # -------------------------------------------------------------------------
+  - slug: data-json-flatten-top-spender
+    difficulty: hard
+    description: |
+      Parse a nested JSON array of users each containing an events list.
+      Filter to purchase-type events only, sum amounts per user, find top
+      spender. Tests JSON traversal, filtering, and aggregation.
+    input: |
+      Your workspace contains data/users.json — a JSON array. Each element
+      has fields: user_id, name, and events (array of objects with type and
+      amount fields).
+
+      For each user, sum the amount of all events where type == "purchase".
+      Find the user with the highest total purchase amount.
+
+      Write their name (exactly as it appears in the JSON) to
+      /workspace/result.txt — no extra text, no trailing newline.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "data/users.json": |
+          [
+            {"user_id": "u1", "name": "Alice", "events": [
+              {"type": "purchase", "amount": 49.99},
+              {"type": "purchase", "amount": 129.00},
+              {"type": "view", "amount": 0},
+              {"type": "purchase", "amount": 19.50}
+            ]},
+            {"user_id": "u2", "name": "Bob", "events": [
+              {"type": "purchase", "amount": 299.00},
+              {"type": "purchase", "amount": 15.00},
+              {"type": "view", "amount": 0}
+            ]},
+            {"user_id": "u3", "name": "Carol", "events": [
+              {"type": "view", "amount": 0},
+              {"type": "view", "amount": 0},
+              {"type": "purchase", "amount": 89.99}
+            ]},
+            {"user_id": "u4", "name": "Dave", "events": [
+              {"type": "purchase", "amount": 450.00},
+              {"type": "purchase", "amount": 75.25},
+              {"type": "purchase", "amount": 30.00}
+            ]},
+            {"user_id": "u5", "name": "Eve", "events": [
+              {"type": "purchase", "amount": 199.99},
+              {"type": "view", "amount": 0},
+              {"type": "purchase", "amount": 299.99}
+            ]}
+          ]
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "Dave"
+
+  # -------------------------------------------------------------------------
+  - slug: data-duplicate-transaction-count
+    difficulty: hard
+    description: |
+      Detect duplicate rows in a transactions CSV (same txn_id appearing more
+      than once). Count how many DISTINCT transaction IDs are duplicated (not
+      the total extra rows, but the count of IDs that appear more than once).
+      Edge: must count distinct IDs, not total duplicate rows.
+    input: |
+      Your workspace contains data/transactions.csv with columns:
+        txn_id, customer_id, amount, date
+
+      Some transaction IDs appear more than once (duplicate rows). Count
+      the number of DISTINCT txn_id values that appear more than once in
+      the file (i.e., the count of IDs with duplicates, not the total
+      number of extra rows).
+
+      Write the count as a plain integer to /workspace/result.txt.
+      No extra text.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "data/transactions.csv": |
+          txn_id,customer_id,amount,date
+          T001,C01,150.00,2024-01-01
+          T002,C02,200.00,2024-01-02
+          T001,C01,150.00,2024-01-01
+          T003,C03,75.50,2024-01-03
+          T004,C04,300.00,2024-01-04
+          T002,C02,200.00,2024-01-02
+          T005,C05,125.00,2024-01-05
+          T003,C03,75.50,2024-01-03
+          T006,C06,450.00,2024-01-06
+          T007,C07,90.00,2024-01-07
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "3"
+
+  # -------------------------------------------------------------------------
+  - slug: data-inventory-turnover
+    difficulty: hard
+    description: |
+      Compute inventory turnover rate (COGS / average inventory) for each
+      product. Skip products where average inventory is zero. Find and report
+      the product name with the highest turnover rate. Edge: Doohickey has
+      COGS=0 but non-zero inventory — must not be confused with the zero-avg
+      exclusion, and Gadget Y has very low inventory making it the winner.
+    input: |
+      Your workspace contains data/inventory.csv with columns:
+        product_id, product_name, begin_inventory, end_inventory, cogs
+
+      For each product compute:
+        avg_inventory = (begin_inventory + end_inventory) / 2
+        turnover_rate = cogs / avg_inventory
+
+      Skip any product where avg_inventory == 0.
+      Find the product with the HIGHEST turnover_rate.
+
+      Write its product_name (exactly as in the CSV) to /workspace/result.txt.
+      No extra text, no trailing newline.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "data/inventory.csv": |
+          product_id,product_name,begin_inventory,end_inventory,cogs
+          P001,Widget A,500,320,3600
+          P002,Widget B,200,180,400
+          P003,Gadget X,1000,850,4500
+          P004,Gadget Y,50,20,780
+          P005,Doohickey,300,300,0
+          P006,Thingamajig,150,90,2160
+          P007,Whatsit,800,600,7000
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "Gadget Y"
+
+  # -------------------------------------------------------------------------
+  - slug: data-payment-reconciliation
+    difficulty: hard
+    description: |
+      Reconcile two CSV files (expected payments vs bank statement). Identify
+      three categories of issue: amount mismatches (same ID, different amount),
+      missing entries (in expected but not in bank), and unexpected entries
+      (in bank but not in expected). Write a structured summary report.
+      Multi-file join + categorized diff.
+    input: |
+      Your workspace contains two CSV files:
+        data/expected_payments.csv  — columns: payment_id, vendor, amount, date
+        data/bank_statement.csv     — columns: ref_id, vendor, amount, date
+
+      Join on payment_id == ref_id. Categorize every discrepancy:
+        - MISMATCH: same ID in both files but amounts differ
+        - MISSING: ID in expected but absent from bank
+        - UNEXPECTED: ID in bank but absent from expected
+
+      Write to /workspace/result.txt exactly 3 lines (one per category, sorted
+      alphabetically by category label), in this format:
+        MISSING:<payment_id>
+        MISMATCH:<payment_id>
+        UNEXPECTED:<payment_id>
+      where each value is the relevant ID. No extra text.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "data/expected_payments.csv": |
+          payment_id,vendor,amount,date
+          PAY001,Acme Corp,1500.00,2024-02-01
+          PAY002,Beta LLC,750.50,2024-02-03
+          PAY003,Acme Corp,200.00,2024-02-05
+          PAY004,Gamma Inc,3200.00,2024-02-07
+          PAY005,Delta Co,450.00,2024-02-09
+          PAY006,Beta LLC,1100.00,2024-02-11
+          PAY007,Acme Corp,825.75,2024-02-13
+          PAY008,Gamma Inc,600.00,2024-02-15
+        "data/bank_statement.csv": |
+          ref_id,vendor,amount,date
+          PAY001,Acme Corp,1500.00,2024-02-01
+          PAY002,Beta LLC,750.50,2024-02-03
+          PAY003,Acme Corp,200.00,2024-02-05
+          PAY004,Gamma Inc,3100.00,2024-02-07
+          PAY005,Delta Co,450.00,2024-02-09
+          PAY006,Beta LLC,1100.00,2024-02-11
+          PAY009,Epsilon Ltd,275.00,2024-02-12
+          PAY007,Acme Corp,825.75,2024-02-13
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: result.txt
+          substring: "MISSING:PAY008"
+        - type: workspace_file_contains
+          path: result.txt
+          substring: "MISMATCH:PAY004"
+        - type: workspace_file_contains
+          path: result.txt
+          substring: "UNEXPECTED:PAY009"
+
+  # -------------------------------------------------------------------------
+  - slug: data-multi-file-weighted-score
+    difficulty: hard
+    description: |
+      Three-file pipeline: products, reviews (some unverified), and sales.
+      Compute a weighted composite score per product using only verified
+      reviews for the rating component, normalized units sold, and normalized
+      revenue. Requires correct join across 3 files, verified-only filter,
+      and normalization.
+    input: |
+      Your workspace contains three CSV files:
+        data/products.csv  — columns: product_id, name, category
+        data/reviews.csv   — columns: review_id, product_id, rating, verified
+        data/sales.csv     — columns: sale_id, product_id, units, price_per_unit
+
+      For each product compute a weighted composite score:
+        1. avg_rating: mean of rating for rows where verified == "true" only
+        2. norm_units: (total units sold) / (max total units sold across all products)
+        3. norm_revenue: (total revenue) / (max total revenue across all products)
+           where revenue for a sale row = units * price_per_unit
+        4. score = 0.4 * avg_rating + 0.3 * norm_units + 0.3 * norm_revenue
+
+      Find the product with the highest score. Write its name (exactly as in
+      products.csv) to /workspace/result.txt. No extra text, no trailing newline.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 15
+    sandbox:
+      workspace_files:
+        "data/products.csv": |
+          product_id,name,category
+          P01,AlphaBlend,Software
+          P02,BetaStream,Hardware
+          P03,GammaVault,Software
+          P04,DeltaPulse,Hardware
+          P05,EpsilonCore,Software
+        "data/reviews.csv": |
+          review_id,product_id,rating,verified
+          R001,P01,4,true
+          R002,P01,5,true
+          R003,P01,3,true
+          R004,P02,4,true
+          R005,P02,5,true
+          R006,P02,4,false
+          R007,P02,3,true
+          R008,P03,5,true
+          R009,P03,5,true
+          R010,P03,4,true
+          R011,P04,2,true
+          R012,P04,3,true
+          R013,P04,4,false
+          R014,P05,4,true
+          R015,P05,5,true
+          R016,P05,4,true
+          R017,P05,3,true
+        "data/sales.csv": |
+          sale_id,product_id,units,price_per_unit
+          S001,P01,150,29.99
+          S002,P01,200,29.99
+          S003,P02,80,149.99
+          S004,P02,120,149.99
+          S005,P03,300,19.99
+          S006,P03,250,19.99
+          S007,P04,60,99.99
+          S008,P04,40,99.99
+          S009,P05,180,49.99
+          S010,P05,220,49.99
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "GammaVault"
+
+  # -------------------------------------------------------------------------
+  - slug: data-jsonl-session-median-duration
+    difficulty: hard
+    description: |
+      Parse a JSONL event stream with session lifecycle events (start/action/
+      error/end). Identify sessions that had at least one error event. For
+      those sessions, compute duration (end_ts - start_ts). Find the median
+      duration. Edge: must exclude sessions without errors, must handle the
+      median of an odd-count list, must filter to sessions that have both
+      start and end events.
+    input: |
+      Your workspace contains data/events.jsonl — one JSON object per line.
+      Each object has fields: session_id, event, ts (Unix timestamp), user.
+      event values are: "start", "action", "error", "end".
+
+      1. Find all session_ids that have at least one event with event=="error".
+      2. For each such session that also has both a "start" and "end" event,
+         compute duration = end_ts - start_ts (in seconds).
+      3. Compute the median of those durations. For an odd count of values,
+         the median is the middle value of the sorted list.
+
+      Write the median as a plain integer to /workspace/result.txt.
+      No extra text, no trailing newline.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "data/events.jsonl": |
+          {"session_id":"S001","event":"start","ts":1700000000,"user":"alice"}
+          {"session_id":"S002","event":"start","ts":1700000010,"user":"bob"}
+          {"session_id":"S001","event":"action","ts":1700000045,"user":"alice"}
+          {"session_id":"S003","event":"start","ts":1700000050,"user":"carol"}
+          {"session_id":"S002","event":"error","ts":1700000060,"user":"bob"}
+          {"session_id":"S001","event":"action","ts":1700000090,"user":"alice"}
+          {"session_id":"S004","event":"start","ts":1700000100,"user":"dave"}
+          {"session_id":"S002","event":"end","ts":1700000110,"user":"bob"}
+          {"session_id":"S003","event":"action","ts":1700000120,"user":"carol"}
+          {"session_id":"S001","event":"error","ts":1700000150,"user":"alice"}
+          {"session_id":"S005","event":"start","ts":1700000160,"user":"eve"}
+          {"session_id":"S004","event":"action","ts":1700000180,"user":"dave"}
+          {"session_id":"S003","event":"end","ts":1700000200,"user":"carol"}
+          {"session_id":"S001","event":"end","ts":1700000210,"user":"alice"}
+          {"session_id":"S004","event":"error","ts":1700000220,"user":"dave"}
+          {"session_id":"S005","event":"action","ts":1700000240,"user":"eve"}
+          {"session_id":"S004","event":"end","ts":1700000280,"user":"dave"}
+          {"session_id":"S005","event":"end","ts":1700000320,"user":"eve"}
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "180"

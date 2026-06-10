@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import time
 import uuid
 from typing import Any
@@ -221,6 +222,41 @@ def _serialise_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Make sure outgoing messages are pure JSON (no Inspect types leak)."""
 
     return [dict(m) for m in messages]
+
+
+def _extract_text_tool_calls(content: str, valid_names: set[str]) -> list[dict[str, Any]]:
+    """Recover tool calls a model emitted as JSON *text* in its content instead of
+    structured tool_calls — e.g. ``{"name": "fs_read", "arguments": {...}}`` or
+    ``{"type": "function", "name": ..., "parameters": {...}}``. Several capable
+    models (Llama-3.3-70B, Qwen2.5-Coder) do this and would otherwise score 0 on
+    multi-step tasks. Best-effort: only objects whose ``name`` is a known tool and
+    that carry arguments/parameters are recovered. Returns OpenAI-format calls.
+    """
+    recovered: list[dict[str, Any]] = []
+    for match in re.finditer(r"\{(?:[^{}]|\{[^{}]*\})*\}", content):
+        try:
+            obj = json.loads(match.group(0))
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(obj, dict):
+            continue
+        name = obj.get("name")
+        args = obj.get("arguments")
+        if args is None:
+            args = obj.get("parameters")
+        if not isinstance(name, str) or name not in valid_names or args is None:
+            continue
+        recovered.append(
+            {
+                "id": f"recovered_{len(recovered)}",
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "arguments": args if isinstance(args, str) else json.dumps(args),
+                },
+            }
+        )
+    return recovered
 
 
 def _execute_tool_calls(
@@ -485,6 +521,16 @@ def model_with_tools(
                     assistant_msg = (choice or {}).get("message") or {}
                     content_text = assistant_msg.get("content") or ""
                     tool_calls = assistant_msg.get("tool_calls") or []
+                    if not tool_calls and content_text:
+                        # Fallback: some models emit tool calls as JSON text in
+                        # content rather than structured calls (Llama-3.3, Qwen2.5-
+                        # Coder). Recover them so they aren't silently dropped.
+                        recovered = _extract_text_tool_calls(content_text, set(tool_modules))
+                        if recovered:
+                            tool_calls = recovered
+                            current_span_attrs(
+                                **{"lab.tool_calls_recovered_from_text": len(recovered)}
+                            )
                     usage = resp.get("usage") or {}
                     current_span_attrs(
                         **{

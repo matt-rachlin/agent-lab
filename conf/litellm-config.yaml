@@ -102,6 +102,12 @@ model_list:
       api_base: http://host.containers.internal:11434
       keep_alive: 5m
 
+  - model_name: devstral-24b
+    litellm_params:
+      model: ollama_chat/devstral:24b
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+
   - model_name: qwen3-8b
     litellm_params:
       model: ollama_chat/qwen3:8b

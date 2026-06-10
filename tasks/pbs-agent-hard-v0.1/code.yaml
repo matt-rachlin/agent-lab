@@ -1,0 +1,531 @@
+# PBS-Agent hard-v0.1 — code-domain tasks.
+#
+# Eight tasks spanning medium → hard difficulty.
+# All answers are verified by running the solution locally.
+
+suite: pbs-agent-hard-v0.1
+category: code
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: code-topo-sort
+    difficulty: medium
+    description: |
+      Implement Kahn's algorithm (BFS topological sort) on a DAG encoded in
+      a Python file, run it, and write the result. Tests algorithm
+      implementation and execution via python_eval/shell_exec.
+    input: |
+      The file 'src/graph.py' defines a directed acyclic graph as an
+      adjacency list (dict mapping node -> list of successors) and a list
+      of directed edges. Your task:
+      1. Read the file with fs_read.
+      2. Implement Kahn's algorithm (BFS-based topological sort) and run it
+         on the graph using python_eval or shell_exec. When multiple nodes
+         have in-degree 0 at the same time, process them in alphabetical
+         order (use a sorted list as the queue).
+      3. Write the resulting node order as a comma-separated string
+         (e.g. "A,B,C") to 'answer.txt' using fs_write mode='create'.
+      Write ONLY the comma-separated node names, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "src/graph.py": |
+          # Directed edges: (from_node, to_node) means from_node must come before to_node
+          edges = [
+              ('parse', 'typecheck'),
+              ('parse', 'codegen'),
+              ('typecheck', 'codegen'),
+              ('codegen', 'link'),
+              ('link', 'package'),
+          ]
+
+          # Adjacency list derived from edges above
+          graph = {
+              'parse':     ['typecheck', 'codegen'],
+              'typecheck': ['codegen'],
+              'codegen':   ['link'],
+              'link':      ['package'],
+              'package':   [],
+          }
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "parse,typecheck,codegen,link,package"
+
+  # -------------------------------------------------------------------------
+  - slug: code-interval-merge-fix
+    difficulty: medium
+    description: |
+      Find and fix a subtle off-by-one bug in an interval-merging function,
+      run it on provided test data, and write the merged intervals. The bug
+      is using strict less-than instead of less-than-or-equal for the overlap
+      check, causing adjacent intervals to not be merged.
+    input: |
+      The file 'src/intervals.py' contains a function merge_intervals() with
+      a subtle bug. The function should merge overlapping or touching intervals
+      (e.g. [1,3] and [3,5] should merge to [1,5]) but currently misses some
+      merges. Your task:
+      1. Read the file with fs_read.
+      2. Identify and fix the bug.
+      3. Run the fixed function on this input:
+         intervals = [(1, 3), (3, 5), (6, 9), (8, 11)]
+      4. Write the result to 'answer.txt' as semicolon-separated intervals,
+         each interval as "start,end" — for example: "1,5;6,11"
+      Write ONLY the interval string, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "src/intervals.py": |
+          def merge_intervals(intervals):
+              """Merge overlapping intervals. Returns list of (start, end) tuples."""
+              if not intervals:
+                  return []
+              intervals = sorted(intervals)
+              merged = [list(intervals[0])]
+              for start, end in intervals[1:]:
+                  # BUG: should be <= not < (adjacent intervals must also merge)
+                  if start < merged[-1][1]:
+                      merged[-1][1] = max(merged[-1][1], end)
+                  else:
+                      merged.append([start, end])
+              return [tuple(x) for x in merged]
+
+          if __name__ == '__main__':
+              test = [(1, 3), (3, 5), (6, 9), (8, 11)]
+              print(merge_intervals(test))
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "1,5;6,11"
+
+  # -------------------------------------------------------------------------
+  - slug: code-lru-cache-trace
+    difficulty: hard
+    description: |
+      Implement an LRU cache from scratch (no functools.lru_cache), trace a
+      sequence of get/put operations, and write the ordered list of return
+      values from all get calls. Tests data structure implementation and
+      careful state tracking.
+    input: |
+      The file 'src/ops.txt' lists a sequence of LRU cache operations.
+      Your task:
+      1. Read the file with fs_read.
+      2. Implement an LRU cache with the given capacity using python_eval or
+         shell_exec. Do NOT use functools.lru_cache — implement it yourself
+         (hint: OrderedDict works well).
+      3. Replay all operations in order. For each GET operation record the
+         return value (-1 if the key is not present).
+      4. Write the get-results as a comma-separated string to 'answer.txt'
+         via fs_write mode='create', in the order the gets appear.
+      Write ONLY the comma-separated integers, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "src/ops.txt": |
+          capacity 3
+          put 1 10
+          put 2 20
+          put 3 30
+          get 1
+          put 4 40
+          get 2
+          get 3
+          put 5 50
+          get 1
+          get 4
+          get 5
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "10,-1,30,-1,40,50"
+
+  # -------------------------------------------------------------------------
+  - slug: code-fibonacci-bug-fix
+    difficulty: hard
+    description: |
+      Find a subtle base-case bug in a recursive Fibonacci implementation
+      spread across multiple files, fix it, and run it to produce the
+      correct fib(10). The bug: the base case handles n<=0 -> 0 and n==2 -> 1
+      but misses n==1 -> 1, causing fib(1)=0 and every subsequent value off
+      by one.
+    input: |
+      The workspace contains a multi-file project under 'src/'. One of the
+      Python files has a buggy recursive Fibonacci function. Your task:
+      1. Use fs_grep to find which file contains the Fibonacci implementation.
+      2. Read that file with fs_read and identify the base-case bug.
+      3. Fix the file using fs_write mode='overwrite' with the corrected code.
+      4. Run 'python3 src/math/fib.py' with shell_exec to confirm it prints
+         the correct value for fib(10).
+      5. Write the integer result of fib(10) to 'answer.txt' via fs_write
+         mode='create'.
+      Write ONLY the integer, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "src/math/fib.py": |
+          def fib(n: int) -> int:
+              """Return the nth Fibonacci number (0-indexed: fib(0)=0, fib(1)=1)."""
+              if n <= 0:
+                  return 0
+              if n == 2:   # BUG: missing n == 1 case; fib(1) falls through to recursion
+                  return 1
+              return fib(n - 1) + fib(n - 2)
+
+          if __name__ == '__main__':
+              print(fib(10))
+        "src/math/__init__.py": ""
+        "src/utils/helpers.py": |
+          # Utility helpers — not related to Fibonacci
+          def clamp(val, lo, hi):
+              return max(lo, min(hi, val))
+        "src/main.py": |
+          from math.fib import fib
+          # Entry point — imports fib but does not define it
+          if __name__ == '__main__':
+              for i in range(11):
+                  print(f"fib({i}) = {fib(i)}")
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "55"
+
+  # -------------------------------------------------------------------------
+  - slug: code-param-count-analysis
+    difficulty: hard
+    description: |
+      Static code analysis task: use fs_grep or python_eval with ast to
+      analyze a Python source file and find which function has the most
+      parameters. Tests code analysis skills without executing the code.
+    input: |
+      The file 'src/ml_pipeline.py' contains several Python function
+      definitions. Your task:
+      1. Read the file with fs_read.
+      2. Determine which function has the greatest number of parameters
+         (count all positional and keyword parameters declared in the
+         function signature, including those with defaults).
+      3. Write the name of that function to 'answer.txt' via fs_write
+         mode='create'.
+      Write ONLY the function name, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 8
+    tool_budget: 10
+    sandbox:
+      workspace_files:
+        "src/ml_pipeline.py": |
+          import os
+
+          def load_data(path: str, delimiter: str = ',') -> list:
+              """Load CSV data from path."""
+              pass
+
+          def process_data(df, columns, target, test_size=0.2, random_state=42):
+              """Split data into train/test sets."""
+              pass
+
+          def train_model(X_train, y_train, model_type, learning_rate=0.01,
+                          n_epochs=100, batch_size=32, dropout=0.5,
+                          weight_decay=1e-4, patience=10, verbose=False):
+              """Train a model with the given hyperparameters."""
+              pass
+
+          def evaluate(model, X_test, y_test):
+              """Evaluate model on test set."""
+              pass
+
+          def preprocess(data, scaler=None, imputer=None, encoder=None,
+                         normalize=True):
+              """Preprocess data with optional transformers."""
+              pass
+
+          def save_results(path, metrics, model, config):
+              """Persist results to disk."""
+              pass
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "train_model"
+
+  # -------------------------------------------------------------------------
+  - slug: code-sample-variance-fix
+    difficulty: hard
+    description: |
+      Fix a statistics bug (population variance used instead of sample
+      variance, N vs N-1 denominator), run the fixed function on provided
+      data, and write the result rounded to 2 decimal places. Requires
+      reading multiple files, identifying the subtle mathematical error,
+      fixing it, and computing the output.
+    input: |
+      The project under 'src/' contains a statistics module with a bug.
+      Use fs_grep to locate the variance function, read the relevant file,
+      identify the mathematical error, fix it, then run it on the data
+      in 'data/samples.txt' (one integer per line).
+      The correct formula for SAMPLE variance uses (N-1) in the denominator,
+      not N (which is population variance).
+      Round the result to 2 decimal places.
+      Write the result to 'answer.txt' via fs_write mode='create'.
+      Write ONLY the number (e.g. "17.98"), no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "src/stats/__init__.py": ""
+        "src/stats/variance.py": |
+          def mean(data):
+              return sum(data) / len(data)
+
+          def variance(data):
+              """Compute variance of data.
+
+              Note: uses population formula (divides by N).
+              TODO: switch to sample variance (divide by N-1).
+              """
+              m = mean(data)
+              # BUG: divides by len(data) instead of len(data)-1
+              return sum((x - m) ** 2 for x in data) / len(data)
+
+          def std_dev(data):
+              import math
+              return math.sqrt(variance(data))
+        "src/stats/summary.py": |
+          from .variance import variance, mean, std_dev
+
+          def summarize(data):
+              return {
+                  'mean': mean(data),
+                  'variance': variance(data),
+                  'std_dev': std_dev(data),
+                  'n': len(data),
+              }
+        "src/main.py": |
+          import sys, os
+          sys.path.insert(0, os.path.dirname(__file__))
+          from stats.variance import variance
+
+          if __name__ == '__main__':
+              with open('data/samples.txt') as f:
+                  data = [int(line.strip()) for line in f if line.strip()]
+              print(round(variance(data), 2))
+        "data/samples.txt": |
+          4
+          7
+          13
+          2
+          1
+          9
+          11
+          6
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "17.98"
+
+  # -------------------------------------------------------------------------
+  - slug: code-expr-parser-fix
+    difficulty: hard
+    description: |
+      Fix operator-precedence bug in a recursive-descent expression parser
+      (* and + have swapped precedence), run it on a test expression, and
+      write the result. Requires understanding parser structure, fixing
+      grammar rules, and verifying output.
+    input: |
+      The file 'src/parser.py' contains a recursive-descent expression
+      parser for arithmetic expressions with +, *, and parentheses.
+      The parser has a bug: the precedence of * and + is swapped, so
+      "2 + 3 * 4" evaluates to 20 instead of 14.
+      Your task:
+      1. Read the file with fs_read.
+      2. Fix the operator-precedence bug (in correct arithmetic, * binds
+         tighter than +: parse_expr handles +, parse_term handles *).
+      3. Overwrite the file with the fixed version using fs_write mode='overwrite'.
+      4. Run 'python3 src/parser.py' with shell_exec and confirm the output
+         is correct.
+      5. Write the result of evaluating "2 + 3 * 4 + (5 + 2) * 3" to
+         'answer.txt' via fs_write mode='create'.
+      Write ONLY the integer result, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 12
+    tool_budget: 15
+    sandbox:
+      workspace_files:
+        "src/parser.py": |
+          def evaluate(expr: str) -> int:
+              """Evaluate an arithmetic expression with +, *, and parentheses.
+
+              BUG: operator precedence is swapped — parse_expr handles *
+              and parse_term handles +, but it should be the other way around
+              (* binds tighter than +).
+              """
+              expr = expr.replace(' ', '')
+              pos = [0]
+
+              def parse_expr():
+                  # BUG: this level should handle +, not *
+                  val = parse_term()
+                  while pos[0] < len(expr) and expr[pos[0]] == '*':
+                      pos[0] += 1
+                      val *= parse_term()
+                  return val
+
+              def parse_term():
+                  # BUG: this level should handle *, not +
+                  val = parse_factor()
+                  while pos[0] < len(expr) and expr[pos[0]] == '+':
+                      pos[0] += 1
+                      val += parse_factor()
+                  return val
+
+              def parse_factor():
+                  if expr[pos[0]] == '(':
+                      pos[0] += 1
+                      val = parse_expr()
+                      pos[0] += 1  # skip ')'
+                      return val
+                  start = pos[0]
+                  while pos[0] < len(expr) and expr[pos[0]].isdigit():
+                      pos[0] += 1
+                  return int(expr[start:pos[0]])
+
+              return parse_expr()
+
+          if __name__ == '__main__':
+              tests = [
+                  ("2 + 3 * 4", 14),
+                  ("2 + 3 * 4 + (5 + 2) * 3", 35),
+              ]
+              all_ok = True
+              for expr, expected in tests:
+                  result = evaluate(expr)
+                  status = "OK" if result == expected else f"FAIL (got {result}, want {expected})"
+                  print(f"  {expr!r} = {result}  {status}")
+                  if result != expected:
+                      all_ok = False
+              if all_ok:
+                  print("All tests passed")
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "35"
+
+  # -------------------------------------------------------------------------
+  - slug: code-dijkstra-multifile
+    difficulty: hard
+    description: |
+      Implement Dijkstra's algorithm, read a graph spread across multiple
+      config files (the agent must grep to locate the edge definitions),
+      and compute the shortest-path distance from A to E. Tests algorithm
+      implementation, multi-file grepping, data parsing, and integration.
+    input: |
+      A graph is encoded across the project files under 'src/'. The edge
+      definitions are hidden somewhere in the file tree — use fs_grep to
+      find them (search for "EDGE" or "weight"). Each edge line has the
+      format: EDGE <from> <to> <weight>
+      Your task:
+      1. Use fs_grep to locate all edge definitions.
+      2. Parse the edges to build an undirected weighted graph.
+      3. Implement Dijkstra's algorithm (do not use any graph libraries;
+         implement the priority-queue version from scratch using heapq).
+      4. Compute the shortest-path distance from node 'A' to node 'E'.
+      5. Write the integer distance to 'answer.txt' via fs_write mode='create'.
+      Write ONLY the integer, no extra text or newlines.
+    system_prompt_id: tool_use_system_v1
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "src/config/network.cfg": |
+          # Network topology configuration
+          # Format: EDGE <node1> <node2> <weight>
+          EDGE A B 4
+          EDGE A C 2
+          EDGE B C 1
+          EDGE B D 5
+          EDGE C D 8
+          EDGE C E 10
+          EDGE D E 2
+        "src/config/README.txt": |
+          This directory contains network topology configurations.
+          Edge weights represent latency in milliseconds.
+          Use Dijkstra's algorithm to compute shortest paths.
+        "src/router.py": |
+          # Router module — reads config and computes paths
+          # (stub; the full implementation is your task)
+          import heapq
+
+          def load_graph(cfg_path):
+              """Parse edge definitions from a .cfg file."""
+              graph = {}
+              with open(cfg_path) as f:
+                  for line in f:
+                      line = line.strip()
+                      if line.startswith('EDGE'):
+                          _, u, v, w = line.split()
+                          w = int(w)
+                          graph.setdefault(u, []).append((v, w))
+                          graph.setdefault(v, []).append((u, w))
+              return graph
+        "src/utils/graph_utils.py": |
+          # Helper stubs — not needed for shortest path computation
+          def node_count(graph):
+              return len(graph)
+
+          def edge_count(graph):
+              return sum(len(v) for v in graph.values()) // 2
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "10"
