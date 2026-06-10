@@ -189,6 +189,7 @@ _FRIENDLY = {
     "llama3.1": {"8b-instruct-q4_k_m": "llama3.1-8b-q4"},
     "phi4": {"latest": "phi4", "14b-q4_k_m": "phi-4-q4"},
     "gemma3": {"12b-it-q4_k_m": "gemma3-12b-q4"},
+    "gemma4": {"12b": "gemma4-12b"},
 }
 
 

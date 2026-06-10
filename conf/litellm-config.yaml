@@ -84,6 +84,12 @@ model_list:
       api_base: http://host.containers.internal:11434
       keep_alive: 5m
 
+  - model_name: gemma4-12b
+    litellm_params:
+      model: ollama_chat/gemma4:12b
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+
   - model_name: qwen3-8b
     litellm_params:
       model: ollama_chat/qwen3:8b

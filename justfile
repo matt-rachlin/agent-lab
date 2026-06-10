@@ -104,7 +104,7 @@ backup-status:
 
 # Pull a curated initial set of local Ollama models
 models-pull:
-    @for m in qwen3:14b-q4_K_M qwen3:8b llama3.1:8b-instruct-q4_K_M phi4:latest gemma3:12b-it-q4_K_M; do \
+    @for m in qwen3:14b-q4_K_M qwen3:8b llama3.1:8b-instruct-q4_K_M phi4:latest gemma3:12b-it-q4_K_M gemma4:12b; do \
         echo "pulling $m"; ollama pull "$m" || true; \
     done
 

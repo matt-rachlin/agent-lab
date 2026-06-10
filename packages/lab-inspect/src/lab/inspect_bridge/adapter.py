@@ -142,6 +142,7 @@ def lab_task_to_inspect(
     task: LabTask,
     *,
     model: str,
+    model_backend: str | None = None,
     sandbox: Sandbox | None = None,
     temperature: float = 0.0,
     max_tokens: int | None = None,
@@ -213,6 +214,7 @@ def lab_task_to_inspect(
     else:
         solver = model_with_tools(
             model=model,
+            model_backend=model_backend,
             tool_budget=task.tool_budget,
             max_turns=task.max_turns,
             sandbox=sandbox,

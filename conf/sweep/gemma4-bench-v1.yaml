@@ -1,0 +1,26 @@
+# GEMMA4-12B agent benchmark — Gemma 4 12B (reasoning) on the PBS agent suite.
+# react scaffold = real tool-using agent loop. think on, generous token budget
+# (gemma4 emits a reasoning channel; 1024 starves it — see lab notebook).
+experiment:
+  slug: GEMMA4-12B-AGENT-BENCH-001
+  title: "Gemma 4 12B — agent characterization on pbs-agent-v0.1 (react, think-on)"
+  hypothesis: "Gemma 4 12B (local, 12GB) is a viable local coding-agent on pbs-agent-v0.1."
+
+tasks:
+  suite: pbs-agent-v0.1
+
+models:
+  - gemma4-12b
+
+configs:
+  - name: react-think-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: true
+
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 900

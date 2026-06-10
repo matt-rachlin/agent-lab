@@ -1236,6 +1236,7 @@ def _execute_agent_cell(
             inspect_task = lab_task_to_inspect(
                 lab_task,
                 model=cell.model_litellm_id,
+                model_backend=cell.model_backend,
                 sandbox=sandbox,
                 temperature=cell.config.temperature,
                 max_tokens=cell.config.max_tokens,

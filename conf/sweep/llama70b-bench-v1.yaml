@@ -1,0 +1,23 @@
+# LLAMA-3.3-70B agent benchmark — quality-ceiling lane (hybrid CPU/GPU offload,
+# ~6-10 tok/s). slow_mode model: requires lab sweep run --allow-slow-models.
+experiment:
+  slug: LLAMA-70B-AGENT-BENCH-001
+  title: "Llama-3.3-70B Q4 — agent characterization on pbs-agent-v0.1 (react, ceiling)"
+  hypothesis: "Llama-3.3-70B local (hybrid offload) sets the local quality ceiling on pbs-agent-v0.1."
+
+tasks:
+  suite: pbs-agent-v0.1
+
+models:
+  - llama-3.3-70b-q4-local
+
+configs:
+  - name: react-2048
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 2048
+    scaffold: react
+
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800

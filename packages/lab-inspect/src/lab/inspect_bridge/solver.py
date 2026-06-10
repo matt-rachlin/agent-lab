@@ -307,6 +307,7 @@ def _execute_tool_calls(
 def model_with_tools(
     *,
     model: str,
+    model_backend: str | None = None,
     tool_budget: int = 10,
     max_turns: int = 5,
     sandbox: Sandbox | None = None,
@@ -375,21 +376,26 @@ def model_with_tools(
                 if isinstance(spec, dict) and spec.get("name") == "kb_query":
                     side_models = ["qwen3-embedding", "qwen3-reranker-0.6b"]
                     break
-        try:
-            model_pool = ModelPool(llama_swap_url=settings.llama_swap_url)
-            plan_steps = [
-                PipelineStep(name=f"turn_{i}", models=[model, *side_models])
-                for i in range(max(max_turns, 1))
-            ]
-            pipeline_id = f"agent-{uuid.uuid4().hex[:8]}"
-            model_pool.declare(PipelineModelPlan(pipeline_id=pipeline_id, steps=plan_steps))
-        except Exception as exc:
-            log.warning(
-                "solver_model_pool_declare_failed",
-                model=model,
-                error=str(exc),
-            )
-            model_pool = None
+        if model_backend == "ollama-local":
+            # Served by Ollama (:11434), not llama-swap (:8080) — the pool's
+            # warm/teardown calls would 400. Ollama keep_alive handles residency.
+            log.debug("solver_model_pool_skipped_ollama_local", model=model)
+        else:
+            try:
+                model_pool = ModelPool(llama_swap_url=settings.llama_swap_url)
+                plan_steps = [
+                    PipelineStep(name=f"turn_{i}", models=[model, *side_models])
+                    for i in range(max(max_turns, 1))
+                ]
+                pipeline_id = f"agent-{uuid.uuid4().hex[:8]}"
+                model_pool.declare(PipelineModelPlan(pipeline_id=pipeline_id, steps=plan_steps))
+            except Exception as exc:
+                log.warning(
+                    "solver_model_pool_declare_failed",
+                    model=model,
+                    error=str(exc),
+                )
+                model_pool = None
 
         pool: ToolPool | None = None
         tools: list[Tool] = []
