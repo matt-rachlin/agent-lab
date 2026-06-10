@@ -46,4 +46,4 @@ lab analyze report SLUG      # markdown report for an experiment
 
 ## Status
 
-the master plan for the master plan.
+See [CHANGELOG.md](../CHANGELOG.md) for current phase and recent activity.
