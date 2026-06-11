@@ -1,0 +1,22 @@
+# EXP-009 / HARD-BENCH-003: N=8 seed confirmation of the EXP-008 ranking on the
+# hard suite, v2 prompt, per ADR-004 / reliability-sweep protocol. Pre-registered
+# in docs/exp/EXP-009-hard-bench-multiseed.md before launch.
+experiment:
+  slug: HARD-BENCH-003
+  title: "Hard agentic suite at N=8 seeds: gemma4 vs Qwen3-Coder-30B vs Devstral-24B (pbs-agent-hard-v0.1, v2 prompt)"
+  hypothesis: "The single-seed ranking holds at N=8 with non-overlapping gemma4-vs-qwen3 CIs; per-model pass@1 within +/-5pp of HARD-BENCH-002; qwen3's code-category misses are deterministic (0/8), not flaky."
+tasks:
+  suite: pbs-agent-hard-v0.1
+models:
+  - gemma4-12b
+  - qwen3-coder-30b
+  - devstral-24b
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]
+max_concurrency: 1
+request_timeout_sec: 1800
