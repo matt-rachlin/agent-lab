@@ -68,12 +68,14 @@ improve agentic performance on held-out suites?
   batch 2 × grad-accum 8, bf16, responses-only masking via the Qwen3
   chat template, seed 1, MLflow experiment FT-TOOLCALL-001.
 - data: train_mix.jsonl — 20,000 samples, 60% tool (659 lab
-  trajectories + 5,671 ToolACE + 5,670 Hermes-FC) / 40% general
-  (ultrachat). Lab trajectories: end_state==1.0 only, 14/1,295 rejected
-  by faithfulness cross-checks (alignment, truncation, recovered-call
-  filters); rendered against the real MCP tool schemas.
-- xLAM-60k excluded (gate not yet accepted) — noted; a future revision
-  may add it.
+  trajectories + 3,780 xLAM + 3,780 Hermes-FC + 3,781 ToolACE) / 40%
+  general (ultrachat). Lab trajectories: end_state==1.0 only, 14/1,295
+  rejected by faithfulness cross-checks (alignment, truncation,
+  recovered-call filters); rendered against the real MCP tool schemas.
+- PRE-RUN AMENDMENT 2026-06-11: the original registration excluded
+  xLAM-60k (gate unaccepted). The gate was accepted and the mix rebuilt
+  with xLAM included BEFORE training started (job still queued at
+  amendment time). Hypotheses, thresholds, and eval design unchanged.
 
 ### Evaluation (both arms identical; q4_k_m GGUF parity)
 
