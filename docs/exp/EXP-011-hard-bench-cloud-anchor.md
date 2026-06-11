@@ -28,7 +28,7 @@ tags:
 # EXP-011: HARD-BENCH-CLOUD-001 — frontier cloud anchor on the hard suite
 
 Date created: 2026-06-11
-Status: planned
+Status: complete — all three hypotheses CONFIRMED; see ../findings/F-014-cloud-anchor-hard-suite.md
 Pre-registered: <commit SHA filled by `lab exp register` at registration time>
 
 ## Question
