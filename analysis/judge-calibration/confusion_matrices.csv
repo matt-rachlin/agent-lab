@@ -1,0 +1,4 @@
+judge,n_judged,abstain,TP,FP,TN,FN,accuracy,fpr_on_failures,fnr_on_passes
+glm-5.1-cloud,237,3,141,7,79,10,0.928,0.081,0.066
+gpt-oss-120b-cloud,240,0,127,5,84,24,0.879,0.056,0.159
+qwen3-coder-480b-cloud,238,2,138,17,70,13,0.874,0.195,0.086

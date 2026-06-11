@@ -1,0 +1,16 @@
+judge,bucket,n,mean_confidence,empirical_accuracy
+glm-5.1-cloud,"[0,50)",0,-,-
+glm-5.1-cloud,"[50,70)",1,0.600,0.000
+glm-5.1-cloud,"[70,80)",1,0.750,0.000
+glm-5.1-cloud,"[80,90)",9,0.828,0.556
+glm-5.1-cloud,"[90,100]",226,0.982,0.951
+gpt-oss-120b-cloud,"[0,50)",0,-,-
+gpt-oss-120b-cloud,"[50,70)",0,-,-
+gpt-oss-120b-cloud,"[70,80)",10,0.721,0.500
+gpt-oss-120b-cloud,"[80,90)",17,0.824,0.588
+gpt-oss-120b-cloud,"[90,100]",213,0.946,0.920
+qwen3-coder-480b-cloud,"[0,50)",0,-,-
+qwen3-coder-480b-cloud,"[50,70)",0,-,-
+qwen3-coder-480b-cloud,"[70,80)",0,-,-
+qwen3-coder-480b-cloud,"[80,90)",0,-,-
+qwen3-coder-480b-cloud,"[90,100]",238,0.971,0.874

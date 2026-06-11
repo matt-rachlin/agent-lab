@@ -1,0 +1,6 @@
+judge,judge_family,split,n,gt_pass_rate,judge_pass_rate,accuracy,fpr_on_failures
+glm-5.1-cloud,glm,same_family,19,1.000,1.000,1.000,-
+glm-5.1-cloud,glm,other_family,221,0.597,0.592,0.922,0.081
+gpt-oss-120b-cloud,gpt-oss,other_family,240,0.629,0.550,0.879,0.056
+qwen3-coder-480b-cloud,qwen,same_family,111,0.550,0.624,0.844,0.250
+qwen3-coder-480b-cloud,qwen,other_family,129,0.698,0.674,0.899,0.128

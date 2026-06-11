@@ -1,0 +1,10 @@
+judge,split,n,gt_pass_rate,judge_pass_rate,accuracy,fpr_on_failures,abstains
+glm-5.1-cloud,long,79,0.747,0.722,0.949,0.050,0
+glm-5.1-cloud,medium,80,0.738,0.688,0.950,0.000,0
+glm-5.1-cloud,short,81,0.407,0.462,0.885,0.133,3
+gpt-oss-120b-cloud,long,79,0.747,0.570,0.823,0.000,0
+gpt-oss-120b-cloud,medium,80,0.738,0.675,0.938,0.000,0
+gpt-oss-120b-cloud,short,81,0.407,0.407,0.877,0.104,0
+qwen3-coder-480b-cloud,long,79,0.747,0.759,0.886,0.250,0
+qwen3-coder-480b-cloud,medium,80,0.738,0.725,0.912,0.143,0
+qwen3-coder-480b-cloud,short,81,0.407,0.468,0.823,0.196,2

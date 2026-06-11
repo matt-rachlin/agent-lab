@@ -1,0 +1,4 @@
+judge_a,judge_b,n,raw_agreement,cohens_kappa
+glm-5.1-cloud,gpt-oss-120b-cloud,237,0.924,0.844
+glm-5.1-cloud,qwen3-coder-480b-cloud,237,0.920,0.826
+gpt-oss-120b-cloud,qwen3-coder-480b-cloud,238,0.853,0.696
