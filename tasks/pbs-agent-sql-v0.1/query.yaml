@@ -1,0 +1,275 @@
+# PBS-Agent SQL v0.1 — sql-query tasks.
+#
+# The sandbox image has NO sqlite3 CLI; workspace_files is text-only
+# (runner.py encodes str -> utf-8, no binary/base64 path). Each task
+# therefore ships seed.sql and the input's first step builds
+# /workspace/app.db via python3 stdlib sqlite3 (verified importable in
+# lab-agent-sandbox:0.1, sqlite 3.50.2).
+#
+# Answers are collision-safe prefixed lines in out.txt, graded with
+# workspace_file_contains. Every task verified end-to-end by
+# /tmp/sql/verify_sql.py (reference SQL solution passes all probes;
+# 2-3 deliberate misreadings per task each fail at least one probe).
+
+suite: pbs-agent-sql-v0.1
+category: sql-query
+tasks:
+- slug: query-window-second-spender
+  difficulty: hard
+  description: |
+    Window-function query: per-region 2nd-highest spender by completed order total, with a stated tie-break, NULL amounts to ignore, and a region that has no rank-2 customer (must emit NONE). Verified by collision-safe prefixed lines in out.txt.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has customers(id, name, region) and
+    orders(id, customer_id, amount, status). For EACH region that appears in
+    the customers table, find the customer with the SECOND-highest total
+    spend, where total spend = SUM(amount) over that customer's orders with
+    status = 'completed' only. Rules:
+      - Ignore orders whose amount is NULL.
+      - Customers with no qualifying orders have no total (they are not
+        ranked; they do NOT count as 0).
+      - Rank within each region by total DESC; break ties by customer id
+        ASCENDING (i.e. 'C02' beats 'C03' at equal totals).
+      - If a region has fewer than two ranked customers, its answer is NONE.
+
+    Step 3 — using fs_write, write one line per region (regions in
+    alphabetical order) to /workspace/out.txt, exactly:
+      R2:<region>=<customer_id>:<total with exactly 2 decimal places>
+    or, for a region without a second-ranked customer:
+      R2:<region>=NONE
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 10
+  tool_budget: 14
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT, region TEXT);
+        CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id TEXT, amount REAL, status TEXT);
+        INSERT INTO customers VALUES
+          ('C01','Alice','North'),
+          ('C02','Bob','North'),
+          ('C03','Cara','North'),
+          ('C04','Dan','South'),
+          ('C05','Eve','South'),
+          ('C06','Fay','West'),
+          ('C07','Gus','West');
+        INSERT INTO orders VALUES
+          (1,'C01',100.00,'completed'),
+          (2,'C01',50.00,'completed'),
+          (3,'C02',120.00,'completed'),
+          (4,'C02',30.00,'cancelled'),
+          (5,'C03',120.00,'completed'),
+          (6,'C04',200.00,'completed'),
+          (7,'C04',NULL,'completed'),
+          (8,'C05',80.00,'completed'),
+          (9,'C05',60.00,'refunded'),
+          (10,'C06',90.00,'completed'),
+          (11,'C07',70.00,'pending');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: out.txt
+      substring: R2:North=C02:120.00
+    - type: workspace_file_contains
+      path: out.txt
+      substring: R2:South=C05:80.00
+    - type: workspace_file_contains
+      path: out.txt
+      substring: R2:West=NONE
+- slug: query-antijoin-never-delivered
+  difficulty: medium
+  description: |
+    EXISTS/anti-join query: customers who placed at least one order but never a delivered one. NULL statuses count as not-delivered; zero-order customers are excluded.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has customers(id, name, signup_date) and
+    orders(id, customer_id, status). Find every customer that:
+      (a) has placed AT LEAST ONE order, and
+      (b) has NO order with status exactly 'delivered'.
+    A NULL status is NOT 'delivered'. Customers with zero orders do not
+    qualify (they fail condition (a)).
+
+    Step 3 — using fs_write, write exactly these two lines to
+    /workspace/out.txt:
+      NODELIV=<count of qualifying customers>
+      NODELIV_IDS=<their ids, ascending, comma-separated, no spaces>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 10
+  tool_budget: 12
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT, signup_date TEXT);
+        CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id TEXT, status TEXT);
+        INSERT INTO customers VALUES
+          ('C01','Alice','2025-01-01'),
+          ('C02','Bob','2025-02-01'),
+          ('C03','Cara','2025-03-01'),
+          ('C04','Dan','2025-04-01'),
+          ('C05','Eve','2025-05-01'),
+          ('C06','Finn','2025-06-01');
+        INSERT INTO orders VALUES
+          (1,'C01','delivered'),
+          (2,'C01','pending'),
+          (3,'C02','pending'),
+          (4,'C02',NULL),
+          (5,'C04','delivered'),
+          (6,'C05','cancelled'),
+          (7,'C05','cancelled'),
+          (8,'C06',NULL);
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NODELIV=3
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NODELIV_IDS=C02,C05,C06
+- slug: query-multijoin-category-revenue
+  difficulty: medium
+  description: |
+    Three-table join + aggregation with stated edge rules: cancelled orders excluded entirely, NULL qty contributes 0, items referencing missing products are skipped and counted.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has products(id, name, category),
+    orders(id, status) and order_items(id, order_id, product_id, qty,
+    unit_price). Compute revenue per product CATEGORY, where item revenue =
+    qty * unit_price. Rules:
+      - Exclude items belonging to orders with status 'cancelled' entirely
+        (they count toward nothing, not even SKIPPED below).
+      - A NULL qty contributes 0 revenue (the item still 'exists').
+      - Items whose product_id has no row in products cannot be categorised:
+        exclude them from revenue and count them as skipped.
+    Find the category with the highest revenue.
+
+    Step 3 — using fs_write, write exactly these two lines to
+    /workspace/out.txt:
+      TOPCAT=<category>|<revenue with exactly 2 decimal places>
+      SKIPPED=<count of skipped items from non-cancelled orders>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 10
+  tool_budget: 12
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, category TEXT);
+        CREATE TABLE orders (id TEXT PRIMARY KEY, status TEXT);
+        CREATE TABLE order_items (id INTEGER PRIMARY KEY, order_id TEXT,
+                                  product_id TEXT, qty INTEGER, unit_price REAL);
+        INSERT INTO products VALUES
+          ('P1','Widget A','Electronics'),
+          ('P2','Cable','Electronics'),
+          ('P3','Mug','Home'),
+          ('P4','Lamp','Home');
+        INSERT INTO orders VALUES
+          ('O1','completed'),
+          ('O2','completed'),
+          ('O3','cancelled'),
+          ('O4','shipped');
+        INSERT INTO order_items VALUES
+          (1,'O1','P1',2,50.00),
+          (2,'O1','P3',4,5.00),
+          (3,'O2','P2',3,10.00),
+          (4,'O2','P9',1,99.00),
+          (5,'O2','P4',NULL,40.00),
+          (6,'O3','P4',5,40.00),
+          (7,'O4','P4',3,40.00),
+          (8,'O4','P8',2,10.00);
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: out.txt
+      substring: TOPCAT=Home|140.00
+    - type: workspace_file_contains
+      path: out.txt
+      substring: SKIPPED=2
+- slug: query-longest-login-streak
+  difficulty: hard
+  description: |
+    Gaps-and-islands: longest run of consecutive calendar days per user. Same-day duplicate rows must be deduplicated (the duplicates sit inside the winning user's streak, so naive ROW_NUMBER breaks); global tie broken by lowest user_id.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has a single table logins(user_id, day) where day
+    is an ISO date string 'YYYY-MM-DD'. The table contains DUPLICATE rows
+    (same user, same day) — a streak is over distinct calendar days. For
+    each user compute the length (in days) of their longest run of
+    CONSECUTIVE calendar days. Then find the user with the longest such
+    streak overall; if several users tie, report the LOWEST user_id.
+
+    Step 3 — using fs_write, write exactly these two lines to
+    /workspace/out.txt:
+      STREAK=<winning user_id>:<streak length in days>
+      STREAK_U3=<longest streak length for user 3>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 12
+  tool_budget: 16
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE logins (user_id INTEGER, day TEXT);
+        INSERT INTO logins VALUES
+          (1,'2026-01-01'),(1,'2026-01-02'),(1,'2026-01-02'),(1,'2026-01-03'),(1,'2026-01-05'),
+          (2,'2026-01-10'),(2,'2026-01-11'),(2,'2026-01-13'),(2,'2026-01-14'),(2,'2026-01-14'),(2,'2026-01-15'),
+          (3,'2026-02-01'),
+          (4,'2026-03-01'),(4,'2026-03-02'),(4,'2026-03-02'),(4,'2026-03-03'),(4,'2026-03-04'),
+          (5,'2026-04-10'),(5,'2026-04-11'),(5,'2026-04-12'),(5,'2026-04-13');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: out.txt
+      substring: STREAK=4:4
+    - type: workspace_file_contains
+      path: out.txt
+      substring: STREAK_U3=1

@@ -1,0 +1,309 @@
+# PBS-Agent SQL v0.1 — sql-migrate tasks (schema changes on sqlite).
+#
+# NOTE on db_query: scorer._eval_db_predicate runs against the lab
+# POSTGRES (settings.pg_dsn), read-only — it cannot see the sandbox
+# sqlite file, and the sandbox cannot write Postgres. So, exactly like
+# pbs-agent-v0.1/multi-db-self-check, each all_of pairs a db_query
+# registration meta-check with workspace evidence. The sqlite END STATE
+# is graded two ways:
+#   * workspace_file_contains on the BINARY app.db snapshot — additive
+#     schema text (new table/column names) only appears in sqlite_master
+#     pages if the migration ran (verified absent from the seeded db);
+#   * mandatory self-verification queries whose outputs are prefixed
+#     lines in out.txt, values pinned by the reference solution in
+#     /tmp/sql/verify_sql.py.
+
+suite: pbs-agent-sql-v0.1
+category: sql-migrate
+tasks:
+- slug: migrate-backfill-order-totals
+  difficulty: medium
+  description: |
+    Schema migration: ALTER TABLE add total_cents and backfill from order_items. Orders with no items get 0 (not NULL); NULL qty counts as 0. End-state checked via the binary app.db snapshot (column name in sqlite_master) plus self-verification counts in out.txt; db_query is the Postgres registration meta-check (the sandbox cannot write Postgres, mirroring pbs-agent-v0.1/multi-db-self-check).
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has orders(id, customer, created) and
+    order_items(order_id, sku, qty, unit_price_cents). Migrate the schema:
+      1. ALTER TABLE orders ADD COLUMN total_cents INTEGER.
+      2. Backfill total_cents for every order as
+         SUM(qty * unit_price_cents) over its items, where a NULL qty counts
+         as 0.
+      3. Orders with NO items must get total_cents = 0, NOT NULL.
+    Commit the changes to /workspace/app.db itself.
+
+    Step 3 — run these verification queries against the migrated database
+    and write the three result lines to /workspace/out.txt via fs_write:
+      SUM_TOTALS=<SELECT SUM(total_cents) FROM orders>
+      ZERO_COUNT=<SELECT COUNT(*) FROM orders WHERE total_cents = 0>
+      NULL_COUNT=<SELECT COUNT(*) FROM orders WHERE total_cents IS NULL>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 12
+  tool_budget: 16
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE orders (id INTEGER PRIMARY KEY, customer TEXT, created TEXT);
+        CREATE TABLE order_items (order_id INTEGER, sku TEXT, qty INTEGER, unit_price_cents INTEGER);
+        INSERT INTO orders VALUES
+          (1,'alice','2026-01-01'),
+          (2,'bob','2026-01-02'),
+          (3,'cara','2026-01-03'),
+          (4,'dan','2026-01-04'),
+          (5,'eve','2026-01-05');
+        INSERT INTO order_items VALUES
+          (1,'SKU-A',2,500),
+          (1,'SKU-B',3,250),
+          (2,'SKU-C',1,999),
+          (2,'SKU-D',NULL,100),
+          (3,'SKU-A',4,125),
+          (5,'SKU-E',0,300);
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'migrate-backfill-order-totals'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: SUM_TOTALS=3249
+    - type: workspace_file_contains
+      path: out.txt
+      substring: ZERO_COUNT=2
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NULL_COUNT=0
+    - type: workspace_file_contains
+      path: app.db
+      substring: total_cents
+- slug: migrate-split-requesters
+  difficulty: hard
+  description: |
+    Normalization migration: split duplicated requester columns out of a denormalized tickets table into a requesters table with normalized emails (lower+trim), survivorship by latest created then highest ticket id, and a requester_id FK backfilled on tickets. NULL-email tickets stay unlinked. End-state via app.db text probe + self-verification lines; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has a denormalized table
+    tickets(id, subject, created, requester_name, requester_email). Emails
+    were typed by hand: the SAME requester may appear with different case
+    or stray whitespace. Migrate:
+      1. CREATE TABLE requesters (id INTEGER PRIMARY KEY,
+         email TEXT UNIQUE NOT NULL, name TEXT NOT NULL).
+      2. Insert ONE row per distinct normalized email, where normalized =
+         LOWER(TRIM(requester_email)). Store the normalized email.
+         Survivorship for name: take requester_name from that requester's
+         ticket with the LATEST created date; if several tickets share that
+         date, the one with the HIGHEST ticket id wins.
+      3. ALTER TABLE tickets ADD COLUMN requester_id INTEGER and set it to
+         the matching requesters.id. Tickets whose requester_email is NULL
+         keep requester_id NULL.
+    Commit all changes to /workspace/app.db.
+
+    Step 3 — run verification queries against the migrated database and
+    write exactly these five lines to /workspace/out.txt:
+      REQ_COUNT=<row count of requesters>
+      NAME_ANN=<requesters.name where email='ann@x.com'>
+      NAME_BOB=<requesters.name where email='bob@x.com'>
+      UNLINKED=<count of tickets with requester_id IS NULL>
+      LINKCHECK=<count of tickets whose non-NULL requester_id has no row in requesters>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 14
+  tool_budget: 18
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE tickets (id INTEGER PRIMARY KEY, subject TEXT, created TEXT,
+                              requester_name TEXT, requester_email TEXT);
+        INSERT INTO tickets VALUES
+          (1,'Login broken','2026-01-01','Ann Lee','ann@x.com'),
+          (2,'Crash on save','2026-01-03','Ann L.','Ann@X.com '),
+          (3,'Quota question','2026-01-02','Bob Ray','bob@x.com'),
+          (4,'Perf issue','2026-01-02','Bobby Ray','bob@x.com'),
+          (5,'Misc note','2026-01-04','Cara',NULL),
+          (6,'Billing','2026-01-05','Dan','dan@x.com');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'migrate-split-requesters'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: REQ_COUNT=3
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NAME_ANN=Ann L.
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NAME_BOB=Bobby Ray
+    - type: workspace_file_contains
+      path: out.txt
+      substring: UNLINKED=1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: LINKCHECK=0
+    - type: workspace_file_contains
+      path: app.db
+      substring: requesters
+- slug: migrate-dedupe-contacts
+  difficulty: hard
+  description: |
+    Dedupe with survivorship rules: per email keep non-NULL phone first, then latest updated, then lowest id; delete losers. NULL emails are never duplicates of each other and must survive untouched. No app.db byte probe (deleted rows can linger in free pages); end-state via self-verification counts; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has contacts(id, email, phone, updated) containing
+    duplicate rows per email. Dedupe IN PLACE (DELETE the losing rows) with
+    this survivorship rule, applied per distinct email:
+      1. Prefer rows whose phone is NOT NULL over rows with NULL phone.
+      2. Among those, prefer the latest updated (ISO date string).
+      3. If still tied, keep the LOWEST id.
+    Exactly one row survives per email. Rows whose email is NULL are NOT
+    duplicates of each other — leave every NULL-email row untouched.
+    Commit the deletions to /workspace/app.db.
+
+    Step 3 — run verification queries against the deduped database and
+    write exactly these four lines to /workspace/out.txt:
+      AFTER=<SELECT COUNT(*) FROM contacts>
+      DELETED=<number of rows you deleted>
+      PHONE_A=<surviving phone for email 'a@x.com'>
+      KEEP_B=<surviving id for email 'b@x.com'>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 14
+  tool_budget: 18
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE contacts (id INTEGER PRIMARY KEY, email TEXT, phone TEXT, updated TEXT);
+        INSERT INTO contacts VALUES
+          (1,'a@x.com',NULL,'2026-01-05'),
+          (2,'a@x.com','555-0101','2026-01-02'),
+          (3,'a@x.com','555-0102','2026-01-01'),
+          (4,'b@x.com',NULL,'2026-01-01'),
+          (5,'b@x.com',NULL,'2026-01-03'),
+          (6,'c@x.com','555-0303','2026-01-01'),
+          (7,NULL,'555-0404','2026-01-01'),
+          (8,NULL,NULL,'2026-01-02'),
+          (9,'b@x.com',NULL,'2026-01-03');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'migrate-dedupe-contacts'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: AFTER=5
+    - type: workspace_file_contains
+      path: out.txt
+      substring: DELETED=4
+    - type: workspace_file_contains
+      path: out.txt
+      substring: PHONE_A=555-0101
+    - type: workspace_file_contains
+      path: out.txt
+      substring: KEEP_B=5
+- slug: migrate-unpivot-quarters
+  difficulty: medium
+  description: |
+    Wide-to-long migration: unpivot sales_wide(q1..q4) into sales_long(company, year, quarter, amount). NULL quarters are dropped but 0.0 amounts are kept (0 is data, not absence). End-state via app.db text probe (new table name) + self-verification lines; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has a wide table
+    sales_wide(company, year, q1, q2, q3, q4). Migrate it to long form:
+      1. CREATE TABLE sales_long (company TEXT, year INTEGER,
+         quarter INTEGER, amount REAL).
+      2. Insert one row per (company, year, quarter) where the wide value is
+         NOT NULL — quarter is 1..4 matching the source column. NULL
+         quarters get NO row. An amount of 0.0 is real data and MUST be
+         kept. Leave sales_wide in place.
+    Commit the changes to /workspace/app.db.
+
+    Step 3 — run verification queries against the migrated database and
+    write exactly these four lines to /workspace/out.txt:
+      LONG_ROWS=<SELECT COUNT(*) FROM sales_long>
+      LONG_SUM=<SELECT SUM(amount) FROM sales_long, 2 decimal places>
+      ACME_2026_Q3=<amount for company='Acme', year=2026, quarter=3, 2 decimal places>
+      BETA_ROWS=<SELECT COUNT(*) FROM sales_long WHERE company='Beta'>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 12
+  tool_budget: 16
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE sales_wide (company TEXT, year INTEGER, q1 REAL, q2 REAL, q3 REAL, q4 REAL);
+        INSERT INTO sales_wide VALUES
+          ('Acme',2025,10.0,20.0,NULL,40.0),
+          ('Acme',2026,5.5,NULL,7.25,NULL),
+          ('Beta',2025,0.0,1.0,2.0,3.0),
+          ('Gama',2026,NULL,NULL,NULL,NULL);
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'migrate-unpivot-quarters'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: LONG_ROWS=9
+    - type: workspace_file_contains
+      path: out.txt
+      substring: LONG_SUM=88.75
+    - type: workspace_file_contains
+      path: out.txt
+      substring: ACME_2026_Q3=7.25
+    - type: workspace_file_contains
+      path: out.txt
+      substring: BETA_ROWS=4
+    - type: workspace_file_contains
+      path: app.db
+      substring: sales_long

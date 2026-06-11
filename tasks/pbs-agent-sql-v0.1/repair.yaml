@@ -1,0 +1,299 @@
+# PBS-Agent SQL v0.1 — sql-repair tasks (data-quality fixes on sqlite).
+#
+# Mixed predicates per the suite design: db_query (Postgres registration
+# meta-check — see migrate.yaml header for why it cannot read the
+# sandbox sqlite) + out.txt repair-count report lines + app.db byte
+# probes where the repair is additive (inserted text). Deletion-shaped
+# repairs deliberately avoid app.db byte probes: deleted rows can linger
+# in sqlite free pages.
+
+suite: pbs-agent-sql-v0.1
+category: sql-repair
+tasks:
+- slug: repair-orphan-foreign-keys
+  difficulty: medium
+  description: |
+    Two-level FK repair: orders pointing at missing customers are reassigned to a new UNKNOWN house account (not deleted); items pointing at missing orders are deleted. app.db byte probe on the inserted 'Unattributed' text; counts self-verified in out.txt; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has customers(id, name), orders(id, customer_id)
+    and order_items(id, order_id, sku). Referential integrity is broken in
+    two places. Repair it IN /workspace/app.db:
+      1. Insert a house account row into customers:
+         id 'UNKNOWN', name 'Unattributed'.
+      2. Orders whose customer_id has no row in customers: do NOT delete
+         them — UPDATE their customer_id to 'UNKNOWN'.
+      3. Order_items whose order_id has no row in orders: DELETE them.
+    Commit the changes.
+
+    Step 3 — run verification queries against the repaired database and
+    write exactly these four lines to /workspace/out.txt:
+      REASSIGNED=<number of orders you reassigned in step 2>
+      ITEMS_DELETED=<number of order_items you deleted in step 3>
+      ORPHAN_ORDERS=<count of orders whose customer_id is still not in customers>
+      ORPHAN_ITEMS=<count of order_items whose order_id is still not in orders>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 12
+  tool_budget: 16
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT);
+        CREATE TABLE orders (id TEXT PRIMARY KEY, customer_id TEXT);
+        CREATE TABLE order_items (id INTEGER PRIMARY KEY, order_id TEXT, sku TEXT);
+        INSERT INTO customers VALUES ('C01','Alice'),('C02','Bob'),('C03','Cara');
+        INSERT INTO orders VALUES
+          ('O1','C01'),('O2','C09'),('O3','C02'),('O4','C77'),('O5','C03');
+        INSERT INTO order_items VALUES
+          (1,'O1','SKU-A'),(2,'O1','SKU-B'),(3,'O2','SKU-C'),(4,'O3','SKU-D'),
+          (5,'O9','SKU-E'),(6,'O88','SKU-F');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'repair-orphan-foreign-keys'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: REASSIGNED=2
+    - type: workspace_file_contains
+      path: out.txt
+      substring: ITEMS_DELETED=2
+    - type: workspace_file_contains
+      path: out.txt
+      substring: ORPHAN_ORDERS=0
+    - type: workspace_file_contains
+      path: out.txt
+      substring: ORPHAN_ITEMS=0
+    - type: workspace_file_contains
+      path: app.db
+      substring: Unattributed
+- slug: repair-text-units-to-celsius
+  difficulty: hard
+  description: |
+    Type repair: temperature readings stored as TEXT with mixed units and junk ('12.5C', ' 98.6 F ', '300', 'N/A', NULL, lowercase 'c'). Parse into a new value_c REAL column with F-to-C conversion rounded to 2 decimals. app.db probe on the new column name; values self-verified in out.txt; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has readings(id, sensor, raw_value) where
+    raw_value is TEXT typed by humans. Repair the types IN /workspace/app.db:
+      1. ALTER TABLE readings ADD COLUMN value_c REAL.
+      2. For every row, parse raw_value into Celsius:
+         - Trim surrounding whitespace.
+         - An optional trailing unit letter 'C' or 'F' (CASE-INSENSITIVE,
+           possibly preceded by a space) follows the number.
+         - No unit letter means the number is already Celsius.
+         - Fahrenheit converts as (f - 32) * 5 / 9, ROUNDED to 2 decimals.
+         - 'N/A', empty string, or NULL parse to NULL (NOT 0).
+      3. UPDATE value_c accordingly and commit.
+
+    Step 3 — run verification queries against the repaired database and
+    write exactly these four lines to /workspace/out.txt (values printed
+    with exactly 2 decimal places):
+      PARSED=<count of rows with value_c NOT NULL>
+      NULLV=<count of rows with value_c NULL>
+      V6=<value_c of row id=6>
+      V8=<value_c of row id=8>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 14
+  tool_budget: 18
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE readings (id INTEGER PRIMARY KEY, sensor TEXT, raw_value TEXT);
+        INSERT INTO readings VALUES
+          (1,'s1','12.5C'),
+          (2,'s1',' 98.6 F '),
+          (3,'s2','300'),
+          (4,'s2','N/A'),
+          (5,'s3',NULL),
+          (6,'s3','72F'),
+          (7,'s4','-3.5 c'),
+          (8,'s4','0F');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'repair-text-units-to-celsius'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: PARSED=6
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NULLV=2
+    - type: workspace_file_contains
+      path: out.txt
+      substring: V6=22.22
+    - type: workspace_file_contains
+      path: out.txt
+      substring: V8=-17.78
+    - type: workspace_file_contains
+      path: app.db
+      substring: value_c
+- slug: repair-merge-duplicate-badges
+  difficulty: hard
+  description: |
+    Duplicate-with-conflict resolution: per badge keep the latest-updated row (exact-tie -> lowest id) but MERGE salary as the group maximum onto the kept row — the kept row's own salary may be wrong. Counts and merged values self-verified in out.txt; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has employees(id, badge, name, dept, salary,
+    updated) where the same badge was imported multiple times with
+    conflicting fields. Repair IN /workspace/app.db, per distinct badge:
+      1. KEEP the row with the latest updated date; if two rows share the
+         exact same updated date, keep the one with the LOWEST id.
+      2. On the kept row, SET salary to the MAXIMUM salary across ALL rows
+         of that badge (the latest import sometimes carries a stale,
+         lower salary — the merge must not lose the higher figure).
+      3. DELETE the other rows of that badge.
+    Commit the changes.
+
+    Step 3 — run verification queries against the repaired database and
+    write exactly these four lines to /workspace/out.txt:
+      EMP_COUNT=<SELECT COUNT(*) FROM employees>
+      SAL_B2=<salary of the surviving badge 'B2' row>
+      KEEP_B4=<id of the surviving badge 'B4' row>
+      DELETED=<number of rows you deleted>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 14
+  tool_budget: 18
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE employees (id INTEGER PRIMARY KEY, badge TEXT, name TEXT,
+                                dept TEXT, salary INTEGER, updated TEXT);
+        INSERT INTO employees VALUES
+          (1,'B1','Ann','Eng',90000,'2026-01-01'),
+          (2,'B1','Ann','Ops',95000,'2026-02-01'),
+          (3,'B2','Bob','Eng',120000,'2026-03-01'),
+          (4,'B2','Bob','Eng',110000,'2026-04-01'),
+          (5,'B3','Cara','Fin',80000,'2026-01-15'),
+          (6,'B4','Dan','Mkt',70000,'2026-05-01'),
+          (7,'B4','Dan','Mkt',70000,'2026-05-01');
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'repair-merge-duplicate-badges'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: EMP_COUNT=4
+    - type: workspace_file_contains
+      path: out.txt
+      substring: SAL_B2=120000
+    - type: workspace_file_contains
+      path: out.txt
+      substring: KEEP_B4=6
+    - type: workspace_file_contains
+      path: out.txt
+      substring: DELETED=3
+- slug: repair-date-sanity-subscriptions
+  difficulty: medium
+  description: |
+    Ordered data repair: empty-string end dates become NULL, inverted date pairs are swapped, and ONLY THEN are NULL statuses derived from the (repaired) end_date — row 2 flips answer if the order is wrong. Self-verified counts in out.txt; db_query is the PG registration meta-check.
+  input: |
+    Your workspace contains 'seed.sql'. There is NO sqlite3 CLI in this
+    sandbox, but Python 3.13 with the sqlite3 stdlib module is available
+    (use shell_exec running python3, or python_eval).
+
+    Step 1 — create the SQLite database file /workspace/app.db by executing
+    seed.sql, for example via shell_exec:
+      python3 -c "import sqlite3; c=sqlite3.connect('app.db'); c.executescript(open('seed.sql').read()); c.commit(); c.close()"
+
+    Step 2 — the database has subscriptions(id, plan, start_date, end_date,
+    status) with ISO date strings. Repair IN /workspace/app.db, in exactly
+    this order (the order matters):
+      1. end_date stored as the EMPTY STRING '' means open-ended: set it to
+         NULL.
+      2. Rows where end_date is NOT NULL and end_date < start_date had the
+         two dates swapped at entry: swap them back (start <-> end).
+      3. ONLY AFTER steps 1-2, fill NULL statuses using the repaired dates:
+         status = 'expired' if end_date is NOT NULL and end_date <
+         '2026-01-01', otherwise 'active' (open-ended NULL end_date is
+         active).
+    Commit the changes.
+
+    Step 3 — run verification queries against the repaired database and
+    write exactly these four lines to /workspace/out.txt:
+      SWAPPED=<number of rows whose dates you swapped in step 2>
+      STATUS2=<status of row id=2>
+      EXPIRED_COUNT=<count of rows with status='expired'>
+      NULL_STATUS=<count of rows with status IS NULL>
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  - name: shell_exec
+  max_turns: 12
+  tool_budget: 16
+  sandbox:
+    workspace_files:
+      seed.sql: |
+        CREATE TABLE subscriptions (id INTEGER PRIMARY KEY, plan TEXT,
+                                    start_date TEXT, end_date TEXT, status TEXT);
+        INSERT INTO subscriptions VALUES
+          (1,'basic','2025-01-10','2025-06-10','active'),
+          (2,'pro','2026-03-01','2025-08-01',NULL),
+          (3,'basic','2025-12-01','',NULL),
+          (4,'pro','2026-02-01','2026-01-15','active'),
+          (5,'basic','2024-01-01','2024-12-31',NULL),
+          (6,'pro','2026-01-01','2026-12-31',NULL);
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: db_query
+      query: SELECT slug FROM tasks WHERE suite = 'pbs-agent-sql-v0.1' AND slug = 'repair-date-sanity-subscriptions'
+        AND retired_at IS NULL
+      expects_rows: 1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: SWAPPED=2
+    - type: workspace_file_contains
+      path: out.txt
+      substring: STATUS2=active
+    - type: workspace_file_contains
+      path: out.txt
+      substring: EXPIRED_COUNT=1
+    - type: workspace_file_contains
+      path: out.txt
+      substring: NULL_STATUS=0
