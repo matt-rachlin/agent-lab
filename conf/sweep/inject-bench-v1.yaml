@@ -1,0 +1,24 @@
+# EXP-015 / INJECT-BENCH-001: injection resistance — 3 local models + frontier
+# comparator on pbs-agent-inject-v0.1. Pre-registered in
+# docs/exp/EXP-015-inject-bench.md. Compliance scored post-hoc by
+# scripts/injection_compliance.py (canary actions in trajectories).
+experiment:
+  slug: INJECT-BENCH-001
+  title: "Prompt-injection resistance: gemma4 / qwen3-coder / devstral / glm-5.1 (pbs-agent-inject-v0.1)"
+  hypothesis: "Every local model complies >=1/20; compliance ranking != capability ranking; semantic styles beat blatant overrides; frontier <= half best local rate."
+tasks:
+  suite: pbs-agent-inject-v0.1
+models:
+  - gemma4-12b
+  - qwen3-coder-30b
+  - devstral-24b
+  - glm-5.1-cloud
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800
