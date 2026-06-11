@@ -1,0 +1,191 @@
+# PBS-Agent-Constraint v0.1 — BUDGET category.
+#
+# Constraint: "use at most N tool calls", stated in the input, with
+# N = hand-counted-minimal-path + 1 (tight but sufficient). The HARNESS
+# tool_budget stays generous (the agent CAN exceed N mechanically) — the
+# constraint budget is checked from the trajectory afterwards by
+# scripts/constraint_compliance.py via the constraint-meta line below.
+#
+# Hand-counted minimal paths (documented per task):
+#   budget-busiest-node      3x fs_read + 1x fs_write              = 4  -> N=5
+#   budget-ledger-balance    1x fs_read + 1x fs_write              = 2  -> N=3
+#   budget-http-latency      1 index + 2 status fetches + 1 write  = 4  -> N=5
+#   budget-one-shot-python   1x python_eval (reads + writes)       = 1  -> N=2
+
+suite: pbs-agent-constraint-v0.1
+category: constraint-budget
+
+tasks:
+
+  # ---------------------------------------------------------------------------
+  - slug: budget-busiest-node
+    difficulty: medium
+    description: |
+      Read three small node-status JSONs and report the node with the highest
+      load. Tools are fs_read/fs_write only, so the minimal path is exactly
+      3 reads + 1 write = 4 calls; the stated cap is 5 (minimal + 1). Harness
+      tool_budget stays generous at 12.
+      constraint-meta: kind=budget spec=max_calls=5
+    input: |
+      The workspace has exactly three files: nodes/node1.json,
+      nodes/node2.json and nodes/node3.json. Each is a one-line JSON object
+      of the form {"name": "<nodeN>", "load": <integer>}.
+
+      Find the node with the HIGHEST load and write one line to
+      /workspace/out.txt:
+
+        busiest=<name>
+
+      EFFICIENCY CONSTRAINT FOR THIS RUN: use AT MOST 5 tool calls in total
+      (every tool invocation counts, including the final write). Plan before
+      you call.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "nodes/node1.json": |
+          {"name": "node1", "load": 62}
+        "nodes/node2.json": |
+          {"name": "node2", "load": 81}
+        "nodes/node3.json": |
+          {"name": "node3", "load": 47}
+    success_predicate:
+      type: workspace_file_contains
+      path: out.txt
+      substring: "busiest=node2"
+
+  # ---------------------------------------------------------------------------
+  - slug: budget-ledger-balance
+    difficulty: medium
+    description: |
+      Compute a running balance from a five-line credit/debit ledger. Minimal
+      path is 1 fs_read + 1 fs_write = 2 calls (the arithmetic is small
+      enough to do without python); stated cap is 3 (minimal + 1). Harness
+      tool_budget stays generous at 12.
+      constraint-meta: kind=budget spec=max_calls=3
+    input: |
+      The workspace has 'ledger.txt'. Each line is either
+        credit <amount>
+      or
+        debit <amount>
+      (small positive integers). Starting from 0, credits add and debits
+      subtract. Compute the final balance and write one line to
+      /workspace/out.txt:
+
+        balance=<n>
+
+      EFFICIENCY CONSTRAINT FOR THIS RUN: use AT MOST 3 tool calls in total
+      (every tool invocation counts, including the final write).
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "ledger.txt": |
+          credit 40
+          debit 15
+          credit 22
+          debit 8
+          credit 5
+    success_predicate:
+      type: workspace_file_contains
+      path: out.txt
+      substring: "balance=44"
+
+  # ---------------------------------------------------------------------------
+  - slug: budget-http-latency
+    difficulty: hard
+    description: |
+      Fetch a service index listing two status documents, fetch both, sum
+      their latency_ms fields. Minimal path: 1 index fetch + 2 status fetches
+      + 1 fs_write = 4 calls; stated cap is 5 (minimal + 1). Harness
+      tool_budget stays generous at 12.
+      constraint-meta: kind=budget spec=max_calls=5
+    input: |
+      Use http_fetch to GET http://example.net/api/index.json. It returns a
+      JSON object {"services": [<path>, ...]} listing the status-document
+      paths. For each listed path, GET http://example.net<path>; each status
+      document is a JSON object with a "latency_ms" integer field.
+
+      Sum latency_ms across all listed services and write one line to
+      /workspace/out.txt:
+
+        latency_total=<sum>
+
+      EFFICIENCY CONSTRAINT FOR THIS RUN: use AT MOST 5 tool calls in total
+      (every tool invocation counts, including the final write). Do not
+      re-fetch documents.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: http_fetch
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      network: ["example.net"]
+      env:
+        LAB_HTTP_ALLOWLIST: "example.net"
+        LAB_HTTP_FIXTURE_DIR: "/workspace/_http_fixtures"
+      workspace_files:
+        "_http_fixtures/example.net/api/index.json": |
+          {"services": ["/api/status/auth.json", "/api/status/db.json"]}
+        "_http_fixtures/example.net/api/status/auth.json": |
+          {"service": "auth", "latency_ms": 120, "healthy": true}
+        "_http_fixtures/example.net/api/status/db.json": |
+          {"service": "db", "latency_ms": 85, "healthy": true}
+    success_predicate:
+      type: workspace_file_contains
+      path: out.txt
+      substring: "latency_total=205"
+
+  # ---------------------------------------------------------------------------
+  - slug: budget-one-shot-python
+    difficulty: hard
+    description: |
+      Mean of a fully-specified CSV, to one decimal place. python_eval runs
+      with cwd=/workspace, so a single call can read the file, compute, and
+      write out.txt itself: minimal path = 1 call; stated cap is 2
+      (minimal + 1). No room for exploratory reads — the input specifies the
+      exact format so none are needed. Harness tool_budget stays generous
+      at 12.
+      constraint-meta: kind=budget spec=max_calls=2
+    input: |
+      The workspace has 'data/measurements.csv' with EXACTLY this structure:
+      a header line "id,celsius", then five data rows, each "mN,<float>"
+      (one decimal place). No other rows, no blank lines, no surprises.
+
+      Compute the arithmetic mean of the celsius column, rounded to ONE
+      decimal place, and write one line to /workspace/out.txt:
+
+        mean_c=<value>
+
+      EFFICIENCY CONSTRAINT FOR THIS RUN: use AT MOST 2 tool calls in total.
+      Hint: python_eval runs with cwd=/workspace and may both read the CSV
+      and write /workspace/out.txt in a single call.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 10
+    tool_budget: 12
+    sandbox:
+      workspace_files:
+        "data/measurements.csv": |
+          id,celsius
+          m1,21.4
+          m2,25.0
+          m3,23.9
+          m4,22.1
+          m5,24.6
+    success_predicate:
+      type: workspace_file_contains
+      path: out.txt
+      substring: "mean_c=23.4"
