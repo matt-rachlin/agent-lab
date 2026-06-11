@@ -1,0 +1,22 @@
+# EXP-011 / HARD-BENCH-CLOUD-001: frontier cloud anchor on the hard suite.
+# Runs on the default pueue group (no GPU; Ollama Cloud via local daemon)
+# concurrently with HARD-BENCH-003. Pre-registered in
+# docs/exp/EXP-011-hard-bench-cloud-anchor.md before launch.
+experiment:
+  slug: HARD-BENCH-CLOUD-001
+  title: "Hard suite cloud anchor: glm-5.1 + qwen3-coder-480b vs local field (pbs-agent-hard-v0.1)"
+  hypothesis: "Best cloud arm >= 0.938 (ties/beats gemma4-12b); qwen3-coder-480b beats its 30b sibling by >=2 tasks; no F-012 failure modes in cloud trajectories."
+tasks:
+  suite: pbs-agent-hard-v0.1
+models:
+  - glm-5.1-cloud
+  - qwen3-coder-480b-cloud
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800
