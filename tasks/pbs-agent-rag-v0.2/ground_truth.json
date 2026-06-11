@@ -1,0 +1,303 @@
+{
+  "_comment": "Ground truth for pbs-agent-rag-v0.2. Each hop has a regex that defines the set of KB chunks supporting that fact (mega whole-document chunks > 20000 chars are excluded by verify_rag.py). 'question' is the task's main question, used for the naive single-query top-8 multi-hop check.",
+  "kb": "bash",
+  "tasks": [
+    {
+      "slug": "rag2-sigabrt-status",
+      "hop_structure": "2-hop",
+      "question": "A process is terminated by the SIGABRT signal. What numeric exit status does bash report in $? for it?",
+      "answer": "134",
+      "answer_substring": "answer=134",
+      "hops": [
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        },
+        {
+          "name": "sigabrt-is-6",
+          "fact": "SIGABRT is signal number 6",
+          "regex": "(-\\s*6\\s*\\n-\\s*SIGABRT)|(SIGABRT\\W{0,10}6\\b)|(\\b6\\b\\W{0,10}SIGABRT)|(kill\\s+-6\\b)"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-sighup-status",
+      "hop_structure": "2-hop",
+      "question": "A foreground script is killed by SIGHUP when its terminal closes. What numeric exit status does the parent shell see in $??",
+      "answer": "129",
+      "answer_substring": "answer=129",
+      "hops": [
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        },
+        {
+          "name": "sighup-is-1",
+          "fact": "SIGHUP is signal number 1",
+          "regex": "(-\\s*1\\s*\\n-\\s*SIGHUP)|(SIGHUP\\W{0,8}1\\b)|(\\b1\\b\\W{0,8}SIGHUP)"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-sigalrm-status",
+      "hop_structure": "2-hop",
+      "question": "A command is killed by SIGALRM. What numeric exit status does bash assign to it?",
+      "answer": "142",
+      "answer_substring": "answer=142",
+      "hops": [
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        },
+        {
+          "name": "sigalrm-is-14",
+          "fact": "SIGALRM is signal number 14",
+          "regex": "(-\\s*14\\s*\\n-\\s*SIGALRM)|(SIGALRM\\W{0,10}14\\b)|(\\b14\\b\\W{0,10}SIGALRM)"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-star-join-default-ifs",
+      "hop_structure": "2-hop",
+      "question": "After `set -- a b c` with IFS left at its default value, what exact string does \"$*\" (in double quotes) expand to?",
+      "answer": "a b c",
+      "answer_substring": "answer=a b c",
+      "hops": [
+        {
+          "name": "star-joins-first-ifs-char",
+          "fact": "in double quotes $* joins the positional parameters with the first character of IFS",
+          "regex": "separated by the first character|joined.{0,60}first character"
+        },
+        {
+          "name": "ifs-default-space-tab-newline",
+          "fact": "the default IFS is space, tab, newline",
+          "regex": "<space><tab><newline>|space.{0,4}tab.{0,10}newline|default value of.{0,30}IFS|IFS.{0,60}space, tab"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-pipestatus-first",
+      "hop_structure": "2-hop",
+      "question": "After a two-command pipeline runs, $? only reflects the last command. What exact parameter expansion yields the exit status of the FIRST command of the most recently executed pipeline?",
+      "answer": "${PIPESTATUS[0]}",
+      "answer_substring": "answer=${PIPESTATUS[0]}",
+      "hops": [
+        {
+          "name": "pipeline-status-is-last",
+          "fact": "the exit status of a pipeline is the exit status of its last command",
+          "regex": "(exit|return)\\s+(status|value)\\s+of\\s+(a|the)\\s+pipeline\\s+is\\s+the\\s+exit\\s+status\\s+of\\s+(the\\s+|its\\s+)?last"
+        },
+        {
+          "name": "pipestatus-array",
+          "fact": "PIPESTATUS is an array of the exit statuses of the most recent foreground pipeline",
+          "regex": "PIPESTATUS"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-untrappable-signal",
+      "hop_structure": "2-hop",
+      "question": "One signal can never be caught or ignored with trap. Using the POSIX numeric signal numbering, what is that signal's NUMBER?",
+      "answer": "9",
+      "answer_substring": "answer=9",
+      "hops": [
+        {
+          "name": "sigkill-untrappable",
+          "fact": "SIGKILL cannot be trapped/caught/ignored",
+          "regex": "(SIG)?KILL[^.]{0,140}(cannot|can\\s?not|can't|never)[^.]{0,80}(caught|trapped|trap|ignored|blocked)"
+        },
+        {
+          "name": "sigkill-is-9",
+          "fact": "SIGKILL is signal number 9",
+          "regex": "(-\\s*9\\s*\\n-\\s*SIGKILL)|(SIGKILL\\W{0,10}9\\b)|(\\b9\\b\\W{0,10}SIGKILL)|(kill\\s+-9\\b)"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-wait-bang",
+      "hop_structure": "2-hop",
+      "question": "A script starts a background job with &. Using the special parameter that expands to that job's PID, what exact two-word command waits for it and sets $? to its exit status?",
+      "answer": "wait $!",
+      "answer_substring": "answer=wait $!",
+      "hops": [
+        {
+          "name": "bang-is-bg-pid",
+          "fact": "$! expands to the PID of the job most recently placed into the background",
+          "regex": "\\$!\\W{0,20}[Ee]xpands?\\s+to|most\\s+recently\\s+placed\\s+into\\s+the\\s+background|most\\s+recent\\s+background\\s+(command|job)|process\\s+ID\\s+of\\s+the\\s+(job|command)\\s+most\\s+recently"
+        },
+        {
+          "name": "wait-builtin",
+          "fact": "wait blocks until the given child process exits and returns its exit status",
+          "regex": "[Ww]ait\\s+until\\s+the\\s+child|status\\s+of\\s+the\\s+last\\s+(command|process|job)\\s+waited"
+        }
+      ]
+    },
+    {
+      "slug": "rag2-sigkill-status",
+      "hop_structure": "2-hop",
+      "question": "A process is forcibly killed with SIGKILL. What numeric exit status does bash report for it in $??",
+      "answer": "137",
+      "answer_substring": "answer=137",
+      "hops": [
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        },
+        {
+          "name": "sigkill-is-9",
+          "fact": "SIGKILL is signal number 9",
+          "regex": "(-\\s*9\\s*\\n-\\s*SIGKILL)|(SIGKILL\\W{0,10}9\\b)|(\\b9\\b\\W{0,10}SIGKILL)|(kill\\s+-9\\b)"
+        }
+      ]
+    },
+    {
+      "slug": "rag3-kill-default-status",
+      "hop_structure": "3-hop",
+      "question": "A long-running command is terminated with the kill builtin called with no signal option (just the PID). What numeric exit status does bash report for that command?",
+      "answer": "143",
+      "answer_substring": "answer=143",
+      "hops": [
+        {
+          "name": "kill-default-sigterm",
+          "fact": "kill sends SIGTERM when no sigspec/signum is given",
+          "regex": "not\\s+present.{0,60}kill.{0,40}sends.{0,30}SIGTERM|SIGTERM\\s+is\\s+assumed|kill\\W{0,30}sends\\W{0,30}SIGTERM"
+        },
+        {
+          "name": "sigterm-is-15",
+          "fact": "SIGTERM is signal number 15",
+          "regex": "(-\\s*15\\s*\\n-\\s*SIGTERM)|(SIGTERM\\W{0,10}15\\b)|(\\b15\\b\\W{0,10}SIGTERM)"
+        },
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        }
+      ]
+    },
+    {
+      "slug": "rag3-ctrl-backslash-status",
+      "hop_structure": "3-hop",
+      "question": "A user presses Ctrl-\\ to kill the foreground job. What numeric exit status does the shell report for that job?",
+      "answer": "131",
+      "answer_substring": "answer=131",
+      "hops": [
+        {
+          "name": "ctrl-backslash-sigquit",
+          "fact": "Ctrl-\\ sends SIGQUIT to the foreground job",
+          "regex": "Ctrl-\\\\.{0,80}SIGQUIT"
+        },
+        {
+          "name": "sigquit-is-3",
+          "fact": "SIGQUIT is signal number 3",
+          "regex": "(-\\s*3\\s*\\n-\\s*SIGQUIT)|(SIGQUIT\\W{0,8}3\\b)|(\\b3\\b\\W{0,8}SIGQUIT)"
+        },
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        }
+      ]
+    },
+    {
+      "slug": "rag3-ctrl-c-status",
+      "hop_structure": "3-hop",
+      "question": "A user presses Ctrl-C to interrupt the foreground job. What numeric exit status does the shell report for that job?",
+      "answer": "130",
+      "answer_substring": "answer=130",
+      "hops": [
+        {
+          "name": "ctrl-c-sigint",
+          "fact": "Ctrl-C sends SIGINT to the foreground job",
+          "regex": "Ctrl-C.{0,80}SIGINT|SIGINT.{0,80}Ctrl-C"
+        },
+        {
+          "name": "sigint-is-2",
+          "fact": "SIGINT is signal number 2",
+          "regex": "(-\\s*2\\s*\\n-\\s*SIGINT)|(SIGINT\\W{0,8}2\\b)|(\\b2\\b\\W{0,8}SIGINT)"
+        },
+        {
+          "name": "rule-128-plus-n",
+          "fact": "a command terminated by signal N has exit status 128+N",
+          "regex": "128\\s*\\+"
+        }
+      ]
+    },
+    {
+      "slug": "rag3-pipefail-exit3",
+      "hop_structure": "3-hop",
+      "question": "With `set -o pipefail` enabled, what is the value of $? after running the pipeline `( exit 3 ) | true`?",
+      "answer": "3",
+      "answer_substring": "answer=3",
+      "hops": [
+        {
+          "name": "pipefail-semantics",
+          "fact": "with pipefail, a pipeline's status is the last command to exit with a non-zero status (rightmost failure)",
+          "regex": "pipefail"
+        },
+        {
+          "name": "exit-n-returns-n",
+          "fact": "exit n makes the shell return status n",
+          "regex": "exit \\[n\\]|return(ing)? a status of n|exit\\s+\\[?n\\]?[^.]{0,60}status"
+        },
+        {
+          "name": "true-returns-0",
+          "fact": "true does nothing and returns status 0",
+          "regex": "true[^.]{0,60}(returns? (a )?(0|zero)|0 status|successful result|Does nothing)"
+        }
+      ]
+    },
+    {
+      "slug": "ragadv-star-single-arg",
+      "hop_structure": "adversarial-2-hop",
+      "question": "How do I pass all positional parameters to a command as one single argument (a single word, separated by spaces, IFS untouched)?",
+      "answer": "\"$*\"",
+      "answer_substring": "answer=\"$*\"",
+      "adversarial": true,
+      "near_miss": {
+        "fact": "\"$@\" is the much more commonly recommended form, but it expands to SEPARATE words, one per parameter",
+        "regex": "\"\\$@\"|\\$@"
+      },
+      "hops": [
+        {
+          "name": "star-joins-first-ifs-char",
+          "fact": "in double quotes $* expands to a single word joined by the first character of IFS",
+          "regex": "separated by the first character|joined.{0,60}first character"
+        },
+        {
+          "name": "ifs-default-space-tab-newline",
+          "fact": "the default IFS starts with a space, so the join character is a space",
+          "regex": "<space><tab><newline>|space.{0,4}tab.{0,10}newline|default value of.{0,30}IFS|IFS.{0,60}space, tab"
+        }
+      ]
+    },
+    {
+      "slug": "ragadv-unquoted-split",
+      "hop_structure": "adversarial-2-hop",
+      "question": "The variable flags='-a -b -c' must be passed to a command as three separate arguments (POSIX-compatible script, no arrays). When you write $flags on the command line, should the expansion be double-quoted or left unquoted?",
+      "answer": "unquoted",
+      "answer_substring": "answer=unquoted",
+      "adversarial": true,
+      "answer_regex": "leave[^.]{0,40}unquoted|double quotes? may be safely omitted",
+      "near_miss": {
+        "fact": "the dominant guidance ('quote variables', 'use \"$@\"', 'use arrays for argument lists') is the near-miss: quoting $flags passes ONE argument, and arrays are excluded by the task",
+        "regex": "(?i)quote variables|should have used an array|arrays should be used|[Dd]ouble quote to prevent|[Ww]hen in doubt, quote"
+      },
+      "hops": [
+        {
+          "name": "unquoted-expansion-word-splits",
+          "fact": "the shell scans the results of expansions that did NOT occur within double quotes for word splitting",
+          "regex": "did not occur within double quotes"
+        },
+        {
+          "name": "quotes-omitted-for-splitting",
+          "fact": "double quotes may be deliberately omitted / expansions left unquoted when splitting is wanted",
+          "regex": "(double quotes? may be safely omitted)|(leave (the outside |expansions? )?unquoted)"
+        }
+      ]
+    }
+  ]
+}

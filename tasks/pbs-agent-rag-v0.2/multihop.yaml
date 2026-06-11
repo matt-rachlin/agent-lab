@@ -1,0 +1,695 @@
+# PBS-Agent RAG v0.2 — multi-hop research tasks with verifiable citations.
+#
+# Fourteen tasks over the sealed bash KB. Every answer combines facts from
+# 2-3 DISTINCT chunks (verified against the corpus by /tmp/rag/verify_rag.py:
+# no single non-mega chunk supports all hops, and for >= 10/14 tasks a single
+# naive top-8 kb_query does not surface every supporting chunk). The agent
+# must write /workspace/out.txt as:
+#
+#     answer=<exact answer>
+#     cite=<chunk_id>          (one line per supporting chunk, >= 2)
+#
+# Predicate design (F-005 carry-over): the "answer=..." and "cite=..."
+# substrings can never be produced by dumping raw kb_query hits into the
+# file — chunk texts contain neither (verified). Where a hop's supporting
+# chunk is UNIQUE in the corpus (the POSIX signal-number table; the
+# wooledge job-control chunk for Ctrl-\) the predicate pins that exact
+# chunk_id; otherwise it checks the cite= prefix ("cite=01KSHSN" — the
+# common ULID prefix of this KB build) and full citation validity is
+# delegated to scripts/citation_check.py.
+#
+# Two adversarial tasks (ragadv-*): the naive single query surfaces a
+# plausible-but-wrong near-miss first ("$@" advice; export docs); answering
+# from it fails the answer= predicate.
+#
+# Gold citations per task are recorded in ground_truth.json next to this
+# file (hop regexes define the acceptable support sets; chunk ids shift if
+# the sealed KB is ever re-chunked).
+
+suite: pbs-agent-rag-v0.2
+category: rag
+
+tasks:
+
+  # =======================================================================
+  # Two-hop tasks (8)
+  # =======================================================================
+
+  - slug: rag2-sigabrt-status
+    difficulty: medium
+    description: |
+      Two-hop: exit status of a process killed by SIGABRT. Hop 1: bash
+      reports 128+N for death by signal N (manual / wiki exit-status
+      chunks). Hop 2: SIGABRT is signal 6 — in this corpus that mapping
+      exists ONLY in the POSIX trap signal-number table chunk
+      (01KSHSNCTPNG46M876KPZ81751), so the predicate pins it.
+      Answer: 134.
+    input: |
+      Question: A process is terminated by the SIGABRT signal. What
+      numeric exit status does bash report in $? for it?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them.
+      Issue multiple targeted kb_query calls until every fact you need
+      (including the signal's NUMBER) is grounded in a retrieved chunk.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one line per supporting
+                           chunk, chunk_id exactly as returned by
+                           kb_query; cite every chunk your answer relies
+                           on — at least two)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=134"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCTPNG46M876KPZ81751"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-sighup-status
+    difficulty: medium
+    description: |
+      Two-hop: exit status after death by SIGHUP. Hops: 128+N rule +
+      SIGHUP=1 (the latter only in the POSIX trap table chunk, pinned).
+      Answer: 129.
+    input: |
+      Question: A foreground script is killed by SIGHUP when its terminal
+      closes. What numeric exit status does the parent shell see in $??
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them.
+      Issue multiple targeted kb_query calls until every fact you need
+      (including the signal's NUMBER) is grounded in a retrieved chunk.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=129"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCTPNG46M876KPZ81751"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-sigalrm-status
+    difficulty: medium
+    description: |
+      Two-hop: exit status after death by SIGALRM. Hops: 128+N rule +
+      SIGALRM=14 (POSIX trap table chunk, pinned). Answer: 142.
+    input: |
+      Question: A command is killed by SIGALRM. What numeric exit status
+      does bash assign to it?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them.
+      Issue multiple targeted kb_query calls until every fact you need
+      (including the signal's NUMBER) is grounded in a retrieved chunk.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=142"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCTPNG46M876KPZ81751"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-sigkill-status
+    difficulty: medium
+    description: |
+      Two-hop: exit status after SIGKILL. Hops: 128+N rule + SIGKILL=9
+      (several chunks map 9 to KILL — kill -9 idioms and the POSIX
+      table — so no exact chunk id is pinned). Answer: 137.
+    input: |
+      Question: A process is forcibly killed with SIGKILL. What numeric
+      exit status does bash report for it in $??
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them.
+      Issue multiple targeted kb_query calls until every fact you need
+      (including the signal's NUMBER) is grounded in a retrieved chunk.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=137"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-untrappable-signal
+    difficulty: medium
+    description: |
+      Two-hop: the untrappable signal's POSIX number. Hop 1: SIGKILL
+      cannot be caught/trapped (shellcheck SC2173 chunks). Hop 2:
+      SIGKILL is 9 (POSIX table / kill -9 idiom chunks). Answer: 9.
+    input: |
+      Question: One signal can never be caught or ignored with trap.
+      Using the POSIX numeric signal numbering, what is that signal's
+      NUMBER?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them:
+      you need one chunk for WHICH signal is untrappable and another for
+      its NUMBER. Issue multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=9"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-star-join-default-ifs
+    difficulty: medium
+    description: |
+      Two-hop: value of "$*" with default IFS and params a b c. Hop 1:
+      quoted $* joins parameters with the FIRST character of IFS
+      (special-parameters chunks). Hop 2: default IFS is
+      space-tab-newline (word-splitting chunks). Answer: "a b c".
+    input: |
+      Question: After `set -- a b c` with IFS left at its default value,
+      what exact string does "$*" (in double quotes) expand to?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them:
+      you need the joining rule for "$*" AND the default value of the
+      join character. Issue multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the exact resulting string>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=a b c"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-pipestatus-first
+    difficulty: medium
+    description: |
+      Two-hop: how to read the FIRST pipeline command's status. Hop 1:
+      $?/pipeline status reflects only the LAST command (pipelines
+      chunks). Hop 2: the PIPESTATUS array holds the per-component
+      statuses (variables chunks). Answer: ${PIPESTATUS[0]}.
+    input: |
+      Question: After a two-command pipeline runs, $? only reflects the
+      last command. What exact parameter expansion yields the exit
+      status of the FIRST command of the most recently executed
+      pipeline?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them.
+      Issue multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the exact expansion, including ${...}>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=${PIPESTATUS[0]}"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag2-wait-bang
+    difficulty: medium
+    description: |
+      Two-hop: waiting on the most recent background job. Hop 1: $!
+      expands to the PID of the job most recently placed into the
+      background (special-parameters chunks). Hop 2: the wait builtin
+      blocks on a child and returns its exit status (kill/wait builtin
+      chunks). Answer: wait $!  (the literal never appears in the
+      corpus — verified — so the agent must compose it).
+    input: |
+      Question: A script starts a background job with &. Using the
+      special parameter that expands to that job's PID, what exact
+      two-word command waits for it and sets $? to its exit status?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer combines facts that live in DIFFERENT
+      parts of the KB — a single query will not surface all of them:
+      you need the special parameter's definition AND the builtin's
+      behaviour. Issue multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<builtin> <parameter>   (two words,
+                           e.g. answer=foo $X)
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 8
+    tool_budget: 10
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=wait $!"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # =======================================================================
+  # Three-hop tasks (4)
+  # =======================================================================
+
+  - slug: rag3-kill-default-status
+    difficulty: hard
+    description: |
+      Three-hop: kill with no signal option -> SIGTERM (kill builtin
+      chunk) -> 15 (POSIX trap table, pinned) -> 128+15 (exit-status
+      chunks). Answer: 143.
+    input: |
+      Question: A long-running command is terminated with the kill
+      builtin called with no signal option (just the PID). What numeric
+      exit status does bash report for that command?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer chains THREE separate facts that live
+      in different parts of the KB: which signal is sent by default,
+      that signal's number, and how a signal death maps to an exit
+      status. A single query will not surface all of them — issue
+      multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=143"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCTPNG46M876KPZ81751"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag3-ctrl-backslash-status
+    difficulty: hard
+    description: |
+      Three-hop: Ctrl-\ -> SIGQUIT (wooledge job-control chunk
+      01KSHSNCW876EV9G679ZTBEABF — unique in corpus, pinned) -> 3
+      (POSIX trap table, pinned) -> 128+3. Answer: 131.
+    input: |
+      Question: A user presses Ctrl-\ to kill the foreground job. What
+      numeric exit status does the shell report for that job?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer chains THREE separate facts that live
+      in different parts of the KB: which signal that key sends, the
+      signal's number, and how a signal death maps to an exit status. A
+      single query will not surface all of them — issue multiple
+      targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=131"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCW876EV9G679ZTBEABF"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCTPNG46M876KPZ81751"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag3-ctrl-c-status
+    difficulty: hard
+    description: |
+      Three-hop: Ctrl-C -> SIGINT (wooledge job-control / wiki trap
+      chunks) -> 2 (POSIX trap table, pinned) -> 128+2. Answer: 130.
+    input: |
+      Question: A user presses Ctrl-C to interrupt the foreground job.
+      What numeric exit status does the shell report for that job?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer chains THREE separate facts that live
+      in different parts of the KB: which signal that key sends, the
+      signal's number, and how a signal death maps to an exit status. A
+      single query will not surface all of them — issue multiple
+      targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=130"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSNCTPNG46M876KPZ81751"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: rag3-pipefail-exit3
+    difficulty: hard
+    description: |
+      Three-hop: pipefail semantics (rightmost non-zero wins) + `exit n`
+      returns n + `true` returns 0. With `( exit 3 ) | true` under
+      pipefail, $? is 3. Answer: 3.
+    input: |
+      Question: With `set -o pipefail` enabled, what is the value of $?
+      after running the pipeline `( exit 3 ) | true`?
+
+      Work ONLY from passages retrieved with the kb_query tool
+      (kb_name='bash'). The answer chains THREE separate facts that live
+      in different parts of the KB: what pipefail does to a pipeline's
+      status, what `exit 3` makes its subshell return, and what `true`
+      returns. A single query will not surface all of them — issue
+      multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the number, digits only>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=3"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  # =======================================================================
+  # Adversarial tasks (2) — the naive query surfaces a plausible-but-wrong
+  # near-miss first; answering from it fails the answer= predicate.
+  # =======================================================================
+
+  - slug: ragadv-star-single-arg
+    difficulty: hard
+    description: |
+      Adversarial two-hop. The naive query for "pass all positional
+      parameters as one argument" top-ranks "$@" advice chunks
+      (wooledge Quotes, shellcheck) — the near-miss: "$@" expands to
+      SEPARATE words and is the wrong answer here. The correct answer
+      "$*" needs the $*-joins-with-first-IFS-char chunk plus the
+      IFS-default chunk. Answer: "$*" (with the double quotes).
+    input: |
+      Question: How do you pass ALL positional parameters to a command
+      as ONE single argument (a single word, parameters separated by
+      spaces, IFS untouched)?
+
+      Careful: the obvious, commonly recommended form does the OPPOSITE
+      (it produces one word per parameter). Work ONLY from passages
+      retrieved with the kb_query tool (kb_name='bash') and make sure
+      the retrieved text actually supports the single-word behaviour
+      AND tells you which character the parameters get joined with by
+      default. That takes facts from different parts of the KB — issue
+      multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<the quoted parameter, exactly, e.g.
+                           answer="$X">
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: 'answer="$*"'
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash
+
+  - slug: ragadv-unquoted-split
+    difficulty: hard
+    description: |
+      Adversarial two-hop. The naive query about passing a flags
+      variable as separate arguments top-ranks "always double-quote
+      your expansions" guidance (Google style guide / shellcheck /
+      wooledge Quotes) — the near-miss: quoting "$flags" passes ONE
+      argument and is wrong here. The correct answer requires the
+      word-splitting rule (only expansions NOT inside double quotes are
+      split) plus the quote-omission guidance. Answer: unquoted.
+    input: |
+      Question: The variable flags='-a -b -c' must be passed to a
+      command as THREE separate arguments (POSIX-compatible script, no
+      arrays). When you write $flags on the command line, should the
+      expansion be double-quoted or left unquoted?
+
+      Careful: the most commonly repeated quoting advice gives the
+      WRONG result for this specific requirement. Work ONLY from
+      passages retrieved with the kb_query tool (kb_name='bash') and
+      ground BOTH halves: the rule that says which expansions undergo
+      word splitting, and the guidance about when quotes may be
+      omitted. That takes facts from different parts of the KB — issue
+      multiple targeted kb_query calls.
+
+      Then write the file 'out.txt' (fs_write, mode='create') in EXACTLY
+      this format and nothing else:
+        line 1:            answer=<exactly one word: quoted or unquoted>
+        following lines:   cite=<chunk_id>   (one per supporting chunk,
+                           at least two, ids exactly as returned by
+                           kb_query)
+      Then reply 'done'.
+    system_prompt_id: rag_grounded_v1
+    tools:
+      - name: kb_query
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 12
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "answer=unquoted"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cite=01KSHSN"
+    rubric:
+      type: tool_call
+      target_tool: kb_query
+      expected_args:
+        kb_name: bash

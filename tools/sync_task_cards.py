@@ -39,6 +39,7 @@ SUITE_TO_DIR = {
     "PBS-v0.1": "pbs",
     "pbs-agent-v0.1": "pbs-agent-v0.1",
     "pbs-agent-rag-v0.1": "pbs-agent-rag-v0.1",
+    "pbs-agent-rag-v0.2": "pbs-agent-rag-v0.2",
     "agent-smoke": "agent-smoke",
 }
 
