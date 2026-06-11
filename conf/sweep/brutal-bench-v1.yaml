@@ -1,0 +1,23 @@
+# EXP-010 / BRUTAL-BENCH-001: validation + first ranking on the new 24-task
+# brutal tier (debug/recovery/longhaul/spec). Single-seed validation pass per
+# the staged pattern (validate N=1, confirm N=8); pre-registered in
+# docs/exp/EXP-010-brutal-bench.md before launch.
+experiment:
+  slug: BRUTAL-BENCH-001
+  title: "Brutal agentic suite validation: gemma4 vs Qwen3-Coder-30B vs Devstral-24B (pbs-agent-brutal-v0.1)"
+  hypothesis: "gemma4-12b drops to <=0.85 (headroom restored); EXP-008 ranking holds; >=22/24 tasks solvable by at least one model; devstral worst at longhaul, qwen3 below its mean on debug."
+tasks:
+  suite: pbs-agent-brutal-v0.1
+models:
+  - gemma4-12b
+  - qwen3-coder-30b
+  - devstral-24b
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800

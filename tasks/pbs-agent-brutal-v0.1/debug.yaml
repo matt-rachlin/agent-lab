@@ -1,0 +1,1014 @@
+suite: pbs-agent-brutal-v0.1
+category: debug
+
+tasks:
+  - slug: debug-interval-scheduler
+    difficulty: hard
+    description: |
+      Greedy interval scheduling with three planted logic bugs: wrong
+      greedy sort key, an off-by-one rejection of touching half-open
+      intervals, and an inclusive-length busy-time bug. Tests the
+      run-diagnose-fix-rerun loop and a data-derived final answer.
+    input: |
+      The Python project in /workspace is a meeting-room request
+      scheduler (scheduler.py, metrics.py, main.py). Its test harness
+      is run_tests.py and some tests currently fail because of logic
+      bugs in the source files.
+
+      1. Run `python3 run_tests.py` and read the failure output.
+      2. Fix the bugs in scheduler.py / metrics.py only. Do NOT modify
+         run_tests.py, main.py, or anything under data/. The tests
+         encode the intended behavior.
+      3. Re-run the tests until every test passes.
+      4. Run `python3 main.py data/requests.txt` and write its exact
+         stdout (both lines, unchanged) to /workspace/out.txt.
+
+      out.txt must contain exactly the two lines the fixed program
+      prints, in this format:
+      FINAL_PICKED=<number>
+      FINAL_BUSY=<number>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 16
+    tool_budget: 20
+    sandbox:
+      workspace_files:
+        "scheduler.py": |
+          class Request:
+              def __init__(self, rid, start, end):
+                  self.rid = rid
+                  self.start = start
+                  self.end = end
+
+
+          def parse_requests(lines):
+              """Parse lines of 'id start end'. Blank lines and # comments ignored.
+
+              Intervals are half-open: a request occupies [start, end).
+              """
+              out = []
+              for line in lines:
+                  line = line.strip()
+                  if not line or line.startswith("#"):
+                      continue
+                  rid, start, end = line.split()
+                  out.append(Request(rid, int(start), int(end)))
+              return out
+
+
+          def select(requests):
+              """Pick the maximum number of mutually compatible requests.
+
+              Classic greedy: repeatedly take the request that finishes earliest.
+              Two requests are compatible when one starts at or after the other
+              ends (touching endpoints is allowed, since intervals are half-open).
+              Ties on finish time break by start time, then by request id.
+              """
+              ordered = sorted(requests, key=lambda r: (r.start, r.end, r.rid))
+              chosen = []
+              last_end = None
+              for r in ordered:
+                  if last_end is None or r.start > last_end:
+                      chosen.append(r)
+                      last_end = r.end
+              return chosen
+        "metrics.py": |
+          def busy_time(chosen):
+              """Total time units covered by the given requests.
+
+              A half-open request [s, e) occupies exactly e - s units.
+              """
+              total = 0
+              for r in chosen:
+                  total += r.end - r.start + 1
+              return total
+        "main.py": |
+          import sys
+
+          from scheduler import parse_requests, select
+          from metrics import busy_time
+
+
+          def main(path):
+              with open(path) as f:
+                  requests = parse_requests(f.readlines())
+              chosen = select(requests)
+              print("FINAL_PICKED=%d" % len(chosen))
+              print("FINAL_BUSY=%d" % busy_time(chosen))
+
+
+          if __name__ == "__main__":
+              main(sys.argv[1])
+        "run_tests.py": |
+          import sys
+
+          failures = []
+
+          def check(name, expected, fn):
+              try:
+                  actual = fn()
+              except Exception as exc:
+                  print("FAIL %s: raised %r" % (name, exc))
+                  failures.append(name)
+                  return
+              if actual != expected:
+                  print("FAIL %s: expected %r, got %r" % (name, expected, actual))
+                  failures.append(name)
+              else:
+                  print("ok   %s" % name)
+
+          from scheduler import parse_requests, select
+          from metrics import busy_time
+
+          r1 = parse_requests(["a 1 3", "b 3 5", "c 4 7"])
+          check("touching endpoints are compatible (half-open intervals)",
+                ["a", "b"], lambda: [r.rid for r in select(r1)])
+
+          r2 = parse_requests(["p 0 10", "q 1 2", "r 3 4"])
+          check("greedy must consider requests in finish-time order",
+                ["q", "r"], lambda: [r.rid for r in select(r2)])
+
+          r3 = parse_requests(["s 1 4", "t 6 8"])
+          check("busy time of half-open intervals", 5, lambda: busy_time(r3))
+
+          if failures:
+              print("%d failing test(s)" % len(failures))
+              sys.exit(1)
+          print("ALL TESTS GREEN")
+        "data/requests.txt": |
+          # request_id start end (half-open)
+          r01 17 27
+          r02 34 40
+          r03 51 64
+          r04 68 77
+          r05 85 90
+          r06 13 25
+          r07 30 38
+          r08 47 51
+          r09 64 75
+          r10 81 88
+          r11 9 12
+          r12 26 36
+          r13 43 49
+          r14 60 73
+          r15 77 86
+          r16 5 10
+          r17 22 34
+          r18 39 47
+          r19 56 60
+          r20 73 84
+          r21 1 8
+          r22 18 21
+          r23 35 45
+          r24 52 58
+          r25 69 82
+          r26 86 95
+          r27 14 19
+          r28 31 43
+          r29 200 205
+          r30 205 211
+          r31 211 216
+          r32 300 330
+          r33 301 303
+          r34 305 308
+          r35 310 312
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "FINAL_PICKED=16"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "FINAL_BUSY=97"
+  - slug: debug-inventory-ledger
+    difficulty: hard
+    description: |
+      FIFO inventory costing with three planted bugs: LIFO lot
+      consumption, COGS charged for the whole order instead of the
+      consumed slice, and a report helper that destructively pops the
+      shared lot list. Final answer requires all three fixes.
+    input: |
+      The Python project in /workspace is a FIFO inventory ledger
+      (ledger.py, report.py, main.py). Its test harness is
+      run_tests.py and some tests currently fail because of logic
+      bugs in the source files.
+
+      1. Run `python3 run_tests.py` and read the failure output.
+      2. Fix the bugs in ledger.py / report.py only. Do NOT modify
+         run_tests.py, main.py, or anything under data/. The tests
+         encode the intended behavior.
+      3. Re-run the tests until every test passes.
+      4. Run `python3 main.py data/transactions.csv` and write its
+         exact stdout (all three lines, unchanged) to
+         /workspace/out.txt.
+
+      out.txt must contain exactly the three lines the fixed program
+      prints, in this format:
+      LEDGER_UNITS=<number>
+      LEDGER_VALUE=<number>
+      LEDGER_COGS=<number>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 18
+    tool_budget: 22
+    sandbox:
+      workspace_files:
+        "ledger.py": |
+          class Lot:
+              def __init__(self, qty, unit_cost_cents):
+                  self.qty = qty
+                  self.unit_cost_cents = unit_cost_cents
+
+
+          class Ledger:
+              """FIFO inventory ledger. All money is integer cents.
+
+              receive(qty, unit_cost_cents) appends a new cost lot.
+              ship(qty) consumes stock from the OLDEST lot first and charges cost
+              of goods sold (cogs_cents) for each consumed unit at the unit cost
+              of the lot it came from.
+              """
+
+              def __init__(self):
+                  self.lots = []
+                  self.cogs_cents = 0
+
+              def receive(self, qty, unit_cost_cents):
+                  self.lots.append(Lot(qty, unit_cost_cents))
+
+              def ship(self, qty):
+                  need = qty
+                  while need > 0:
+                      if not self.lots:
+                          raise ValueError("shipment exceeds on-hand stock")
+                      lot = self.lots[-1]
+                      take = min(need, lot.qty)
+                      self.cogs_cents += lot.unit_cost_cents * qty
+                      lot.qty -= take
+                      if lot.qty == 0:
+                          self.lots.pop()
+                      need -= take
+        "report.py": |
+          def units_on_hand(ledger):
+              """Total units currently in stock. Must not modify the ledger."""
+              total = 0
+              while ledger.lots:
+                  total += ledger.lots.pop().qty
+              return total
+
+
+          def value_on_hand(ledger):
+              """Total value of stock in cents, each lot at its own unit cost."""
+              total = 0
+              for lot in ledger.lots:
+                  total += lot.qty * lot.unit_cost_cents
+              return total
+        "main.py": |
+          import sys
+
+          from ledger import Ledger
+          from report import units_on_hand, value_on_hand
+
+
+          def main(path):
+              led = Ledger()
+              with open(path) as f:
+                  for line in f:
+                      line = line.strip()
+                      if not line or line.startswith("#"):
+                          continue
+                      parts = line.split(",")
+                      if parts[0] == "recv":
+                          led.receive(int(parts[1]), int(parts[2]))
+                      elif parts[0] == "ship":
+                          led.ship(int(parts[1]))
+                      else:
+                          raise ValueError("unknown op: %s" % parts[0])
+              print("LEDGER_UNITS=%d" % units_on_hand(led))
+              print("LEDGER_VALUE=%d" % value_on_hand(led))
+              print("LEDGER_COGS=%d" % led.cogs_cents)
+
+
+          if __name__ == "__main__":
+              main(sys.argv[1])
+        "run_tests.py": |
+          import sys
+
+          failures = []
+
+          def check(name, expected, fn):
+              try:
+                  actual = fn()
+              except Exception as exc:
+                  print("FAIL %s: raised %r" % (name, exc))
+                  failures.append(name)
+                  return
+              if actual != expected:
+                  print("FAIL %s: expected %r, got %r" % (name, expected, actual))
+                  failures.append(name)
+              else:
+                  print("ok   %s" % name)
+
+          from ledger import Ledger
+          from report import units_on_hand, value_on_hand
+
+
+          def scenario_fifo():
+              led = Ledger()
+              led.receive(10, 100)
+              led.receive(10, 200)
+              led.ship(5)
+              return led.cogs_cents
+
+          check("ship consumes the oldest lot first", 500, scenario_fifo)
+
+
+          def scenario_split():
+              led = Ledger()
+              led.receive(5, 100)
+              led.receive(5, 300)
+              led.ship(8)
+              return led.cogs_cents
+
+          check("a ship spanning lots prices each unit at its own lot cost",
+                1400, scenario_split)
+
+
+          def scenario_report():
+              led = Ledger()
+              led.receive(4, 250)
+              units = units_on_hand(led)
+              value = value_on_hand(led)
+              return (units, value)
+
+          check("reporting units must not consume the inventory",
+                (4, 1000), scenario_report)
+
+          if failures:
+              print("%d failing test(s)" % len(failures))
+              sys.exit(1)
+          print("ALL TESTS GREEN")
+        "data/transactions.csv": |
+          # op,qty[,unit_cost_cents]
+          recv,40,110
+          recv,25,135
+          ship,50
+          recv,30,120
+          ship,20
+          recv,50,150
+          ship,35
+          recv,20,160
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "LEDGER_UNITS=60"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "LEDGER_VALUE=9200"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "LEDGER_COGS=12875"
+  - slug: debug-token-stats
+    difficulty: hard
+    description: |
+      Text tokenizer and frequency stats with three planted bugs:
+      stopword filtering before lowercasing, a length threshold that
+      drops 2-letter tokens, and a top-k tie-break that relies on
+      insertion order instead of alphabetical order.
+    input: |
+      The Python project in /workspace is a word-frequency analyzer
+      (tokenizer.py, stats.py, main.py). Its test harness is
+      run_tests.py and some tests currently fail because of logic
+      bugs in the source files.
+
+      1. Run `python3 run_tests.py` and read the failure output.
+      2. Fix the bugs in tokenizer.py / stats.py only. Do NOT modify
+         run_tests.py, main.py, or anything under data/. The tests
+         encode the intended behavior.
+      3. Re-run the tests until every test passes.
+      4. Run `python3 main.py data/corpus.txt` and write its exact
+         stdout (all three lines, unchanged) to /workspace/out.txt.
+
+      out.txt must contain exactly the three lines the fixed program
+      prints, in this format:
+      TOKENS_TOP3=<word>,<word>,<word>
+      TOKENS_DISTINCT=<number>
+      TOKENS_TOTAL=<number>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 16
+    tool_budget: 20
+    sandbox:
+      workspace_files:
+        "tokenizer.py": |
+          import re
+
+          STOPWORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "it"}
+
+
+          def tokenize(text):
+              """Split text into normalized word tokens.
+
+              Rules, in order:
+                - split on any run of non-alphanumeric characters
+                - lowercase every token
+                - drop stopwords (case-insensitively: 'The' is a stopword too)
+                - drop tokens shorter than 2 characters (2-letter words are kept)
+              """
+              raw = re.split(r"[^A-Za-z0-9]+", text)
+              out = []
+              for w in raw:
+                  if not w:
+                      continue
+                  if w in STOPWORDS:
+                      continue
+                  w = w.lower()
+                  if len(w) <= 2:
+                      continue
+                  out.append(w)
+              return out
+        "stats.py": |
+          from collections import Counter
+
+
+          def top_k(tokens, k):
+              """The k most frequent tokens, most frequent first.
+
+              Tokens with equal counts are ordered alphabetically.
+              """
+              counts = Counter(tokens)
+              items = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
+              return [w for w, _ in items[:k]]
+
+
+          def distinct_count(tokens):
+              return len(set(tokens))
+        "main.py": |
+          import sys
+
+          from tokenizer import tokenize
+          from stats import top_k, distinct_count
+
+
+          def main(path):
+              with open(path) as f:
+                  text = f.read()
+              tokens = tokenize(text)
+              print("TOKENS_TOP3=%s" % ",".join(top_k(tokens, 3)))
+              print("TOKENS_DISTINCT=%d" % distinct_count(tokens))
+              print("TOKENS_TOTAL=%d" % len(tokens))
+
+
+          if __name__ == "__main__":
+              main(sys.argv[1])
+        "run_tests.py": |
+          import sys
+
+          failures = []
+
+          def check(name, expected, fn):
+              try:
+                  actual = fn()
+              except Exception as exc:
+                  print("FAIL %s: raised %r" % (name, exc))
+                  failures.append(name)
+                  return
+              if actual != expected:
+                  print("FAIL %s: expected %r, got %r" % (name, expected, actual))
+                  failures.append(name)
+              else:
+                  print("ok   %s" % name)
+
+          from tokenizer import tokenize
+          from stats import top_k
+
+          check("two-letter tokens survive",
+                ["ox", "io"], lambda: tokenize("ox io"))
+
+          check("capitalized stopwords are still stopwords",
+                ["cat"], lambda: tokenize("The cat"))
+
+          check("tokenize handles a mixed sentence",
+                ["cat", "ox"], lambda: tokenize("The cat and the ox"))
+
+          check("ties in top_k break alphabetically",
+                ["att", "bot"], lambda: top_k(["bot", "att", "att", "bot", "cog"], 2))
+
+          if failures:
+              print("%d failing test(s)" % len(failures))
+              sys.exit(1)
+          print("ALL TESTS GREEN")
+        "data/corpus.txt": |
+          The harbor crane lifted the rusty container while the ox cart waited.
+          An engineer logged io errors and the crane paused; io retries cleared it.
+          Ox teams hauled grain to the harbor and the engineer watched the crane.
+          The grain ship and the ox cart shared a pier; io checks passed again.
+          In the morning the crane and the ox moved grain across the harbor pier.
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "TOKENS_TOP3=crane,ox,grain"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "TOKENS_DISTINCT=29"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "TOKENS_TOTAL=44"
+  - slug: debug-graph-reachability
+    difficulty: hard
+    description: |
+      Directed-graph BFS with three planted bugs: the parser adds a
+      reverse edge (treating the graph as undirected), the BFS queue
+      pops LIFO (producing DFS-order distances), and the reachable
+      count drops the start node.
+    input: |
+      The Python project in /workspace analyzes a directed dependency
+      graph (graph.py, traverse.py, main.py). Its test harness is
+      run_tests.py and some tests currently fail because of logic
+      bugs in the source files.
+
+      1. Run `python3 run_tests.py` and read the failure output.
+      2. Fix the bugs in graph.py / traverse.py only. Do NOT modify
+         run_tests.py, main.py, or anything under data/. The tests
+         encode the intended behavior.
+      3. Re-run the tests until every test passes.
+      4. Run `python3 main.py data/edges.txt n00` and write its exact
+         stdout (both lines, unchanged) to /workspace/out.txt.
+
+      out.txt must contain exactly the two lines the fixed program
+      prints, in this format:
+      GRAPH_REACH=<number>
+      GRAPH_ECC=<number>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 16
+    tool_budget: 20
+    sandbox:
+      workspace_files:
+        "graph.py": |
+          def parse_edges(lines):
+              """Parse an edge list. Each line 'u v' is a DIRECTED edge u -> v.
+
+              Every mentioned node gets an adjacency entry, even with no
+              outgoing edges. Blank lines and # comments are ignored.
+              """
+              adj = {}
+              for line in lines:
+                  line = line.strip()
+                  if not line or line.startswith("#"):
+                      continue
+                  u, v = line.split()
+                  adj.setdefault(u, []).append(v)
+                  adj.setdefault(v, []).append(u)
+              return adj
+        "traverse.py": |
+          def bfs_distances(adj, src):
+              """Shortest-path (hop count) distances from src to every reachable
+              node, computed breadth-first."""
+              dist = {src: 0}
+              frontier = [src]
+              while frontier:
+                  node = frontier.pop()
+                  for nb in adj.get(node, []):
+                      if nb not in dist:
+                          dist[nb] = dist[node] + 1
+                          frontier.append(nb)
+              return dist
+
+
+          def reachable_count(adj, src):
+              """Number of nodes reachable from src, counting src itself."""
+              return len(bfs_distances(adj, src)) - 1
+        "main.py": |
+          import sys
+
+          from graph import parse_edges
+          from traverse import bfs_distances, reachable_count
+
+
+          def main(path, src):
+              with open(path) as f:
+                  adj = parse_edges(f.readlines())
+              dist = bfs_distances(adj, src)
+              print("GRAPH_REACH=%d" % reachable_count(adj, src))
+              print("GRAPH_ECC=%d" % max(dist.values()))
+
+
+          if __name__ == "__main__":
+              main(sys.argv[1], sys.argv[2])
+        "run_tests.py": |
+          import sys
+
+          failures = []
+
+          def check(name, expected, fn):
+              try:
+                  actual = fn()
+              except Exception as exc:
+                  print("FAIL %s: raised %r" % (name, exc))
+                  failures.append(name)
+                  return
+              if actual != expected:
+                  print("FAIL %s: expected %r, got %r" % (name, expected, actual))
+                  failures.append(name)
+              else:
+                  print("ok   %s" % name)
+
+          from graph import parse_edges
+          from traverse import bfs_distances, reachable_count
+
+          check("edges are directed, but every node gets an adjacency entry",
+                {"a": ["b"], "b": []}, lambda: parse_edges(["a b"]))
+
+          adj = {"a": ["e", "b"], "b": ["c"], "c": ["d"], "e": ["d"], "d": []}
+          check("distances are shortest-path (breadth-first)",
+                2, lambda: bfs_distances(adj, "a")["d"])
+
+          chain = {"a": ["b"], "b": ["c"], "c": []}
+          check("reachable count includes the start node",
+                3, lambda: reachable_count(chain, "a"))
+
+          if failures:
+              print("%d failing test(s)" % len(failures))
+              sys.exit(1)
+          print("ALL TESTS GREEN")
+        "data/edges.txt": |
+          # directed edges: u v means u -> v
+          n00 n08
+          n00 n01
+          n00 n02
+          n01 n03
+          n02 n03
+          n03 n04
+          n04 n05
+          n05 n06
+          n01 n06
+          n06 n07
+          n02 n09
+          n09 n10
+          n10 n08
+          n08 n16
+          n16 n17
+          n11 n00
+          n12 n11
+          n13 n12
+          n14 n15
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "GRAPH_REACH=13"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "GRAPH_ECC=4"
+  - slug: debug-billing-proration
+    difficulty: hard
+    description: |
+      Subscription billing proration (integer cents) with three
+      planted bugs: a hardcoded 30-day month, an exclusive day span
+      that should be inclusive, and a mid-month plan change that
+      bills the change day on both plans.
+    input: |
+      The Python project in /workspace prorates 2026 subscription
+      invoices in integer cents (calendar_utils.py, proration.py,
+      main.py). Its test harness is run_tests.py and some tests
+      currently fail because of logic bugs in the source files.
+
+      1. Run `python3 run_tests.py` and read the failure output.
+      2. Fix the bugs in calendar_utils.py / proration.py only. Do
+         NOT modify run_tests.py, main.py, or anything under data/.
+         The tests encode the intended behavior.
+      3. Re-run the tests until every test passes.
+      4. Run `python3 main.py data/subscriptions.txt` and write its
+         exact stdout (both lines, unchanged) to /workspace/out.txt.
+
+      out.txt must contain exactly the two lines the fixed program
+      prints, in this format:
+      BILLING_TOTAL=<number>
+      BILLING_MAX=<number>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 16
+    tool_budget: 20
+    sandbox:
+      workspace_files:
+        "calendar_utils.py": |
+          DAYS = {1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30,
+                  7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+
+
+          def days_in_month(month):
+              """Calendar days in the given month of the billing year 2026
+              (not a leap year)."""
+              return 30
+        "proration.py": |
+          from calendar_utils import days_in_month
+
+
+          def active_days(start_day, end_day):
+              """Inclusive day span: a plan active from day 5 through day 7
+              covers 3 days."""
+              return end_day - start_day
+
+
+          def prorated_cents(monthly_cents, month, start_day, end_day):
+              """Floor-prorated charge for being active start_day..end_day
+              (inclusive) of the given month."""
+              return monthly_cents * active_days(start_day, end_day) // days_in_month(month)
+
+
+          def invoice_for_change(month, old_cents, new_cents, change_day, last_day):
+              """Invoice for a mid-month plan change (change_day >= 2).
+
+              The old plan covers day 1 through change_day - 1; the new plan
+              covers change_day through last_day. The change day itself is
+              billed once, on the new plan only.
+              """
+              old_part = prorated_cents(old_cents, month, 1, change_day)
+              new_part = prorated_cents(new_cents, month, change_day, last_day)
+              return old_part + new_part
+        "main.py": |
+          import sys
+
+          from calendar_utils import days_in_month
+          from proration import prorated_cents, invoice_for_change
+
+
+          def main(path):
+              invoices = []
+              with open(path) as f:
+                  for line in f:
+                      line = line.strip()
+                      if not line or line.startswith("#"):
+                          continue
+                      parts = line.split(",")
+                      kind = parts[0]
+                      if kind == "full":
+                          month, cents = int(parts[1]), int(parts[2])
+                          invoices.append(
+                              prorated_cents(cents, month, 1, days_in_month(month)))
+                      elif kind == "partial":
+                          month, cents, s, e = (int(x) for x in parts[1:])
+                          invoices.append(prorated_cents(cents, month, s, e))
+                      elif kind == "change":
+                          month, old_c, new_c, day = (int(x) for x in parts[1:])
+                          invoices.append(invoice_for_change(
+                              month, old_c, new_c, day, days_in_month(month)))
+                      else:
+                          raise ValueError("unknown record: %s" % kind)
+              print("BILLING_TOTAL=%d" % sum(invoices))
+              print("BILLING_MAX=%d" % max(invoices))
+
+
+          if __name__ == "__main__":
+              main(sys.argv[1])
+        "run_tests.py": |
+          import sys
+
+          failures = []
+
+          def check(name, expected, fn):
+              try:
+                  actual = fn()
+              except Exception as exc:
+                  print("FAIL %s: raised %r" % (name, exc))
+                  failures.append(name)
+                  return
+              if actual != expected:
+                  print("FAIL %s: expected %r, got %r" % (name, expected, actual))
+                  failures.append(name)
+              else:
+                  print("ok   %s" % name)
+
+          from calendar_utils import days_in_month
+          from proration import active_days, prorated_cents, invoice_for_change
+
+          check("february 2026 has 28 days", 28, lambda: days_in_month(2))
+          check("july has 31 days", 31, lambda: days_in_month(7))
+          check("active day span is inclusive", 3, lambda: active_days(5, 7))
+          check("a full january bills exactly the monthly rate",
+                3100, lambda: prorated_cents(3100, 1, 1, 31))
+          check("a plan change does not double-bill the change day",
+                5200, lambda: invoice_for_change(1, 3100, 6200, 11, 31))
+
+          if failures:
+              print("%d failing test(s)" % len(failures))
+              sys.exit(1)
+          print("ALL TESTS GREEN")
+        "data/subscriptions.txt": |
+          # full,month,monthly_cents
+          # partial,month,monthly_cents,start_day,end_day
+          # change,month,old_monthly_cents,new_monthly_cents,change_day
+          full,1,2900
+          partial,3,4500,10,24
+          change,4,3000,9000,16
+          full,2,5600
+          partial,7,12400,1,9
+          change,9,7500,1500,21
+          partial,2,9900,20,28
+          change,12,8000,8000,5
+          full,11,4100
+          partial,5,2750,3,31
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "BILLING_TOTAL=43630"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "BILLING_MAX=7999"
+  - slug: debug-job-state-machine
+    difficulty: hard
+    description: |
+      Event-log state machine with three planted bugs: a missing
+      paused->stop transition (the one crash-on-run bug in this
+      category), jobs counted on start instead of stop, and a resume
+      that fails to reset the segment start (double-counting pauses).
+    input: |
+      The Python project in /workspace replays a worker's job event
+      log through a state machine (machine.py, main.py). Its test
+      harness is run_tests.py and some tests currently fail (one even
+      raises) because of logic bugs in machine.py.
+
+      1. Run `python3 run_tests.py` and read the failure output.
+      2. Fix the bugs in machine.py only. Do NOT modify run_tests.py,
+         main.py, or anything under data/. The tests and the class
+         docstring encode the intended behavior.
+      3. Re-run the tests until every test passes.
+      4. Run `python3 main.py data/events.txt` and write its exact
+         stdout (both lines, unchanged) to /workspace/out.txt.
+
+      out.txt must contain exactly the two lines the fixed program
+      prints, in this format:
+      MACHINE_DONE=<number>
+      MACHINE_ACTIVE=<number>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+    max_turns: 16
+    tool_budget: 20
+    sandbox:
+      workspace_files:
+        "machine.py": |
+          class JobTracker:
+              """Tracks one worker's job lifecycle from a timestamped event log.
+
+              States: idle, running, paused. Events: start, pause, resume, stop.
+              Rules:
+                - start:  idle -> running; a new active segment begins
+                - pause:  running -> paused; the finished segment (pause time
+                          minus segment start) is added to active_secs
+                - resume: paused -> running; a NEW segment begins at the resume
+                          timestamp (paused time is never counted)
+                - stop:   running -> idle; the final segment is added and the job
+                          counts as done
+                          paused -> idle; no extra time is added and the job
+                          counts as done
+              jobs_done counts only jobs that received a stop event.
+              Any other (state, event) pair raises ValueError.
+              """
+
+              def __init__(self):
+                  self.state = "idle"
+                  self.jobs_done = 0
+                  self.active_secs = 0
+                  self.segment_start = None
+
+              def feed(self, ts, event):
+                  key = (self.state, event)
+                  if key == ("idle", "start"):
+                      self.state = "running"
+                      self.segment_start = ts
+                      self.jobs_done += 1
+                  elif key == ("running", "pause"):
+                      self.active_secs += ts - self.segment_start
+                      self.state = "paused"
+                  elif key == ("paused", "resume"):
+                      self.state = "running"
+                  elif key == ("running", "stop"):
+                      self.active_secs += ts - self.segment_start
+                      self.state = "idle"
+                  else:
+                      raise ValueError(
+                          "protocol error: event %r in state %r" % (event, self.state))
+        "main.py": |
+          import sys
+
+          from machine import JobTracker
+
+
+          def main(path):
+              tracker = JobTracker()
+              with open(path) as f:
+                  for line in f:
+                      line = line.strip()
+                      if not line or line.startswith("#"):
+                          continue
+                      ts, event = line.split()
+                      tracker.feed(int(ts), event)
+              print("MACHINE_DONE=%d" % tracker.jobs_done)
+              print("MACHINE_ACTIVE=%d" % tracker.active_secs)
+
+
+          if __name__ == "__main__":
+              main(sys.argv[1])
+        "run_tests.py": |
+          import sys
+
+          failures = []
+
+          def check(name, expected, fn):
+              try:
+                  actual = fn()
+              except Exception as exc:
+                  print("FAIL %s: raised %r" % (name, exc))
+                  failures.append(name)
+                  return
+              if actual != expected:
+                  print("FAIL %s: expected %r, got %r" % (name, expected, actual))
+                  failures.append(name)
+              else:
+                  print("ok   %s" % name)
+
+          from machine import JobTracker
+
+
+          def run_events(events):
+              t = JobTracker()
+              for ts, ev in events:
+                  t.feed(ts, ev)
+              return t
+
+          check("only stopped jobs count as done",
+                1, lambda: run_events(
+                    [(0, "start"), (10, "stop"), (20, "start")]).jobs_done)
+
+          check("paused time is excluded from active seconds",
+                7, lambda: run_events(
+                    [(0, "start"), (4, "pause"), (10, "resume"),
+                     (13, "stop")]).active_secs)
+
+
+          def paused_stop():
+              t = run_events([(0, "start"), (5, "pause"), (8, "stop")])
+              return (t.jobs_done, t.active_secs, t.state)
+
+          check("stop is legal while paused and ends the job",
+                (1, 5, "idle"), paused_stop)
+
+          if failures:
+              print("%d failing test(s)" % len(failures))
+              sys.exit(1)
+          print("ALL TESTS GREEN")
+        "data/events.txt": |
+          # timestamp event
+          0 start
+          50 pause
+          80 resume
+          120 stop
+          200 start
+          260 stop
+          300 start
+          340 pause
+          380 stop
+          500 start
+          560 pause
+          600 resume
+          640 pause
+          700 resume
+          730 stop
+          800 start
+          850 pause
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "MACHINE_DONE=4"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "MACHINE_ACTIVE=370"

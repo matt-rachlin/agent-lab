@@ -1,0 +1,417 @@
+suite: pbs-agent-brutal-v0.1
+category: spec
+
+tasks:
+  - slug: spec-freight-rebate
+    difficulty: hard
+    description: |
+      Rebate computation under a dense spec mixing exact-status exclusion (blanks and
+      "Active"/"pending" must NOT count), a >= 50.0 weight boundary with rows exactly
+      at 50.0, and per-row round-half-to-even in integer cents (several rows land on
+      exact .5 cents). Misreading any one rule changes the total or the count.
+    input: |
+      You are given data/shipments.csv (header: id,carrier,weight_kg,cost,status).
+      Compute a freight rebate report by applying ALL rules exactly:
+
+      1. Include a row only if its status field is EXACTLY the lowercase string
+         "active". The comparison is case-sensitive; rows with an empty status or
+         any other value (e.g. "Active", "pending", "inactive") are excluded
+         entirely.
+      2. An included shipment QUALIFIES for a rebate if weight_kg >= 50.0
+         (greater than or equal; exactly 50.0 qualifies).
+      3. Parse cost as exact integer cents (e.g. "35.00" -> 3500 cents). Do not
+         use binary floating point for money.
+      4. For each qualifying shipment: rebate_cents = (cost_cents * 75) / 1000,
+         rounded to an integer using round-half-to-even (banker's rounding).
+         Round PER SHIPMENT, at this step, never at the end.
+      5. Non-qualifying included shipments contribute 0 cents and are not counted.
+      6. rebate_total = the sum of the per-shipment rounded rebate_cents,
+         formatted as dollars with exactly two decimal places.
+      7. rebate_count = the number of qualifying shipments (a qualifying shipment
+         with cost 0.00 still counts).
+      8. Write to out.txt exactly one line followed by a newline:
+         rebate_total=<DOLLARS>|rebate_count=<N>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: python_eval
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "data/shipments.csv": |
+          id,carrier,weight_kg,cost,status
+          S01,alpha,50.0,35.00,active
+          S02,alpha,49.9,80.00,active
+          S03,beta,50.0,12.40,active
+          S04,beta,72.5,21.00,active
+          S05,gamma,88.0,43.00,active
+          S06,gamma,50.0,9.99,inactive
+          S07,delta,120.0,55.50,
+          S08,delta,50.0,14.00,Active
+          S09,epsilon,33.3,70.00,active
+          S10,epsilon,50.0,20.60,active
+          S11,zeta,61.0,0.00,active
+          S12,zeta,50.0,100.00,pending
+          S13,eta,95.5,33.10,active
+          S14,eta,49.99,200.00,active
+          S15,theta,50.0,16.20,active
+          S16,theta,77.7,41.00,inactive
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "rebate_total=13.59|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|rebate_count=8"
+
+  - slug: spec-tournament-podium
+    difficulty: hard
+    description: |
+      Ranking with a three-level tie-break chain (score desc, time asc, byte-order
+      name asc) where the data ties exactly at every level, last-occurrence-wins
+      deduplication, and a strict ">" disqualification boundary with a top scorer
+      sitting exactly on 300.0. First-wins, >=, or casefolded sorting each yield a
+      different podium.
+    input: |
+      data/results.csv (header: player,score,time_s) holds tournament submissions.
+      Apply these rules in this exact order:
+
+      1. A player may appear multiple times. Deduplicate by player name (exact,
+         case-sensitive match): keep ONLY the LAST occurrence in file order.
+      2. After deduplication, drop players whose score field is empty.
+      3. Disqualify players whose time_s is STRICTLY greater than 300.0; a time
+         of exactly 300.0 is allowed.
+      4. Rank the remaining players: score descending; ties broken by time_s
+         ascending; remaining ties broken by player name ascending using plain
+         byte/codepoint order (case-sensitive: all uppercase letters sort before
+         all lowercase letters, so "Zed" sorts before "ada").
+      5. podium = the first three ranked player names joined with ">" (no spaces).
+      6. field_size = the total number of ranked players.
+      7. Write to out.txt exactly one line followed by a newline:
+         podium=<NAME1>>NAME2>>NAME3 with the three names joined by single ">"
+         characters, then a pipe, then field_size. Format:
+         podium=NAME1>NAME2>NAME3|field_size=<N>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: python_eval
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "data/results.csv": |
+          player,score,time_s
+          Mira,95,100.0
+          Gail,80,150.0
+          Zane,92,120.5
+          Nico,,210.0
+          Tess,93,300.0
+          alba,92,110.0
+          Rex,99,300.5
+          Owen,92,120.5
+          Hank,75,90.0
+          Beth,92,110.0
+          Mira,88,90.0
+          Iris,92,200.0
+          Jude,60,300.0
+          Kira,88,90.0
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "podium=Tess>Beth>alba|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|field_size=11"
+
+  - slug: spec-sensor-window
+    difficulty: hard
+    description: |
+      Half-open time window with readings exactly on both edges, per-row C/F unit
+      normalization (F rows chosen to convert to exact decimals), first-wins
+      duplicate-timestamp handling, exact rational arithmetic with a mean landing
+      exactly on .25 (half-even vs half-up differ), and floor-vs-round on the span.
+    input: |
+      data/readings.csv (header: sensor,timestamp,value,unit) holds temperature
+      readings, all on 2026-03-01. Apply these rules in order:
+
+      1. Keep only readings in the half-open window
+         [2026-03-01T06:00:00, 2026-03-01T18:00:00): the start instant is
+         INCLUDED, the end instant is EXCLUDED.
+      2. Then discard rows whose unit is not exactly "C" or "F" (case-sensitive).
+      3. Then, if a sensor has multiple remaining readings with an identical
+         timestamp, keep only the FIRST such row in file order.
+      4. Convert Fahrenheit values to Celsius: c = (f - 32) * 5 / 9. All
+         arithmetic in this task must be exact (use fractions.Fraction or
+         equivalent rational arithmetic); never round or truncate intermediates.
+      5. kept_rows = the number of rows remaining after steps 1-3.
+      6. mean_c = the exact arithmetic mean of the converted Celsius values,
+         rounded to exactly ONE decimal place using round-half-to-even, and
+         printed with exactly one decimal digit.
+      7. span_c = floor(max_c - min_c): subtract the minimum converted value
+         from the maximum, then take the mathematical FLOOR (not rounding);
+         print as an integer with no decimal point.
+      8. Write to out.txt exactly one line followed by a newline:
+         mean_c=<M.M>|span_c=<S>|kept_rows=<K>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: python_eval
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "data/readings.csv": |
+          sensor,timestamp,value,unit
+          A,2026-03-01T03:00:00,50.0,F
+          A,2026-03-01T06:00:00,10.0,C
+          A,2026-03-01T07:30:00,14.5,C
+          A,2026-03-01T07:30:00,2.5,C
+          B,2026-03-01T09:00:00,59.0,F
+          B,2026-03-01T18:00:00,30.0,C
+          C,2026-03-01T05:59:59,99.0,C
+          C,2026-03-01T10:15:00,9.5,C
+          D,2026-03-01T12:00:00,69.08,F
+          D,2026-03-01T13:00:00,285.15,K
+          E,2026-03-01T14:45:00,8.3,C
+          E,2026-03-01T17:59:59,40.46,F
+          F,2026-03-01T16:20:00,15.4,C
+          F,2026-03-01T19:00:00,1.0,C
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "mean_c=12.2|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|span_c=15|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|kept_rows=8"
+
+  - slug: spec-invoice-window
+    difficulty: hard
+    description: |
+      Per-row date-format precedence (ISO, then DD/MM/YYYY, then MM-DD-YYYY) with
+      ambiguous slashed dates that flip in/out of the window under month-first
+      misreads, an inclusive-both-ends window with invoices exactly on each endpoint,
+      earliest-date/larger-amount dedup that must run BEFORE the window filter, and
+      case rules that differ between region (insensitive) and invoice_id (sensitive).
+    input: |
+      data/invoices.csv (header: invoice_id,date_raw,amount,region). Apply this
+      pipeline IN ORDER; each step sees only rows that survived earlier steps.
+
+      1. Parse date_raw by trying these patterns in order and using the FIRST
+         one that matches the row:
+         a. ^\d{4}-\d{2}-\d{2}$  -> YYYY-MM-DD (ISO).
+         b. ^\d{2}/\d{2}/\d{4}$  -> DD/MM/YYYY (day first).
+         c. ^\d{2}-\d{2}-\d{4}$  -> MM-DD-YYYY (month first).
+         If no pattern matches, or the matched parse is not a real calendar
+         date, discard the row.
+      2. Keep only rows whose region, compared case-INSENSITIVELY, is "EU" or
+         "UK" (so "eu" and "uk" are kept; "US" is not).
+      3. Deduplicate by invoice_id, compared case-SENSITIVELY ("INV-7a" and
+         "INV-7A" are different invoices). Among rows sharing an id, keep the
+         row with the EARLIEST parsed date; if their dates are equal, keep the
+         row with the LARGER amount.
+      4. Only AFTER deduplication, keep rows whose parsed date is between
+         2026-03-10 and 2026-04-03 INCLUSIVE on both ends.
+      5. inv_total = sum of the amounts of the kept rows, computed in exact
+         integer cents, formatted as dollars with exactly two decimals.
+      6. inv_count = the number of kept rows.
+      7. inv_first = the invoice_id of the kept row with the earliest parsed
+         date; break ties by invoice_id ascending in plain byte/codepoint order
+         (uppercase letters sort before lowercase letters).
+      8. Write to out.txt exactly one line followed by a newline:
+         inv_total=<DOLLARS>|inv_count=<N>|inv_first=<ID>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: python_eval
+      - name: fs_read
+      - name: fs_write
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "data/invoices.csv": |
+          invoice_id,date_raw,amount,region
+          INV-001,2026-03-10,100.00,EU
+          INV-004,2026-03-20,90.00,EU
+          INV-002,03/04/2026,50.00,UK
+          INV-003,04-01-2026,75.00,EU
+          INV-015,2026-03-05,70.00,EU
+          INV-004,2026-03-15,20.00,eu
+          INV-005,12/03/2026,40.00,US
+          INV-7a,2026-03-12,10.00,UK
+          INV-7A,2026-03-12,30.00,UK
+          INV-006,2026/03/18,60.00,EU
+          INV-014,2026-03-25,12.00,EU
+          INV-008,10/03/2026,55.00,EU
+          INV-009,04-04-2026,25.00,UK
+          INV-010,2026-04-03,15.00,EU
+          INV-011,2026-02-28,99.00,EU
+          INV-012,31/03/2026,44.00,uk
+          INV-015,2026-03-22,33.00,EU
+          INV-013,2026-03-10,5.00,EU
+          INV-014,2026-03-25,18.00,EU
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "inv_total=422.00|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|inv_count=11|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|inv_first=INV-001"
+
+  - slug: spec-stock-audit
+    difficulty: hard
+    description: |
+      Inventory rollup with per-row unit factors (ea/dz/gr) where unknown units are
+      rejected rows (not treated as each), case-sensitive grade gating ("a" is not
+      sellable), a >= 500 overstock boundary with two SKUs at exactly 500, and a
+      three-level tie-break (value desc, qty asc, sku asc) where the data ties
+      exactly at the first two levels.
+    input: |
+      data/stock.csv (header: sku,warehouse,qty,unit,price_cents,grade).
+      Apply ALL rules exactly:
+
+      1. Unit factors: "ea" = 1 each, "dz" = 12 each, "gr" = 144 each.
+         norm_qty = qty * factor.
+      2. A row whose unit is anything else (case-sensitive, including an empty
+         unit) is a REJECTED row: count it in reject_rows and exclude it from
+         every other rule. Do NOT treat unknown units as "ea".
+      3. A non-rejected row is SELLABLE only if its grade is exactly "A" or
+         exactly "B" (case-sensitive; "a" and "C" are not sellable).
+         Non-sellable rows are not rejected; they are simply ignored by every
+         later rule.
+      4. line_value_cents = norm_qty * price_cents (exact integer math).
+      5. For each sku compute total_qty and total_value_cents as sums over its
+         SELLABLE rows only.
+      6. A sku is OVERSTOCKED if total_qty >= 500 (exactly 500 is overstocked).
+      7. over_count = the number of overstocked skus.
+      8. top_sku = among OVERSTOCKED skus only: the highest total_value_cents;
+         ties broken by SMALLER total_qty first; remaining ties broken by sku
+         ascending in byte order.
+      9. sell_value = sum of line_value_cents over ALL sellable rows of ALL
+         skus (overstocked or not), formatted as dollars with two decimals.
+      10. Write to out.txt exactly one line followed by a newline:
+          top_sku=<SKU>|over_count=<N>|reject_rows=<R>|sell_value=<DOLLARS>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: python_eval
+      - name: fs_read
+      - name: fs_write
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "data/stock.csv": |
+          sku,warehouse,qty,unit,price_cents,grade
+          AW-099,W1,25,dz,16,A
+          AW-099,W2,200,ea,1,B
+          AW-099,W3,50,ea,100,a
+          AX-100,W1,30,dz,10,A
+          AX-100,W2,140,ea,10,A
+          BX-200,W1,2,gr,15,B
+          BX-200,W2,300,ea,2,A
+          BX-200,W3,100,ea,10,C
+          CX-300,W1,4,gr,5,A
+          CX-300,W2,24,dz,7,B
+          CX-300,W9,999,kg,20,A
+          DX-400,W1,500,ea,8,A
+          DX-400,W3,100,ea,10,B
+          FX-600,W1,10,dz,50,A
+          FX-600,W2,5,,10,B
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "top_sku=AW-099|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|over_count=5|reject_rows=2|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|sell_value=308.16"
+
+  - slug: spec-shift-payroll
+    difficulty: hard
+    description: |
+      Payroll over shift rows with byte-identical duplicate rows counted once,
+      no-overnight discard (end <= start), case-insensitive role gating where blank
+      roles drop out, per-shift round-half-to-even on minutes*rate/60 (three rows
+      land on exact .5 cents), and a strictly-greater-than-360 meal allowance with
+      two shifts at exactly 360 minutes.
+    input: |
+      data/shifts.csv (header: emp,date,start,end,rate_cents,role). Times are
+      HH:MM, 24-hour, same calendar day. Apply these rules in order:
+
+      1. If two or more rows are byte-for-byte identical across ALL six fields,
+         keep only ONE copy of that row.
+      2. duration_min = minutes from start to end, end exclusive (09:00 to
+         17:00 is 480). There are no overnight shifts: discard any row whose
+         end is equal to or earlier than its start.
+      3. A row is payable only if lowercasing its role yields exactly "tech" or
+         "lead" (so "Tech" and "LEAD" are payable). Rows with an empty role or
+         any other role are discarded.
+      4. Per payable shift: pay_cents = duration_min * rate_cents / 60, rounded
+         to an integer using round-half-to-even, PER SHIFT at this step.
+      5. A payable shift earns a 500-cent meal allowance if duration_min is
+         STRICTLY greater than 360 (exactly 360 earns nothing).
+      6. allowances = the number of payable shifts that earned the meal
+         allowance.
+      7. payroll_total = (sum of all pay_cents) + (500 * allowances), formatted
+         as dollars with exactly two decimals.
+      8. paid_shifts = the number of payable shifts.
+      9. Write to out.txt exactly one line followed by a newline:
+         payroll_total=<DOLLARS>|allowances=<N>|paid_shifts=<K>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: python_eval
+      - name: fs_read
+      - name: fs_write
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      workspace_files:
+        "data/shifts.csv": |
+          emp,date,start,end,rate_cents,role
+          E1,2026-06-01,09:00,17:00,10,tech
+          E1,2026-06-02,08:00,14:00,9,tech
+          E2,2026-06-01,10:00,11:30,7,Tech
+          E2,2026-06-02,09:15,16:45,15,lead
+          E3,2026-06-03,12:00,12:00,50,tech
+          E3,2026-06-03,18:00,09:00,20,tech
+          E4,2026-06-04,07:30,13:00,9,lead
+          E4,2026-06-04,07:30,13:00,9,lead
+          E5,2026-06-05,09:00,15:00,11,intern
+          E5,2026-06-05,16:00,18:00,11,
+          E6,2026-06-05,06:00,12:01,10,LEAD
+          E7,2026-06-06,10:00,16:00,13,tech
+          E8,2026-06-06,11:00,12:30,21,tech
+          E8,2026-06-07,11:00,12:30,19,tech
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "payroll_total=20.04|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|allowances=3|"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "|paid_shifts=9"

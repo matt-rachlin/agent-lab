@@ -1,0 +1,396 @@
+suite: pbs-agent-brutal-v0.1
+category: recovery
+
+tasks:
+  - slug: recovery-moved-records
+    difficulty: hard
+    description: |
+      Misleading location: the prompt references data/records.csv, which does not
+      exist. A README reveals the file was moved to archive/regional_records_v2.csv,
+      while a stale data/records_old.csv sits as a trap. The agent must follow the
+      note, verify the stated 12-row property, and ignore the stale snapshot.
+    input: |
+      Compute the sum of the amount column for all rows whose region is exactly
+      "east" in data/records.csv (header: id,region,amount).
+
+      Rules:
+      - If the referenced file is missing, explore the workspace to locate the
+        authoritative replacement export. The authoritative export has exactly
+        12 data rows (not counting the header); verify this before using it.
+        Any file that does not have exactly 12 data rows is stale and must not
+        be used.
+      - Write exactly two lines to /workspace/out.txt, nothing else:
+        east_sum=<integer>
+        rows_used=<total number of data rows in the file you used>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_grep
+      - name: fs_write
+    max_turns: 14
+    tool_budget: 18
+    sandbox:
+      workspace_files:
+        "data/README.txt": |
+          Q1 archive migration notes
+          --------------------------
+          The regional records export formerly published at data/records.csv
+          was moved during the Q1 archive migration. The current authoritative
+          export now lives under archive/ as regional_records_v2.csv.
+          The snapshot data/records_old.csv predates the migration and is
+          stale; it is kept only for audit history.
+        "data/records_old.csv": |
+          id,region,amount
+          r01,east,100
+          r02,west,210
+          r03,north,90
+          r04,east,200
+          r05,south,140
+          r06,west,75
+          r07,east,110
+          r08,north,66
+          r09,south,250
+          r10,west,180
+        "archive/regional_records_v2.csv": |
+          id,region,amount
+          r01,east,105
+          r02,west,210
+          r03,north,90
+          r04,east,220
+          r05,south,140
+          r06,west,75
+          r07,east,318
+          r08,north,66
+          r09,south,250
+          r10,west,180
+          r11,north,45
+          r12,south,95
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "east_sum=643"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "rows_used=12"
+
+  - slug: recovery-truncated-json
+    difficulty: hard
+    description: |
+      Corrupted primary plus salvage rule: data/records.json is truncated mid-array,
+      so a plain json.loads fails. The spec requires salvaging the complete records
+      that precede the corruption and merging them with backup_records.jsonl,
+      deduplicating by id with the jsonl side winning.
+    input: |
+      Produce a merged record set from data/records.json (a JSON array of
+      objects with fields id, value, tag) and data/backup_records.jsonl
+      (one JSON object per line, same fields).
+
+      Rules:
+      - Merge rule: deduplicate by id; when the same id appears in both
+        sources, the backup_records.jsonl version wins.
+      - If records.json is unparseable, salvage every complete record object
+        that appears before the corruption point and use exactly those as the
+        records.json contribution. Do not invent or repair partial records.
+      - Write exactly two lines to /workspace/out.txt, nothing else:
+        merged_count=<number of records after merging>
+        value_total=<integer sum of the value field over merged records>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 14
+    tool_budget: 18
+    sandbox:
+      workspace_files:
+        "data/records.json": |
+          [
+            {"id": "r1", "value": 10, "tag": "alpha"},
+            {"id": "r2", "value": 20, "tag": "bravo"},
+            {"id": "r3", "value": 30, "tag": "charlie"},
+            {"id": "r4", "value": 40, "tag": "delta"},
+            {"id": "r5", "val
+        "data/backup_records.jsonl": |
+          {"id": "r3", "value": 35, "tag": "charlie-fixed"}
+          {"id": "r5", "value": 50, "tag": "echo"}
+          {"id": "r6", "value": 60, "tag": "foxtrot"}
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "merged_count=6"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "value_total=215"
+
+  - slug: recovery-dirty-csv
+    difficulty: hard
+    description: |
+      Mixed-validity data: data/transactions.csv contains rows with wrong field
+      counts, an empty id, a non-numeric amount, and a non-integer amount. The
+      spec defines exact validity rules; the agent must filter, sum only valid
+      rows, and report the reject count. Naive sum-everything gives 942.5/10.
+    input: |
+      Summarize data/transactions.csv (header: id,category,amount).
+
+      Validity rules -- a data row is valid if and only if ALL of:
+      - it has exactly 3 comma-separated fields;
+      - its id field is non-empty;
+      - its amount field is an optionally-signed base-10 INTEGER (no decimal
+        point, no other characters).
+      Every data row that is not valid counts as rejected.
+
+      Write exactly three lines to /workspace/out.txt, nothing else:
+      valid_rows=<count of valid data rows>
+      rejected_rows=<count of rejected data rows>
+      valid_sum=<integer sum of amount over valid rows only>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "data/transactions.csv": |
+          id,category,amount
+          t1,food,120
+          t2,travel,abc
+          t3,food,80
+          t4,travel,200,extra
+          t5,food,55
+          ,food,30
+          t7,misc,15
+          t8,travel
+          t9,food,90
+          t10,misc,12.5
+          t11,travel,300
+          t12,food,40
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "valid_rows=7"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "rejected_rows=5"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "valid_sum=700"
+
+  - slug: recovery-decoy-metrics
+    difficulty: hard
+    description: |
+      Decoy file: data/metrics_final.csv looks newer and more authoritative by
+      name, but data/MANIFEST.txt declares data/metrics.csv (exactly 9 data rows)
+      as authoritative and flags the _final file as a broken re-export draft.
+      Picking the decoy yields errors_total=31 / peak_day=d03 and fails.
+    input: |
+      From the daily metrics export in data/ (header: day,visits,errors),
+      compute the total of the errors column and the day with the maximum
+      visits value.
+
+      Rules:
+      - If more than one candidate metrics file exists, the manifest file in
+        the workspace determines which one is authoritative. Verify the
+        row-count property the manifest states before using a file; never use
+        a file the manifest disqualifies.
+      - Write exactly two lines to /workspace/out.txt, nothing else:
+        errors_total=<integer>
+        peak_day=<day value of the row with maximum visits>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_grep
+      - name: fs_write
+    max_turns: 14
+    tool_budget: 18
+    sandbox:
+      workspace_files:
+        "data/MANIFEST.txt": |
+          metrics export manifest
+          -----------------------
+          Authoritative file: data/metrics.csv
+          Property: exactly 9 data rows, header day,visits,errors.
+          data/metrics_final.csv is an abandoned draft from the broken
+          re-export pipeline run; its numbers are wrong. Do not use it.
+          Always verify the row count above before reporting numbers.
+        "data/metrics.csv": |
+          day,visits,errors
+          d01,410,3
+          d02,520,0
+          d03,610,5
+          d04,700,2
+          d05,980,7
+          d06,640,1
+          d07,510,4
+          d08,470,0
+          d09,530,2
+        "data/metrics_final.csv": |
+          day,visits,errors
+          d01,400,6
+          d02,515,4
+          d03,990,8
+          d04,705,3
+          d05,600,5
+          d06,630,2
+          d07,505,3
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "errors_total=24"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "peak_day=d05"
+
+  - slug: recovery-buggy-script
+    difficulty: hard
+    description: |
+      Broken helper script: scripts/process.py emits per-group counts correctly
+      but computes the grand total as len(rows)-2, silently dropping one event.
+      The spec states the invariant (total equals sum of group counts) and
+      requires recomputing when a tool's output violates it.
+    input: |
+      Produce a group-count report for data/events.csv (header: id,group).
+      The workspace ships scripts/process.py which is supposed to print the
+      report in exactly the required format; you may use it.
+
+      Rules:
+      - Required /workspace/out.txt format, nothing else: one line
+        group_<name>=<count> for every distinct group, sorted by group name,
+        followed by a final line events_total=<count of all data rows>.
+      - Invariant: events_total MUST equal the sum of all the group_ counts.
+        If any script or tool output violates this invariant, discard that
+        output and compute the report directly from the CSV yourself.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "scripts/process.py": |
+          #!/usr/bin/env python3
+          """Summarize data/events.csv into the report format."""
+          import csv
+
+
+          def main():
+              with open("data/events.csv", newline="") as f:
+                  rows = list(csv.reader(f))
+              data = rows[1:]
+              counts = {}
+              for r in data:
+                  g = r[1]
+                  counts[g] = counts.get(g, 0) + 1
+              # exclude the header line from the grand total
+              total = len(rows) - 2
+              for g in sorted(counts):
+                  print("group_%s=%d" % (g, counts[g]))
+              print("events_total=%d" % total)
+
+
+          if __name__ == "__main__":
+              main()
+        "data/events.csv": |
+          id,group
+          e01,auth
+          e02,payment
+          e03,search
+          e04,ui
+          e05,auth
+          e06,payment
+          e07,auth
+          e08,ui
+          e09,search
+          e10,payment
+          e11,auth
+          e12,ui
+          e13,search
+          e14,payment
+          e15,auth
+          e16,ui
+          e17,payment
+          e18,auth
+          e19,search
+          e20,ui
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "group_auth=6"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "group_search=4"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "events_total=20"
+
+  - slug: recovery-mixed-units
+    difficulty: hard
+    description: |
+      Format/normalization trap: data/payments.csv mixes amounts recorded in
+      cents and in dollars, marked by a unit column. The spec gives the
+      normalization rule; naive raw summing yields 32936.00 instead of 509.54,
+      so the wrong-but-plausible answer fails the predicates.
+    input: |
+      Compute the grand total of data/payments.csv
+      (header: id,amount,unit) in US dollars.
+
+      Rules:
+      - The amount field is an integer recorded in the unit named by the unit
+        column: rows with unit "cents" must be divided by 100 to get dollars;
+        rows with unit "dollars" are already in dollars. Normalize BEFORE
+        summing. Do exact arithmetic (no float rounding error); the total must
+        be printed with exactly two decimal places.
+      - Write exactly three lines to /workspace/out.txt, nothing else:
+        total_usd=<total with exactly two decimals>
+        cents_rows=<count of rows with unit cents>
+        dollars_rows=<count of rows with unit dollars>
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: shell_exec
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      workspace_files:
+        "data/payments.csv": |
+          id,amount,unit
+          p1,1250,cents
+          p2,40,dollars
+          p3,999,cents
+          p4,15,dollars
+          p5,30000,cents
+          p6,7,dollars
+          p7,505,cents
+          p8,120,dollars
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "total_usd=509.54"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "cents_rows=4"
+        - type: workspace_file_contains
+          path: out.txt
+          substring: "dollars_rows=4"
