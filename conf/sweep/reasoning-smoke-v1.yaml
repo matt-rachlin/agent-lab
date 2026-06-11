@@ -1,0 +1,37 @@
+# EXP-012 pre-flight: validate the think low/medium/high knob reaches gpt-oss-20b
+# through the ollama lane (per-config extra plumbing). 12 easy tasks x 3 arms x
+# 1 seed. Inspect latency/token spread across arms before unstashing the full
+# REASONING-EFFORT-001 sweep (kill criterion: knob inert => re-plumb first).
+experiment:
+  slug: REASONING-SMOKE-001
+  title: "Think-knob plumbing smoke: gpt-oss-20b low/medium/high on pbs-agent-v0.1"
+  hypothesis: "Plumbing check only: latency and thinking-token usage differ across arms."
+tasks:
+  suite: pbs-agent-v0.1
+models:
+  - gpt-oss-20b-local
+configs:
+  - name: react-4096-think-low
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "low"
+  - name: react-4096-think-medium
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "medium"
+  - name: react-4096-think-high
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "high"
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800

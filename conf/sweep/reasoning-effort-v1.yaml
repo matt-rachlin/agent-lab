@@ -1,0 +1,37 @@
+# EXP-012 / REASONING-EFFORT-001: HAL replication at lab scale — gpt-oss-20b's
+# low/medium/high reasoning-effort knob on the hard suite. Pre-registered in
+# docs/exp/EXP-012-reasoning-effort.md. NOTE: run the 1-cell think-knob smoke
+# (see EXP-012 kill criteria) before this sweep.
+experiment:
+  slug: REASONING-EFFORT-001
+  title: "Reasoning effort vs agentic performance: gpt-oss-20b low/medium/high (pbs-agent-hard-v0.1)"
+  hypothesis: "Inverted-U: medium >= high (HAL-direction non-monotonicity) and low < medium; high costs >=2x latency."
+tasks:
+  suite: pbs-agent-hard-v0.1
+models:
+  - gpt-oss-20b-local
+configs:
+  - name: react-4096-think-low
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "low"
+  - name: react-4096-think-medium
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "medium"
+  - name: react-4096-think-high
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "high"
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800
