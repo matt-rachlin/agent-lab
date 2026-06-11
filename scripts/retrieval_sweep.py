@@ -917,7 +917,7 @@ def _extend_query_cache(
             rate = i / max(elapsed, 1.0)
             eta = (len(chosen) - i) / max(rate, 0.001)
             console.print(
-                f"[dim]q-gen {i}/{len(chosen)} (skipped={skipped}, rate={rate:.2f}/s, eta={eta/60:.1f}m): {q[:80]}[/]"
+                f"[dim]q-gen {i}/{len(chosen)} (skipped={skipped}, rate={rate:.2f}/s, eta={eta / 60:.1f}m): {q[:80]}[/]"
             )
 
     merged = existing + new_rows
@@ -1551,12 +1551,12 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         for cell_name, w in wilcoxons.items():
             ties = len(queries) - w["pos"] - w["neg"]
             lines.append(
-                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; " f"p = {w['p']:.4f}"
+                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; p = {w['p']:.4f}"
             )
         lines.append("\n## Rerank-service stats (RPC cells only)\n")
         lines.append(f"- calls: {stats['rerank_call_count']}")
         lines.append(
-            f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)"
+            f"- errors: {stats['rerank_error_count']} ({100 * stats['rerank_error_rate']:.1f}%)"
         )
         lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
         lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
@@ -1603,7 +1603,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         for cell_name, w in wilcoxons.items():
             ties = len(queries) - w["pos"] - w["neg"]
             vlines.append(
-                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; " f"p = {w['p']:.4f}"
+                f"- {cell_name}: +{w['pos']} / -{w['neg']} / ties={ties}; p = {w['p']:.4f}"
             )
 
         out_verdicts.write_text("\n".join(vlines) + "\n")
@@ -1663,7 +1663,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         lines.append("\n## Hypothesis verdicts\n")
         lines.append(
             f"- H1 (aggressive, ≥0.92 best reranked): **{h1_verdict}**  "
-            f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank-c0:+.3f}"
+            f"max(C2,C3)={best_rerank:.3f}; C0 baseline={c0:.3f}; delta={best_rerank - c0:+.3f}"
         )
         lines.append(
             f"- H2 (rerank always improves, paired Wilcoxon both p<0.05): **{h2_verdict}**  "
@@ -1676,7 +1676,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         lines.append("\n## Rerank-service stats\n")
         lines.append(f"- calls: {stats['rerank_call_count']}")
         lines.append(
-            f"- errors: {stats['rerank_error_count']} ({100*stats['rerank_error_rate']:.1f}%)"
+            f"- errors: {stats['rerank_error_count']} ({100 * stats['rerank_error_rate']:.1f}%)"
         )
         lines.append(f"- latency p50: {stats['latency_ms_p50']:.1f} ms")
         lines.append(f"- latency p95: {stats['latency_ms_p95']:.1f} ms")
@@ -1706,11 +1706,11 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         n_pos_c3 = sum(1 for d in deltas_c3_vs_c1 if d > 0)
         n_neg_c3 = sum(1 for d in deltas_c3_vs_c1 if d < 0)
         vlines.append(
-            f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries)-n_pos_c2-n_neg_c2}; "
+            f"- C2 vs C0: +{n_pos_c2} / -{n_neg_c2} / ties={len(queries) - n_pos_c2 - n_neg_c2}; "
             f"Wilcoxon one-sided p = {p_c2:.4f}"
         )
         vlines.append(
-            f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries)-n_pos_c3-n_neg_c3}; "
+            f"- C3 vs C1: +{n_pos_c3} / -{n_neg_c3} / ties={len(queries) - n_pos_c3 - n_neg_c3}; "
             f"Wilcoxon one-sided p = {p_c3:.4f}"
         )
 

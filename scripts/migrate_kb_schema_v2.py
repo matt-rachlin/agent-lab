@@ -160,8 +160,7 @@ def _print_summary(summary: dict[str, object]) -> None:
     print(f"KB:            {summary['kb_dir']}")
     print(f"Dry-run:       {summary['dry_run']}")
     print(
-        f"Schema:        v{summary['before_schema_version']} -> "
-        f"v{summary['after_schema_version']}"
+        f"Schema:        v{summary['before_schema_version']} -> v{summary['after_schema_version']}"
     )
     print(
         f"Manifest:      chunk_format_version "

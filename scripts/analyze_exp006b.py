@@ -277,7 +277,7 @@ def write_summary(
     if promote and h4_pass:
         lines.append(
             "qwen3-30b-a3b-moe closes >=50% of the local-vs-cloud end_state gap and "
-            f"beats dense by >= +{H2_DELTA*100:.0f}pp at the lower CI bound, with tool "
+            f"beats dense by >= +{H2_DELTA * 100:.0f}pp at the lower CI bound, with tool "
             "ceiling at cloud-tier. Phase 19a's local-headline thesis is supported on "
             "PBS-Agent v0.1 — lab default flips to MoE."
         )

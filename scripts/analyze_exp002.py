@@ -548,8 +548,8 @@ def main() -> None:
                     if tc.get("error") and "unknown tool" in str(tc.get("error", "")):
                         halluc += 1
         out.append(
-            f"| {m} | {done} | {err} | {reasons.get('budget_exhausted',0)} | {reasons.get('max_turns_reached',0)} | "
-            f"{reasons.get('litellm_error',0)} | {reasons.get('model_finished',0)} | {over_budget} | {halluc} | {never_invoked} |"
+            f"| {m} | {done} | {err} | {reasons.get('budget_exhausted', 0)} | {reasons.get('max_turns_reached', 0)} | "
+            f"{reasons.get('litellm_error', 0)} | {reasons.get('model_finished', 0)} | {over_budget} | {halluc} | {never_invoked} |"
         )
     out.append("")
 
@@ -560,7 +560,7 @@ def main() -> None:
     for m in ALL_MODELS:
         nd = sum(1 for c in cells if c.model == m and c.status == "done")
         ne = sum(1 for c in cells if c.model == m and c.status == "error")
-        out.append(f"| {m} | {nd} | {ne} | {nd+ne}/96 |")
+        out.append(f"| {m} | {nd} | {ne} | {nd + ne}/96 |")
     out.append("")
 
     # ---------- NOANSWER / no-data scorer rate ----------
@@ -767,14 +767,14 @@ def main() -> None:
         for name in sorted(overall_a):
             a = overall_a[name]
             e = overall_e.get(name, 0)
-            w.writerow(["<all>", name, a, e, f"{(a-e)/a:.6f}" if a else ""])
+            w.writerow(["<all>", name, a, e, f"{(a - e) / a:.6f}" if a else ""])
         for m in ALL_MODELS:
             attempts = per_model_tool_attempts.get(m, {})
             errs = per_model_tool_errors.get(m, {})
             for name in sorted(attempts):
                 a = attempts[name]
                 e = errs.get(name, 0)
-                w.writerow([m, name, a, e, f"{(a-e)/a:.6f}" if a else ""])
+                w.writerow([m, name, a, e, f"{(a - e) / a:.6f}" if a else ""])
 
     # ---------- CSV: trajectory_judge.csv (only judge-enabled task) ----------
     with (analysis_dir / "trajectory_judge.csv").open("w", newline="") as fh:
@@ -872,8 +872,7 @@ def main() -> None:
             if c.model == m and c.status == "done" and c.tool_call_count is not None
         ]
         summary.append(
-            f"| {m} | {es_m:.3f} | {tc_m:.3f} | {br_m:.3f} | "
-            f"{mean(turns):.2f} | {mean(tcs):.2f} |"
+            f"| {m} | {es_m:.3f} | {tc_m:.3f} | {br_m:.3f} | {mean(turns):.2f} | {mean(tcs):.2f} |"
         )
     summary.append("")
     summary.append("## Auxiliary stats\n")
