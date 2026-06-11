@@ -9,6 +9,10 @@ sat untouched at 0.0.1 from scaffold until then).
 ## [Unreleased]
 
 ### Added
+- `pbs-agent-brutal-v0.1`: 24-task tier above the hard suite
+  (debug test-loops / recovery / longhaul / spec), all tasks
+  machine-verified at authoring incl. trap-answer rejection; EXP-010
+  (BRUTAL-BENCH-001 validation pass) pre-registered and queued.
 - EXP-009/HARD-BENCH-003 pre-registered: N=8 seed confirmation of the
   hard-suite ranking per ADR-004 (`conf/sweep/hard-bench-v3.yaml`).
 - Retroactive experiment records EXP-007 (CODER-BENCH-001) and EXP-008
