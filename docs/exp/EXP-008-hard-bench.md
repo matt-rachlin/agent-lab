@@ -42,7 +42,16 @@ separation is prompt-sensitivity rather than capability — specifically,
 does a one-sentence "act, don't narrate" addition to the system prompt
 close Devstral-24B's narration-driven gap?
 
-## Setup
+## Hypothesis
+
+(Quoted verbatim from the sweep configs, committed pre-run:)
+
+- H-001: "On genuinely hard agentic tasks the field separates (vs 100%
+  ties on the easy suite)."
+- H-002: "A strict act-dont-narrate system prompt (v2) closes
+  Devstral-24B's gap without hurting models that already act."
+
+## Method
 
 - suite: pbs-agent-hard-v0.1 (32 tasks; code/data/shell/multi × 8;
   26 hard / 6 medium; see suite CARD)
@@ -59,12 +68,18 @@ close Devstral-24B's narration-driven gap?
   replaced with reserved domains and re-ran the 9 affected cells
   (c4e56a7). All 96 cells valid in the final table.
 
-## Hypotheses (from sweep configs, pre-run)
+## Success / failure criteria
 
-- H-001: "On genuinely hard agentic tasks the field separates (vs 100%
-  ties on the easy suite)."
-- H-002: "A strict act-dont-narrate system prompt (v2) closes
-  Devstral-24B's gap without hurting models that already act."
+(Reconstructed; not committed pre-run.) H-001 confirmed if max−min
+model spread ≥ 15pp on the hard suite; H-002 confirmed if Devstral
+gains ≥ 10pp under v2 while no model loses > 3pp.
+
+## Kill criteria
+
+(Reconstructed.) Kill on suite defects making tasks unsolvable for all
+models. **Partially triggered:** 3 multi tasks NXDOMAIN'd for every
+model; fixed (c4e56a7) and the 9 affected cells re-run rather than
+killing the experiment.
 
 ## Results
 

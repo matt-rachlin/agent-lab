@@ -43,7 +43,13 @@ On the lab's 12-task agentic suite (pbs-agent-v0.1), do coding-specialized
 default local *coding agent* model and tests whether coding-leaderboard
 strength transfers to agentic tool-loop work.
 
-## Setup
+## Hypothesis
+
+(Quoted verbatim from the sweep config, committed pre-run:) "A
+coding-specialized 30-32B model beats the general gemma4-12b on local
+agentic coding tasks."
+
+## Method
 
 ### Models
 
@@ -65,10 +71,17 @@ and config): llama-3.3-70b hybrid CPU/GPU offload — 0.583.
   for the ranking question.
 - 36 cells per model, 108 total.
 
-## Hypothesis (from sweep config, pre-run)
+## Success / failure criteria
 
-"A coding-specialized 30-32B model beats the general gemma4-12b on local
-agentic coding tasks."
+(Reconstructed; not committed pre-run.) Hypothesis confirmed if either
+specialist's pass@1 exceeds gemma4-12b's on the suite; refuted on tie or
+reversal. Ranking decides the lab's local coding-agent default.
+
+## Kill criteria
+
+(Reconstructed.) Kill on harness fault — sandbox/tool-server errors or
+scorer failures contaminating cells — rather than model behavior.
+Not triggered: all 108 cells completed and scored.
 
 ## Results
 
