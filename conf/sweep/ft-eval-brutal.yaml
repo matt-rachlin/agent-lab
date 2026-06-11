@@ -1,0 +1,27 @@
+# EXP-013 eval arm 2/3: brutal suite (clean held-out — postdates the dataset)
+# base vs fine-tuned Qwen3-4B. __BASE__/__FT__ substituted by autopilot.
+experiment:
+  slug: FT-EVAL-BRUTAL-001
+  title: "EXP-013 eval: pbs-agent-brutal-v0.1 — Qwen3-4B base vs ft-toolcall"
+  hypothesis: "H2: ft > base by >= 2/24 tasks mean pass@1 (held-out task generalization)."
+tasks:
+  suite: pbs-agent-brutal-v0.1
+models:
+  - __BASE__
+  - __FT__
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+model_defaults:
+  __BASE__:
+    extra:
+      think: false
+  __FT__:
+    extra:
+      think: false
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800

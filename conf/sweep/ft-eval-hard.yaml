@@ -1,0 +1,28 @@
+# EXP-013 eval arm 3/3: hard suite — CONTAMINATED (training data contains
+# successful hard-suite trajectories; disclosed in EXP-013, reported
+# separately, never headline). base vs fine-tuned Qwen3-4B.
+experiment:
+  slug: FT-EVAL-HARD-001
+  title: "EXP-013 eval: pbs-agent-hard-v0.1 (seen tasks) — Qwen3-4B base vs ft-toolcall"
+  hypothesis: "H3: ft >= base + 10pp (memorization-inclusive seen-task gain)."
+tasks:
+  suite: pbs-agent-hard-v0.1
+models:
+  - __BASE__
+  - __FT__
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+model_defaults:
+  __BASE__:
+    extra:
+      think: false
+  __FT__:
+    extra:
+      think: false
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800

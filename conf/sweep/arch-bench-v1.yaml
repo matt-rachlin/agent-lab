@@ -1,0 +1,21 @@
+# EXP-014 / ARCH-BENCH-001: SSM-hybrid (granite4:tiny-h) vs MoE transformer
+# (gpt-oss-20b) as local agents on the hard suite. Pre-registered in
+# docs/exp/EXP-014-arch-bench.md. gemma4-12b comparator quoted, not re-run.
+experiment:
+  slug: ARCH-BENCH-001
+  title: "Efficiency architectures as agents: granite4-tiny-h (Mamba-2 hybrid) vs gpt-oss-20b (MoE) on pbs-agent-hard-v0.1"
+  hypothesis: "gpt-oss-20b >= granite4-tiny-h + 3 tasks; both < 0.90 (below dense gemma4); granite shows >= 1 F-012 protocol failure mode."
+tasks:
+  suite: pbs-agent-hard-v0.1
+models:
+  - granite4-tiny-h
+  - gpt-oss-20b-local
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800
