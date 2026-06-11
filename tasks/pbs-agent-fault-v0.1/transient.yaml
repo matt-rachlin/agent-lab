@@ -1,0 +1,268 @@
+# PBS-Agent fault-v0.1 — fault-transient tasks.
+#
+# Task bodies adapted from pbs-agent-hard-v0.1 (medium tier). Each task adds
+# a deterministic `sandbox.faults` schedule of transient errors/timeouts
+# early-to-mid chain. The faulted call DOES NOT execute and fires exactly
+# once — retrying the same call later in the episode succeeds, so recovery
+# means: notice the transient error, retry, and finish the task normally.
+# Expected answers are unchanged from the verified originals.
+
+suite: pbs-agent-fault-v0.1
+category: fault-transient
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: transient-csv-join
+    difficulty: medium
+    description: |
+      CSV join + aggregation (body from pbs-agent-hard-v0.1
+      data-csv-join-revenue-by-region). Faults: the first fs_read returns a
+      transient connection error (call not executed) and the first
+      python_eval times out (call not executed). Recovery: retry both —
+      the second attempt of each succeeds. Correct answer: South,1020.50.
+    input: |
+      You have two CSV files in your workspace:
+        data/orders.csv    — columns: order_id, customer_id, amount, status
+        data/customers.csv — columns: customer_id, name, region
+
+      Join them on customer_id. Consider ONLY orders with status="completed".
+      Sum the amount for each region. Find the region with the highest total
+      completed revenue.
+
+      Write a single line to /workspace/result.txt in exactly this format:
+        <region>,<total>
+      where <total> is formatted to 2 decimal places (e.g. South,1020.50).
+      No extra text, no newline after the value.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: error
+        - call_index: 1
+          tool: python_eval
+          mode: timeout
+      workspace_files:
+        "data/orders.csv": |
+          order_id,customer_id,amount,status
+          1001,C01,250.00,completed
+          1002,C02,180.50,completed
+          1003,C03,430.00,cancelled
+          1004,C01,90.00,completed
+          1005,C04,320.75,completed
+          1006,C02,150.00,refunded
+          1007,C05,200.00,completed
+          1008,C03,510.00,completed
+          1009,C04,75.50,cancelled
+          1010,C05,640.00,completed
+        "data/customers.csv": |
+          customer_id,name,region
+          C01,Alice,North
+          C02,Bob,South
+          C03,Carol,East
+          C04,Dave,North
+          C05,Eve,South
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "South,1020.50"
+
+  # -------------------------------------------------------------------------
+  - slug: transient-log-p95
+    difficulty: medium
+    description: |
+      Log parsing + percentile arithmetic (body from pbs-agent-hard-v0.1
+      data-log-parse-p95-latency). Fault: the first fs_read times out
+      (call not executed). Recovery: retry the read — second attempt
+      succeeds. Correct answer: 2340.
+    input: |
+      Your workspace contains data/access.log. Each line has the format:
+        <timestamp> <LEVEL> <METHOD> <endpoint> <status> <latency>ms
+
+      Parse every line. Sort all latency values ascending. Compute the p95
+      latency using the formula: value at index ceil(0.95 * n) - 1 (0-based)
+      where n is the total number of log lines.
+
+      Write the p95 latency as a plain integer (milliseconds, no "ms" suffix,
+      no other text) to /workspace/result.txt.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 10
+    tool_budget: 13
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: timeout
+      workspace_files:
+        "data/access.log": |
+          2024-01-15T08:00:01Z INFO  GET /api/users 200 45ms
+          2024-01-15T08:00:03Z INFO  GET /api/products 200 120ms
+          2024-01-15T08:00:05Z ERROR GET /api/orders 500 2340ms
+          2024-01-15T08:00:07Z INFO  POST /api/users 201 88ms
+          2024-01-15T08:00:09Z INFO  GET /api/products 200 95ms
+          2024-01-15T08:00:11Z ERROR GET /api/users 503 1200ms
+          2024-01-15T08:00:13Z INFO  GET /api/orders 200 310ms
+          2024-01-15T08:00:15Z INFO  DELETE /api/users 200 55ms
+          2024-01-15T08:00:17Z INFO  GET /api/products 200 78ms
+          2024-01-15T08:00:19Z ERROR POST /api/orders 500 890ms
+          2024-01-15T08:00:21Z INFO  GET /api/users 200 42ms
+          2024-01-15T08:00:23Z INFO  GET /api/products 200 105ms
+          2024-01-15T08:00:25Z INFO  GET /api/orders 200 220ms
+          2024-01-15T08:00:27Z INFO  PUT /api/users 200 67ms
+          2024-01-15T08:00:29Z INFO  GET /api/products 200 130ms
+          2024-01-15T08:00:31Z ERROR GET /api/orders 500 3100ms
+          2024-01-15T08:00:33Z INFO  GET /api/users 200 39ms
+          2024-01-15T08:00:35Z INFO  GET /api/products 200 112ms
+          2024-01-15T08:00:37Z INFO  POST /api/users 201 77ms
+          2024-01-15T08:00:39Z INFO  GET /api/orders 200 185ms
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "2340"
+
+  # -------------------------------------------------------------------------
+  - slug: transient-interval-merge
+    difficulty: medium
+    description: |
+      Off-by-one bug fix in interval merging (body from pbs-agent-hard-v0.1
+      code-interval-merge-fix). Faults: the first fs_read returns a transient
+      connection error and the first python_eval also fails transiently
+      (neither call executes). Recovery: retry both. Correct answer: 1,5;6,11.
+    input: |
+      The file 'src/intervals.py' contains a function merge_intervals() with
+      a subtle bug. The function should merge overlapping or touching intervals
+      (e.g. [1,3] and [3,5] should merge to [1,5]) but currently misses some
+      merges. Your task:
+      1. Read the file with fs_read.
+      2. Identify and fix the bug.
+      3. Run the fixed function on this input:
+         intervals = [(1, 3), (3, 5), (6, 9), (8, 11)]
+      4. Write the result to 'answer.txt' as semicolon-separated intervals,
+         each interval as "start,end" — for example: "1,5;6,11"
+      Write ONLY the interval string, no extra text or newlines.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: fs_grep
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: error
+        - call_index: 1
+          tool: python_eval
+          mode: error
+      workspace_files:
+        "src/intervals.py": |
+          def merge_intervals(intervals):
+              """Merge overlapping intervals. Returns list of (start, end) tuples."""
+              if not intervals:
+                  return []
+              intervals = sorted(intervals)
+              merged = [list(intervals[0])]
+              for start, end in intervals[1:]:
+                  # BUG: should be <= not < (adjacent intervals must also merge)
+                  if start < merged[-1][1]:
+                      merged[-1][1] = max(merged[-1][1], end)
+                  else:
+                      merged.append([start, end])
+              return [tuple(x) for x in merged]
+
+          if __name__ == '__main__':
+              test = [(1, 3), (3, 5), (6, 9), (8, 11)]
+              print(merge_intervals(test))
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "1,5;6,11"
+
+  # -------------------------------------------------------------------------
+  - slug: transient-reconcile
+    difficulty: medium
+    description: |
+      Two-file payment reconciliation (body from pbs-agent-hard-v0.1
+      data-payment-reconciliation). Faults: the first TWO fs_read attempts
+      fail (transient error, then timeout; neither executes). Recovery
+      requires persisting through back-to-back failures — the third fs_read
+      attempt (and all later ones) succeed. Answers: MISSING:PAY008,
+      MISMATCH:PAY004, UNEXPECTED:PAY009.
+    input: |
+      Your workspace contains two CSV files:
+        data/expected_payments.csv  — columns: payment_id, vendor, amount, date
+        data/bank_statement.csv     — columns: ref_id, vendor, amount, date
+
+      Join on payment_id == ref_id. Categorize every discrepancy:
+        - MISMATCH: same ID in both files but amounts differ
+        - MISSING: ID in expected but absent from bank
+        - UNEXPECTED: ID in bank but absent from expected
+
+      Write to /workspace/result.txt exactly 3 lines (one per category, sorted
+      alphabetically by category label), in this format:
+        MISSING:<payment_id>
+        MISMATCH:<payment_id>
+        UNEXPECTED:<payment_id>
+      where each value is the relevant ID. No extra text.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: error
+        - call_index: 2
+          tool: fs_read
+          mode: timeout
+      workspace_files:
+        "data/expected_payments.csv": |
+          payment_id,vendor,amount,date
+          PAY001,Acme Corp,1500.00,2024-02-01
+          PAY002,Beta LLC,750.50,2024-02-03
+          PAY003,Acme Corp,200.00,2024-02-05
+          PAY004,Gamma Inc,3200.00,2024-02-07
+          PAY005,Delta Co,450.00,2024-02-09
+          PAY006,Beta LLC,1100.00,2024-02-11
+          PAY007,Acme Corp,825.75,2024-02-13
+          PAY008,Gamma Inc,600.00,2024-02-15
+        "data/bank_statement.csv": |
+          ref_id,vendor,amount,date
+          PAY001,Acme Corp,1500.00,2024-02-01
+          PAY002,Beta LLC,750.50,2024-02-03
+          PAY003,Acme Corp,200.00,2024-02-05
+          PAY004,Gamma Inc,3100.00,2024-02-07
+          PAY005,Delta Co,450.00,2024-02-09
+          PAY006,Beta LLC,1100.00,2024-02-11
+          PAY009,Epsilon Ltd,275.00,2024-02-12
+          PAY007,Acme Corp,825.75,2024-02-13
+    success_predicate:
+      type: all_of
+      predicates:
+        - type: workspace_file_contains
+          path: result.txt
+          substring: "MISSING:PAY008"
+        - type: workspace_file_contains
+          path: result.txt
+          substring: "MISMATCH:PAY004"
+        - type: workspace_file_contains
+          path: result.txt
+          substring: "UNEXPECTED:PAY009"

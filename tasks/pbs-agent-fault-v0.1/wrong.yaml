@@ -1,0 +1,381 @@
+# PBS-Agent fault-v0.1 — fault-wrong tasks.
+#
+# Task bodies adapted from pbs-agent-hard-v0.1 (code/data tiers). Each task
+# replaces the result of the FIRST fs_read with a plausible-but-wrong
+# variant of the real file (a `wrong_result` fault; the real call executes
+# but its result is discarded). Every task input states a verifiable
+# invariant of the TRUE data that the wrong variant violates: an agent that
+# cross-checks detects the corruption and re-reads (later reads are clean);
+# an agent that trusts the wrong result produces an answer that fails the
+# predicate (verified — see /tmp/fault/verify_fault.py).
+#
+# Replacement payloads mimic the fs_read result shape
+# ({content, size, truncated, path}) with `size` consistent with the
+# replacement content so the fake is not trivially detectable by shape.
+
+suite: pbs-agent-fault-v0.1
+category: fault-wrong
+
+tasks:
+
+  # -------------------------------------------------------------------------
+  - slug: wrong-topo-sort
+    difficulty: medium
+    description: |
+      Kahn's algorithm topological sort (body from pbs-agent-hard-v0.1
+      code-topo-sort). Fault: the first fs_read of src/graph.py returns a
+      consistent-looking graph in which the ('typecheck','codegen') edge is
+      reversed to ('codegen','typecheck'). Trusting it yields
+      "parse,codegen,link,package,typecheck" — fails the predicate. The
+      stated invariant (edge ('typecheck','codegen') must be present) is
+      violated by the fake; recovery = re-read and compute on the real graph.
+      Correct answer: parse,typecheck,codegen,link,package.
+    input: |
+      The file 'src/graph.py' defines a directed acyclic graph as an
+      adjacency list (dict mapping node -> list of successors) and a list
+      of directed edges. Your task:
+      1. Read the file with fs_read.
+      2. Implement Kahn's algorithm (BFS-based topological sort) and run it
+         on the graph using python_eval or shell_exec. When multiple nodes
+         have in-degree 0 at the same time, process them in alphabetical
+         order (use a sorted list as the queue).
+      3. Write the resulting node order as a comma-separated string
+         (e.g. "A,B,C") to 'answer.txt' using fs_write mode='create'.
+
+      IMPORTANT — data integrity check: the build system guarantees that the
+      true src/graph.py contains exactly 5 edges and that the directed edge
+      ('typecheck', 'codegen') is one of them (typecheck always precedes
+      codegen). If the file content you obtained contradicts this invariant,
+      that read was corrupted — discard it and obtain the file contents again
+      (read it again, or print it via python_eval/shell_exec) before
+      computing.
+
+      Write ONLY the comma-separated node names, no extra text or newlines.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: wrong_result
+          payload:
+            replacement:
+              content: |
+                # Directed edges: (from_node, to_node) means from_node must come before to_node
+                edges = [
+                    ('parse', 'typecheck'),
+                    ('parse', 'codegen'),
+                    ('codegen', 'typecheck'),
+                    ('codegen', 'link'),
+                    ('link', 'package'),
+                ]
+
+                # Adjacency list derived from edges above
+                graph = {
+                    'parse':     ['typecheck', 'codegen'],
+                    'typecheck': [],
+                    'codegen':   ['typecheck', 'link'],
+                    'link':      ['package'],
+                    'package':   [],
+                }
+              size: 436
+              truncated: false
+              path: /workspace/src/graph.py
+      workspace_files:
+        "src/graph.py": |
+          # Directed edges: (from_node, to_node) means from_node must come before to_node
+          edges = [
+              ('parse', 'typecheck'),
+              ('parse', 'codegen'),
+              ('typecheck', 'codegen'),
+              ('codegen', 'link'),
+              ('link', 'package'),
+          ]
+
+          # Adjacency list derived from edges above
+          graph = {
+              'parse':     ['typecheck', 'codegen'],
+              'typecheck': ['codegen'],
+              'codegen':   ['link'],
+              'link':      ['package'],
+              'package':   [],
+          }
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "parse,typecheck,codegen,link,package"
+
+  # -------------------------------------------------------------------------
+  - slug: wrong-param-count
+    difficulty: medium
+    description: |
+      Static analysis: function with the most parameters (body from
+      pbs-agent-hard-v0.1 code-param-count-analysis). Fault: the first
+      fs_read returns a variant where train_model is trimmed to 4 params and
+      preprocess inflated to 7 — trusting it yields "preprocess", which fails
+      the predicate. Stated invariant: the max parameter count in the true
+      file is exactly 10 (violated by the fake, whose max is 7). Recovery =
+      re-read. Correct answer: train_model.
+    input: |
+      The file 'src/ml_pipeline.py' contains several Python function
+      definitions. Your task:
+      1. Read the file with fs_read.
+      2. Determine which function has the greatest number of parameters
+         (count all positional and keyword parameters declared in the
+         function signature, including those with defaults).
+      3. Write the name of that function to 'answer.txt' via fs_write
+         mode='create'.
+
+      IMPORTANT — data integrity check: this file is under signature audit;
+      it is guaranteed that the true file defines exactly 6 functions and
+      that the LARGEST signature among them declares exactly 10 parameters.
+      If the content you obtained does not satisfy this invariant, that read
+      was corrupted — discard it and obtain the file contents again (read it
+      again, or print it via python_eval/shell_exec) before answering.
+
+      Write ONLY the function name, no extra text or newlines.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: wrong_result
+          payload:
+            replacement:
+              content: |
+                import os
+
+                def load_data(path: str, delimiter: str = ',') -> list:
+                    """Load CSV data from path."""
+                    pass
+
+                def process_data(df, columns, target, test_size=0.2, random_state=42):
+                    """Split data into train/test sets."""
+                    pass
+
+                def train_model(X_train, y_train, model_type, learning_rate=0.01):
+                    """Train a model with the given hyperparameters."""
+                    pass
+
+                def evaluate(model, X_test, y_test):
+                    """Evaluate model on test set."""
+                    pass
+
+                def preprocess(data, scaler=None, imputer=None, encoder=None,
+                               normalize=True, clip_outliers=False, verbose=False):
+                    """Preprocess data with optional transformers."""
+                    pass
+
+                def save_results(path, metrics, model, config):
+                    """Persist results to disk."""
+                    pass
+              size: 740
+              truncated: false
+              path: /workspace/src/ml_pipeline.py
+      workspace_files:
+        "src/ml_pipeline.py": |
+          import os
+
+          def load_data(path: str, delimiter: str = ',') -> list:
+              """Load CSV data from path."""
+              pass
+
+          def process_data(df, columns, target, test_size=0.2, random_state=42):
+              """Split data into train/test sets."""
+              pass
+
+          def train_model(X_train, y_train, model_type, learning_rate=0.01,
+                          n_epochs=100, batch_size=32, dropout=0.5,
+                          weight_decay=1e-4, patience=10, verbose=False):
+              """Train a model with the given hyperparameters."""
+              pass
+
+          def evaluate(model, X_test, y_test):
+              """Evaluate model on test set."""
+              pass
+
+          def preprocess(data, scaler=None, imputer=None, encoder=None,
+                         normalize=True):
+              """Preprocess data with optional transformers."""
+              pass
+
+          def save_results(path, metrics, model, config):
+              """Persist results to disk."""
+              pass
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "train_model"
+
+  # -------------------------------------------------------------------------
+  - slug: wrong-lru-trace
+    difficulty: medium
+    description: |
+      LRU cache trace replay (body from pbs-agent-hard-v0.1
+      code-lru-cache-trace). Fault: the first fs_read of src/ops.txt returns
+      the same operation list but with "capacity 2" instead of "capacity 3".
+      Trusting it yields "-1,-1,30,-1,-1,50" — fails the predicate. Stated
+      invariant: the true file declares capacity 3 (violated by the fake).
+      Recovery = re-read. Correct answer: 10,-1,30,-1,40,50.
+    input: |
+      The file 'src/ops.txt' lists a sequence of LRU cache operations.
+      Your task:
+      1. Read the file with fs_read.
+      2. Implement an LRU cache with the given capacity using python_eval or
+         shell_exec. Do NOT use functools.lru_cache — implement it yourself
+         (hint: OrderedDict works well).
+      3. Replay all operations in order. For each GET operation record the
+         return value (-1 if the key is not present).
+      4. Write the get-results as a comma-separated string to 'answer.txt'
+         via fs_write mode='create', in the order the gets appear.
+
+      IMPORTANT — data integrity check: this trace was generated for a
+      THREE-slot cache; the true src/ops.txt is guaranteed to declare
+      "capacity 3" on its first line and to contain exactly 6 get
+      operations. If the content you obtained contradicts this invariant,
+      that read was corrupted — discard it and obtain the file contents
+      again (read it again, or print it via python_eval/shell_exec) before
+      replaying the trace.
+
+      Write ONLY the comma-separated integers, no extra text or newlines.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 12
+    tool_budget: 16
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: wrong_result
+          payload:
+            replacement:
+              content: |
+                capacity 2
+                put 1 10
+                put 2 20
+                put 3 30
+                get 1
+                put 4 40
+                get 2
+                get 3
+                put 5 50
+                get 1
+                get 4
+                get 5
+              size: 92
+              truncated: false
+              path: /workspace/src/ops.txt
+      workspace_files:
+        "src/ops.txt": |
+          capacity 3
+          put 1 10
+          put 2 20
+          put 3 30
+          get 1
+          put 4 40
+          get 2
+          get 3
+          put 5 50
+          get 1
+          get 4
+          get 5
+    success_predicate:
+      type: workspace_file_contains
+      path: answer.txt
+      substring: "10,-1,30,-1,40,50"
+
+  # -------------------------------------------------------------------------
+  - slug: wrong-dup-txn
+    difficulty: medium
+    description: |
+      Duplicate transaction-ID counting (body from pbs-agent-hard-v0.1
+      data-duplicate-transaction-count; output format hardened to
+      "duplicate_ids=<n>" for collision safety). Fault: the first fs_read
+      returns a variant where the duplicated T003 row was replaced by a THIRD
+      T001 row — only 2 distinct ids are duplicated, so trusting it yields
+      duplicate_ids=2, which fails the predicate. Stated invariant: no txn_id
+      appears more than twice in the true file (violated by the fake's
+      triple T001). Recovery = re-read. Correct answer: duplicate_ids=3.
+    input: |
+      Your workspace contains data/transactions.csv with columns:
+        txn_id, customer_id, amount, date
+
+      Some transaction IDs appear more than once (duplicate rows). Count
+      the number of DISTINCT txn_id values that appear more than once in
+      the file (i.e., the count of IDs with duplicates, not the total
+      number of extra rows).
+
+      IMPORTANT — data integrity check: the export system guarantees that
+      the true file has exactly 10 data rows and that NO txn_id appears more
+      than twice. If the content you obtained violates this invariant, that
+      read was corrupted — discard it and obtain the file contents again
+      (read it again, or print it via python_eval/shell_exec) before
+      counting.
+
+      Write exactly one line to /workspace/result.txt in this format:
+        duplicate_ids=<count>
+      No extra text, no trailing newline.
+    system_prompt_id: tool_use_system_v2
+    tools:
+      - name: fs_read
+      - name: fs_write
+      - name: python_eval
+      - name: shell_exec
+    max_turns: 10
+    tool_budget: 14
+    sandbox:
+      faults:
+        - call_index: 1
+          tool: fs_read
+          mode: wrong_result
+          payload:
+            replacement:
+              content: |
+                txn_id,customer_id,amount,date
+                T001,C01,150.00,2024-01-01
+                T002,C02,200.00,2024-01-02
+                T001,C01,150.00,2024-01-01
+                T003,C03,75.50,2024-01-03
+                T004,C04,300.00,2024-01-04
+                T002,C02,200.00,2024-01-02
+                T005,C05,125.00,2024-01-05
+                T001,C01,150.00,2024-01-01
+                T006,C06,450.00,2024-01-06
+                T007,C07,90.00,2024-01-07
+              size: 299
+              truncated: false
+              path: /workspace/data/transactions.csv
+      workspace_files:
+        "data/transactions.csv": |
+          txn_id,customer_id,amount,date
+          T001,C01,150.00,2024-01-01
+          T002,C02,200.00,2024-01-02
+          T001,C01,150.00,2024-01-01
+          T003,C03,75.50,2024-01-03
+          T004,C04,300.00,2024-01-04
+          T002,C02,200.00,2024-01-02
+          T005,C05,125.00,2024-01-05
+          T003,C03,75.50,2024-01-03
+          T006,C06,450.00,2024-01-06
+          T007,C07,90.00,2024-01-07
+    success_predicate:
+      type: workspace_file_contains
+      path: result.txt
+      substring: "duplicate_ids=3"

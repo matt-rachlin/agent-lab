@@ -1,0 +1,29 @@
+# FAULT-SMOKE-001: end-to-end smoke of the tool-fault injection mechanism.
+# ONE task (transient-log-p95: fs_read #1 times out, retry must succeed) on
+# the cloud lane — no GPU involved; run directly, not via pueue:
+#   uv run lab sweep run conf/sweep/fault-smoke.yaml --allow-slow-models
+# Stays in-tree as the smoke fixture for the fault domain.
+experiment:
+  slug: FAULT-SMOKE-001
+  title: "Fault-injection smoke: transient fs_read timeout recovery (pbs-agent-fault-v0.1)"
+  hypothesis: "The scheduled fault fires (fault_injected marker in the trajectory), the agent retries the read, and the episode still passes the predicate."
+
+tasks:
+  suite: pbs-agent-fault-v0.1
+  slugs:
+    - transient-log-p95
+
+models:
+  - glm-5.1-cloud
+
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+
+seeds: [1]
+
+max_concurrency: 1
+request_timeout_sec: 1800

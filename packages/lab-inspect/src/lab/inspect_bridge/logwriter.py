@@ -325,6 +325,7 @@ def _trajectory_bytes(*, ctx: SweepContext, extracted: dict[str, Any]) -> bytes:
                 "actual_turns": lab_agent.get("actual_turns"),
                 "tool_call_count": lab_agent.get("tool_call_count"),
                 "terminated_reason": lab_agent.get("terminated_reason"),
+                "faults_fired": lab_agent.get("faults_fired") or [],
                 "total_latency_ms": lab_agent.get("total_latency_ms"),
                 "error": lab_agent.get("error") or extracted.get("error"),
                 "model_usage": extracted.get("model_usage", {}),
@@ -356,18 +357,35 @@ def _compact_turns(lab_agent: dict[str, Any]) -> list[dict[str, Any]]:
         }
         if entry.get("error"):
             compact["error"] = entry["error"]
+        if entry.get("planner"):
+            # plan_execute scaffold: keep the planner marker (fault_injected
+            # precedent) so analysis can verify the planner turn ran without
+            # pulling the full MinIO trajectory. The plan text itself stays
+            # in MinIO / lab_agent (it's bulky); this is just the flag.
+            compact["planner"] = True
         tool_calls = entry.get("tool_calls")
         if tool_calls:
-            compact["tools"] = [
-                {
-                    "tool": tc.get("tool"),
-                    "latency_ms": tc.get("latency_ms"),
-                    "error": tc.get("error"),
-                }
-                for tc in tool_calls
-            ]
+            compact["tools"] = [_compact_tool_call(tc) for tc in tool_calls if isinstance(tc, dict)]
         out.append(compact)
     return out
+
+
+def _compact_tool_call(tc: dict[str, Any]) -> dict[str, Any]:
+    """One compact tool-call record; keeps the fault-injection marker.
+
+    `fault_injected` is tiny (mode/tool/call_index) and is the only way
+    analysis can verify a scheduled fault actually fired without pulling
+    the full MinIO trajectory — so it survives compaction.
+    """
+
+    compact: dict[str, Any] = {
+        "tool": tc.get("tool"),
+        "latency_ms": tc.get("latency_ms"),
+        "error": tc.get("error"),
+    }
+    if tc.get("fault_injected") is not None:
+        compact["fault_injected"] = tc["fault_injected"]
+    return compact
 
 
 def _upsert_experiment_run(

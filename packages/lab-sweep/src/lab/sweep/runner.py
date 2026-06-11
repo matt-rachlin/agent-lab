@@ -635,6 +635,18 @@ def execute_cell(
     is_bfcl = _is_bfcl_cell(cell.task_payload)
     is_agent = (not is_bfcl) and _is_agent_cell(cell.task_payload)
 
+    # `scaffold: plan_execute` only has meaning on the agent path — the
+    # single-turn / BFCL lanes have no turn loop to plan for. Warn loudly
+    # rather than fail: the cell still runs, but the operator should know
+    # the A/B arm they configured is not what executed.
+    if cell.config.scaffold == "plan_execute" and not is_agent:
+        log.warning(
+            "plan_execute_scaffold_ignored_non_agent_path",
+            run_id=cell.run_id,
+            task=cell.task_slug,
+            path="bfcl" if is_bfcl else "single_turn",
+        )
+
     # Phase 19c — declare per-cell pipeline plan so llama-swap pre-flights
     # the model into the page cache and we get explicit eviction at
     # cell-end. ``plan_for_cell`` derives side-models (embedder, reranker)
@@ -1268,6 +1280,11 @@ def _execute_agent_cell(
                 temperature=cell.config.temperature,
                 max_tokens=cell.config.max_tokens,
                 extra=merged_extra or None,
+                # Scaffold dispatch: "plan_execute" prepends a tool-less
+                # planner call (see solver.py's EQUAL-BUDGET GUARANTEE);
+                # "react" and the legacy "single_turn" value both run the
+                # plain react loop unchanged.
+                scaffold=cell.config.scaffold,
             )
             import tempfile
 

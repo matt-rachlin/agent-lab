@@ -1,0 +1,29 @@
+# PLAN-EXEC-SMOKE-001 — end-to-end plumbing validation for the plan_execute
+# scaffold (planner + executor) against the unchanged react scaffold.
+# Cloud-only lane (glm-5.1-cloud via Ollama Cloud through LiteLLM) so it is
+# safe to run while the GPU is busy. This is a plumbing check, NOT an A/B:
+# pbs-agent-v0.1 is easy for a frontier model — both arms should land near
+# 1.0. The real react-vs-plan_execute experiment runs on the brutal suite.
+experiment:
+  slug: PLAN-EXEC-SMOKE-001
+  title: "plan_execute scaffold smoke: react vs plan-exec, glm-5.1-cloud, pbs-agent-v0.1"
+  hypothesis: "Plumbing, not separation: both arms score; plan-exec trajectories carry a planner turn-0 record and stay within the same max_turns/tool_budget/max_tokens budgets as react."
+tasks:
+  suite: pbs-agent-v0.1
+models:
+  - glm-5.1-cloud
+configs:
+  # The two arms are numerically identical; the ONLY difference is scaffold.
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+  - name: plan-exec-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: plan_execute
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800

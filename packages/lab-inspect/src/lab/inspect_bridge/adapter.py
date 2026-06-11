@@ -149,6 +149,7 @@ def lab_task_to_inspect(
     solver_override: Solver | None = None,
     extra: dict[str, Any] | None = None,
     prompt_registry: PromptRegistry | None = None,
+    scaffold: str = "react",
 ) -> InspectTask:
     """Build an Inspect `Task` for one lab `Task`.
 
@@ -162,6 +163,11 @@ def lab_task_to_inspect(
             hitting LiteLLM.
         prompt_registry: Override the prompt registry used to resolve
             ``task.system_prompt_id`` (default: ``PromptRegistry()``).
+        scaffold: forwarded to ``model_with_tools``. ``"plan_execute"``
+            runs the planner+executor scaffold; ``"react"`` (default) and
+            the legacy ``"single_turn"`` value both run the plain react
+            loop — path dispatch (single-turn vs agent) stays a property
+            of the task's ``max_turns``/``tool_budget``, not this field.
     """
 
     # Resolve the effective system prompt FIRST so a missing prompt fails
@@ -222,6 +228,7 @@ def lab_task_to_inspect(
             temperature=temperature,
             max_tokens=max_tokens or 1024,
             extra=extra,
+            scaffold=scaffold,
         )
 
     scorers = _select_scorers(task)

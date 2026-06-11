@@ -48,6 +48,50 @@ log = get_logger(__name__)
 # Truncation budget for tool call inputs/outputs recorded in `turns`.
 _TURN_PAYLOAD_CAP = 4096
 
+# Truncation budget for the planner's plan text recorded in the trajectory
+# (`plan_execute` scaffold). The FULL plan is still injected into the
+# executor's system prompt — this cap only bounds the audit record.
+_PLAN_CAP = 4096
+
+
+def _build_planner_system_prompt(tool_specs: list[dict[str, Any]]) -> str:
+    """System prompt for the tool-less planner call (`plan_execute` Phase A).
+
+    States the tools that WILL be available in the execution phase, demands
+    a numbered plan with an expected artifact per step, and forbids code
+    blocks (the planner cannot execute anything; code belongs to Phase B).
+    """
+
+    if tool_specs:
+        tool_lines = "\n".join(
+            f"- {spec['function']['name']}: {spec['function'].get('description') or ''}".rstrip()
+            for spec in tool_specs
+        )
+    else:
+        tool_lines = "- (no tools will be available; the executor must answer directly)"
+    return (
+        "You are the planning phase of a two-phase agent. You cannot call "
+        "tools in this phase. In the execution phase that follows, an agent "
+        "WILL have access to these tools:\n"
+        f"{tool_lines}\n\n"
+        "Write a concise numbered plan for completing the task below. For "
+        "each step, state the expected artifact it should produce (a file "
+        "written, a query result, a verified observation). Do not include "
+        "code blocks. Output only the plan."
+    )
+
+
+def _first_user_content(chat: list[dict[str, Any]]) -> str:
+    """The task input as the planner sees it: the first user message."""
+
+    for msg in chat:
+        if msg.get("role") == "user":
+            content = msg.get("content")
+            if isinstance(content, str):
+                return content
+            return str(content)
+    return ""
+
 
 def _truncate(value: Any, cap: int = _TURN_PAYLOAD_CAP) -> Any:
     """Bound large tool I/O in the recorded trajectory.
@@ -259,18 +303,163 @@ def _extract_text_tool_calls(content: str, valid_names: set[str]) -> list[dict[s
     return recovered
 
 
+# ---------------------------------------------------------------------------
+# Fault injection — deterministic tool-fault schedules from `sandbox.faults`.
+#
+# A task may declare `sandbox: {faults: [{call_index, tool, mode, payload}]}`
+# to measure agent behaviour when TOOLS misbehave (vs the brutal suite's
+# broken DATA). Faults fire on the Nth dispatched tool call matching the
+# entry's tool filter (per-entry counter, 1-based, across the episode) and
+# fire at most once, so a retry of the same call later in the episode goes
+# through clean. The model only ever sees the faulted result; every fired
+# fault is recorded in the turn entry (`fault_injected`) and summarised in
+# the trajectory (`faults_fired`) so analysis can verify firing post-hoc.
+# ---------------------------------------------------------------------------
+
+_FAULT_MODES = frozenset({"error", "timeout", "truncate", "wrong_result"})
+_FAULT_ERROR_MESSAGE = "ERROR: connection reset, retry may succeed"
+_FAULT_TIMEOUT_MESSAGE = "ERROR: tool call timed out after 30s"
+_FAULT_TRUNCATE_KEEP_CHARS = 200
+
+
+class _ScheduledFault:
+    """One entry from `sandbox.faults`, plus its firing state."""
+
+    __slots__ = ("call_index", "fired", "mode", "payload", "seen", "tool")
+
+    def __init__(self, *, call_index: int, tool: str, mode: str, payload: dict[str, Any]) -> None:
+        self.call_index = call_index
+        self.tool = tool
+        self.mode = mode
+        self.payload = payload
+        self.seen = 0  # dispatched calls matching `tool` so far
+        self.fired = False
+
+    @property
+    def executes_real_call(self) -> bool:
+        """truncate / wrong_result run the real tool; error / timeout skip it."""
+
+        return self.mode in ("truncate", "wrong_result")
+
+    def describe(self) -> dict[str, Any]:
+        """JSON-safe marker recorded in turn entries / the trajectory."""
+
+        return {
+            "mode": self.mode,
+            "tool": self.tool,
+            "call_index": self.call_index,
+            "executed_real_call": self.executes_real_call,
+        }
+
+
+class FaultInjector:
+    """Deterministic per-episode scheduler over a task's `sandbox.faults` list.
+
+    Each fault entry keeps its own counter of dispatched calls matching its
+    tool filter (`"*"` matches everything). When the counter reaches
+    `call_index` the fault fires — once. At most one fault applies per call
+    (first entry in declaration order wins); a later-listed fault aimed at
+    the same index fires on the next matching call instead.
+
+    Malformed entries (unknown mode, non-positive call_index) are skipped
+    with a warning rather than failing the cell — `sandbox` is free-form
+    jsonb and a typo'd schedule should degrade to a clean episode, not an
+    errored one.
+    """
+
+    def __init__(self, faults: list[Any]) -> None:
+        self._faults: list[_ScheduledFault] = []
+        for raw in faults:
+            if not isinstance(raw, dict):
+                log.warning("fault_entry_skipped_not_dict", entry=str(raw)[:200])
+                continue
+            mode = raw.get("mode")
+            try:
+                call_index = int(raw.get("call_index", 0))
+            except (TypeError, ValueError):
+                call_index = 0
+            if mode not in _FAULT_MODES or call_index < 1:
+                log.warning(
+                    "fault_entry_skipped_invalid",
+                    mode=str(mode),
+                    call_index=raw.get("call_index"),
+                )
+                continue
+            payload = raw.get("payload")
+            self._faults.append(
+                _ScheduledFault(
+                    call_index=call_index,
+                    tool=str(raw.get("tool", "*") or "*"),
+                    mode=str(mode),
+                    payload=payload if isinstance(payload, dict) else {},
+                )
+            )
+
+    def match(self, tool_name: str) -> _ScheduledFault | None:
+        """Register one dispatched call of `tool_name`; return the fault to apply.
+
+        Counts the call against every entry whose filter matches, then
+        returns the first not-yet-fired entry whose threshold is reached
+        (marking it fired). Returns None when no fault applies.
+        """
+
+        chosen: _ScheduledFault | None = None
+        for fault in self._faults:
+            if fault.tool not in ("*", tool_name):
+                continue
+            fault.seen += 1
+            if chosen is None and not fault.fired and fault.seen >= fault.call_index:
+                fault.fired = True
+                chosen = fault
+        return chosen
+
+    def fired_summary(self) -> list[dict[str, Any]]:
+        """Markers for every fault that fired (for the trajectory record)."""
+
+        return [f.describe() for f in self._faults if f.fired]
+
+
+def _fault_skip_result(fault: _ScheduledFault) -> str:
+    """Model-visible result for the skip-dispatch modes (error / timeout)."""
+
+    if fault.mode == "timeout":
+        message = fault.payload.get("message")
+        return message if isinstance(message, str) else _FAULT_TIMEOUT_MESSAGE
+    message = fault.payload.get("message")
+    return message if isinstance(message, str) else _FAULT_ERROR_MESSAGE
+
+
+def _apply_truncate_fault(result: Any, payload: dict[str, Any]) -> str:
+    """Keep only the first `payload.keep_chars` of the serialised result."""
+
+    try:
+        keep = int(payload.get("keep_chars", _FAULT_TRUNCATE_KEEP_CHARS))
+    except (TypeError, ValueError):
+        keep = _FAULT_TRUNCATE_KEEP_CHARS
+    keep = max(keep, 1)
+    text = result if isinstance(result, str) else json.dumps(result, default=str)
+    return text[:keep] + "...[TRUNCATED]"
+
+
 def _execute_tool_calls(
     *,
     tool_calls: list[dict[str, Any]],
     pool: ToolPool | None,
     tool_modules: dict[str, str],
     remaining_budget: int,
+    injector: FaultInjector | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int]:
     """Run each requested tool call; return (new chat msgs, turn entries, calls done).
 
     `tool_modules` maps tool name → dotted MCP server module. `remaining_budget`
     is decremented for every call we actually dispatch (failed or successful);
     if we hit zero mid-batch we return early so the caller can break the loop.
+
+    When `injector` is set, each dispatchable call is offered to the fault
+    schedule first: `error`/`timeout` faults replace the result WITHOUT
+    executing the tool; `truncate`/`wrong_result` execute the real call and
+    rewrite what the model sees. Faulted calls still consume budget — the
+    agent spent the call, same as a genuinely failed one.
     """
 
     new_messages: list[dict[str, Any]] = []
@@ -298,13 +487,34 @@ def _execute_tool_calls(
         name = fn.get("name") or ""
         call_id = call.get("id", "")
         t0 = time.monotonic()
+        fault: _ScheduledFault | None = None
         try:
             args = _coerce_arguments(fn.get("arguments", "{}"))
             if name not in tool_modules:
                 raise ValueError(f"unknown tool {name!r}")
             if pool is None:
                 raise RuntimeError("tool call received but no pool configured (sandbox missing)")
-            result = pool.invoke(tool_modules[name], name, args)
+            # Fault schedule: only calls that would actually dispatch count
+            # towards `call_index` (unknown tools / missing pool don't).
+            if injector is not None:
+                fault = injector.match(name)
+            result: Any
+            if fault is not None and not fault.executes_real_call:
+                # error / timeout: the call DOES NOT execute.
+                result = _fault_skip_result(fault)
+            else:
+                result = pool.invoke(tool_modules[name], name, args)
+                if fault is not None and fault.mode == "truncate":
+                    result = _apply_truncate_fault(result, fault.payload)
+                elif fault is not None and fault.mode == "wrong_result":
+                    result = fault.payload.get("replacement")
+            if fault is not None:
+                log.info(
+                    "fault_injected",
+                    tool=name,
+                    mode=fault.mode,
+                    call_index=fault.call_index,
+                )
             error: str | None = None
         except Exception as exc:
             raw_args = fn.get("arguments")
@@ -327,15 +537,16 @@ def _execute_tool_calls(
                 "content": content,
             }
         )
-        entries.append(
-            {
-                "tool": name,
-                "args": _truncate(args),
-                "result": _truncate(result),
-                "latency_ms": latency_ms,
-                "error": error,
-            }
-        )
+        entry: dict[str, Any] = {
+            "tool": name,
+            "args": _truncate(args),
+            "result": _truncate(result),
+            "latency_ms": latency_ms,
+            "error": error,
+        }
+        if fault is not None:
+            entry["fault_injected"] = fault.describe()
+        entries.append(entry)
     return new_messages, entries, calls_done
 
 
@@ -351,6 +562,7 @@ def model_with_tools(
     temperature: float = 0.0,
     max_tokens: int = 1024,
     extra: dict[str, Any] | None = None,
+    scaffold: str = "react",
 ) -> Solver:
     """Solver: drives `model` through up to `max_turns` of tool-using chat.
 
@@ -364,6 +576,11 @@ def model_with_tools(
             attached regardless of the task's `tools` list.
         tool_names: optional restriction over `task.tools`.
         temperature, max_tokens: forwarded to the proxy.
+        scaffold: `"plan_execute"` prepends a tool-less planner call whose
+            plan is injected into the executor's system prompt (see the
+            EQUAL-BUDGET GUARANTEE comment in solve()). Any other value
+            (`"react"`, legacy `"single_turn"`) runs the plain react loop
+            unchanged — react remains the default behaviour.
 
     Returns:
         An Inspect Solver that mutates `state.messages` and stashes a per-
@@ -374,6 +591,11 @@ def model_with_tools(
         raise ValueError("max_turns must be >= 1")
     if tool_budget < 0:
         raise ValueError("tool_budget must be >= 0")
+    if scaffold == "plan_execute" and max_turns < 2:
+        # The planner consumes one of the max_turns assistant-call slots;
+        # with max_turns=1 the executor would get zero turns. Fail loudly
+        # at build time rather than producing an un-comparable cell.
+        raise ValueError("plan_execute scaffold requires max_turns >= 2")
 
     settings = get_settings()
     litellm_key = _read_litellm_key()
@@ -438,6 +660,16 @@ def model_with_tools(
                 )
                 model_pool = None
 
+        # Fault injection: the task's free-form `sandbox` dict may carry a
+        # `faults` schedule (see FaultInjector). One injector per episode —
+        # call counters span all turns.
+        injector: FaultInjector | None = None
+        sandbox_cfg = getattr(task_meta, "sandbox", None) if task_meta is not None else None
+        if isinstance(sandbox_cfg, dict):
+            raw_faults = sandbox_cfg.get("faults")
+            if isinstance(raw_faults, list) and raw_faults:
+                injector = FaultInjector(raw_faults)
+
         pool: ToolPool | None = None
         tools: list[Tool] = []
         if sandbox is not None and task_meta is not None and tool_budget > 0:
@@ -453,6 +685,7 @@ def model_with_tools(
                     actual_turns=0,
                     tool_call_count=0,
                     total_latency_ms=int((time.monotonic() - run_started) * 1000),
+                    scaffold=scaffold,
                 )
                 pool.stop()
                 return state
@@ -474,9 +707,120 @@ def model_with_tools(
         tool_call_count = 0
         terminated_reason = "model_finished"
         error: str | None = None
+        # First loop index for the executor. Stays 0 for react; the
+        # plan_execute planner phase below claims index 0 and bumps this
+        # to 1 (or to max_turns on planner failure, skipping the loop).
+        executor_start_turn = 0
 
         try:
-            for turn_idx in range(max_turns):
+            if scaffold == "plan_execute":
+                # ---- Phase A: planner (one tool-less call) -------------
+                #
+                # EQUAL-BUDGET GUARANTEE (the react vs plan_execute A/B is
+                # only valid because all three budget axes are identical):
+                #
+                #   1. Assistant calls: the planner call is one assistant
+                #      LLM call against the SAME model, capped at the SAME
+                #      `max_tokens`, and it CONSUMES one `max_turns` slot —
+                #      the executor loop below runs turn indices
+                #      1..max_turns-1, so the episode makes at most
+                #      `max_turns` assistant calls total. React's ceiling
+                #      is the same: max_turns calls x max_tokens each.
+                #   2. Tool calls: `tool_budget` is untouched (the planner
+                #      is offered no tools), so both scaffolds may dispatch
+                #      at most `tool_budget` tool calls.
+                #   3. Token accounting: the planner's usage is recorded in
+                #      its turn entry below; the logwriter's
+                #      `_aggregate_tokens` sums `lab_agent.turns`, so
+                #      planner tokens COUNT toward the cell's reported
+                #      tokens_in/tokens_out exactly like any other turn.
+                if model_pool is not None:
+                    with contextlib.suppress(Exception):
+                        model_pool.step_start("turn_0")
+                planner_started = time.monotonic()
+                planner_messages = [
+                    {
+                        "role": "system",
+                        "content": _build_planner_system_prompt(tool_specs),
+                    },
+                    {"role": "user", "content": _first_user_content(chat)},
+                ]
+                try:
+                    with span("planner_call", **{"lab.model": model, "lab.planner": True}):
+                        planner_resp, planner_latency_ms = call_litellm_chat(
+                            settings=settings,
+                            litellm_key=litellm_key,
+                            model=model,
+                            messages=planner_messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            tools=None,
+                            extra=extra,
+                        )
+                except Exception as exc:
+                    error = f"planner call failed: {exc}"
+                    terminated_reason = "litellm_error"
+                    log.warning("planner_call_failed", model=model, error=str(exc))
+                    turns.append(
+                        {
+                            "turn": 0,
+                            "type": "turn",
+                            "planner": True,
+                            "error": error,
+                            "latency_ms": int((time.monotonic() - planner_started) * 1000),
+                        }
+                    )
+                    # Skip the executor loop entirely (range below is empty);
+                    # the guarded for-else preserves `litellm_error`.
+                    executor_start_turn = max_turns
+                else:
+                    actual_turns += 1
+                    planner_choice = (planner_resp.get("choices") or [{}])[0]
+                    planner_msg = (planner_choice or {}).get("message") or {}
+                    plan_text = planner_msg.get("content") or ""
+                    if not plan_text.strip():
+                        plan_text = "(planner returned an empty plan)"
+                    planner_usage = planner_resp.get("usage") or {}
+                    # Turn-0-style record with the planner flag so audits
+                    # see the call inline with the executor turns. The plan
+                    # is stored truncated (_PLAN_CAP); the executor gets the
+                    # full text.
+                    turns.append(
+                        {
+                            "turn": 0,
+                            "type": "turn",
+                            "planner": True,
+                            "latency_ms": planner_latency_ms,
+                            "tokens_in": planner_usage.get("prompt_tokens"),
+                            "tokens_out": planner_usage.get("completion_tokens"),
+                            "content_preview": _truncate(plan_text, cap=512),
+                            "plan": _truncate(plan_text, cap=_PLAN_CAP),
+                            "tool_calls_requested": 0,
+                        }
+                    )
+                    # ---- Phase B setup: inject the plan into the system
+                    # prompt the executor (the unchanged react loop) sees.
+                    plan_section = (
+                        "\n\nA plan was prepared:\n"
+                        f"{plan_text}\n"
+                        "Follow it, adapting as results require."
+                    )
+                    if chat and chat[0].get("role") == "system":
+                        chat[0]["content"] = str(chat[0].get("content") or "") + plan_section
+                    else:
+                        chat.insert(0, {"role": "system", "content": plan_section.lstrip()})
+                    executor_start_turn = 1
+                    log.info(
+                        "planner_call_done",
+                        model=model,
+                        latency_ms=planner_latency_ms,
+                        plan_chars=len(plan_text),
+                    )
+                if model_pool is not None:
+                    with contextlib.suppress(Exception):
+                        model_pool.step_complete("turn_0")
+
+            for turn_idx in range(executor_start_turn, max_turns):
                 turn_started = time.monotonic()
                 if model_pool is not None:
                     with contextlib.suppress(Exception):
@@ -587,6 +931,7 @@ def model_with_tools(
                         pool=pool,
                         tool_modules=tool_modules,
                         remaining_budget=remaining_budget,
+                        injector=injector,
                     )
                     tool_call_count += n_called
                     remaining_budget -= n_called
@@ -612,7 +957,11 @@ def model_with_tools(
                     with contextlib.suppress(Exception):
                         model_pool.step_complete(f"turn_{turn_idx}")
             else:
-                terminated_reason = "max_turns_reached"
+                # Guarded: a planner failure empties the loop range, and the
+                # for-else fires on an empty range — don't let it overwrite
+                # the planner's `litellm_error`.
+                if error is None:
+                    terminated_reason = "max_turns_reached"
         finally:
             # Snapshot any workspace files referenced by the task's
             # success_predicate BEFORE we tear down the pool / sandbox.
@@ -641,6 +990,8 @@ def model_with_tools(
             total_latency_ms=int((time.monotonic() - run_started) * 1000),
             terminated_reason=terminated_reason,
             workspace_snapshot=workspace_snapshot,
+            faults_fired=injector.fired_summary() if injector is not None else None,
+            scaffold=scaffold,
         )
         state.completed = True
         return state
@@ -733,6 +1084,8 @@ def _stash_trajectory(
     total_latency_ms: int,
     terminated_reason: str = "unknown",
     workspace_snapshot: dict[str, bytes | None] | None = None,
+    faults_fired: list[dict[str, Any]] | None = None,
+    scaffold: str = "react",
 ) -> None:
     """Stash the agent trajectory on `state.metadata` for the logwriter."""
 
@@ -752,6 +1105,10 @@ def _stash_trajectory(
         "terminated_reason": terminated_reason,
         "workspace_snapshot": workspace_snapshot or {},
         "prompt_id_used": prompt_id_used,
+        "faults_fired": faults_fired or [],
+        # Which scaffold actually ran ("react" / "plan_execute") — lets
+        # post-hoc audits verify the A/B arms without re-reading configs.
+        "scaffold": scaffold,
     }
 
 
@@ -821,4 +1178,4 @@ def _snapshot_predicate_files(task_meta: Any, sandbox: Sandbox | None) -> dict[s
     return snapshot
 
 
-__all__ = ["model_with_tools"]
+__all__ = ["FaultInjector", "model_with_tools"]
