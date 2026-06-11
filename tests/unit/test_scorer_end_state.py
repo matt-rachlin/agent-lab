@@ -11,7 +11,11 @@ from inspect_ai.scorer import NOANSWER, Target
 from inspect_ai.solver import TaskState
 
 from lab.inspect_bridge import scorer as scorer_mod
-from lab.inspect_bridge.scorer import end_state
+from lab.inspect_bridge.scorer import (
+    _eval_all_of_predicate,
+    _eval_single_predicate,
+    end_state,
+)
 from lab.tasks.registry import Task
 
 
@@ -406,3 +410,66 @@ def test_all_of_rejects_nested_composites() -> None:
     s = _run(end_state(), state)
     assert s.value == 0.0
     assert "nested all_of" in (s.explanation or "")
+
+
+# ---------------------------------------------------------------------------
+# `all_of` dispatch through `_eval_single_predicate`.
+#
+# The `end_state` scorer routes top-level `all_of` predicates explicitly
+# (covered above); commit 600b7a8 additionally wired `all_of` into the
+# `_eval_single_predicate` dispatch so any caller that goes through the
+# generic single-predicate path handles composites too. These tests pin
+# that dispatch directly with pure workspace sub-predicates (no DB).
+# ---------------------------------------------------------------------------
+
+
+def test_single_predicate_dispatch_routes_all_of_pass() -> None:
+    predicate: dict[str, Any] = {
+        "type": "all_of",
+        "predicates": [
+            {"type": "workspace_file_exists", "path": "a.txt"},
+            {"type": "workspace_file_contains", "path": "b.txt", "substring": "ok"},
+        ],
+    }
+    snapshot: dict[str, Any] = {"a.txt": b"x", "b.txt": b"all ok here"}
+    value, explanation = _eval_single_predicate(predicate, snapshot)
+    assert value == 1.0
+    assert "all_of PASS" in explanation
+    assert "2 sub-predicates" in explanation
+    # The dispatch must agree with calling the composite evaluator directly.
+    assert (value, explanation) == _eval_all_of_predicate(predicate, snapshot)
+
+
+def test_single_predicate_dispatch_all_of_one_sub_fails() -> None:
+    predicate: dict[str, Any] = {
+        "type": "all_of",
+        "predicates": [
+            {"type": "workspace_file_exists", "path": "a.txt"},
+            {"type": "workspace_file_contains", "path": "b.txt", "substring": "ok"},
+        ],
+    }
+    # b.txt missing → second sub-predicate fails → composite fails.
+    value, explanation = _eval_single_predicate(predicate, {"a.txt": b"x"})
+    assert value == 0.0
+    assert "all_of FAIL" in explanation
+    # The failing sub-predicate is named with its index and type.
+    assert "[1 workspace_file_contains]" in explanation
+
+
+def test_single_predicate_dispatch_all_of_empty_list_fails() -> None:
+    value, explanation = _eval_single_predicate({"type": "all_of", "predicates": []}, {})
+    assert value == 0.0
+    assert "non-empty 'predicates' list" in explanation
+
+
+def test_single_predicate_dispatch_all_of_unknown_sub_type_fails_composite() -> None:
+    """A NOANSWER-ish unknown sub-type counts as a *fail* at the composite
+    level (the task author opted into multi-check; a typo'd sub-predicate
+    must not read as 'not applicable')."""
+    predicate: dict[str, Any] = {
+        "type": "all_of",
+        "predicates": [{"type": "magic_8_ball"}],
+    }
+    value, explanation = _eval_single_predicate(predicate, {})
+    assert value == 0.0
+    assert "all_of FAIL" in explanation
