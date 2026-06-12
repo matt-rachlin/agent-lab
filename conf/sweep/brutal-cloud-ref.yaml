@@ -1,0 +1,20 @@
+# Frontier reference on the FIXED brutal suite (post fixture-env patch).
+# Validates the 4 repaired longhaul tasks and gives EXP-010/BRUTAL-BENCH-002
+# a ceiling reference the defect audit noted was missing. Cloud-only.
+experiment:
+  slug: BRUTAL-CLOUD-REF-001
+  title: "Brutal suite frontier reference: glm-5.1-cloud (post-fix validation)"
+  hypothesis: "Frontier reference pass; expectation: repaired longhaul tasks now solvable (>=3/4 pass); overall >= 0.85."
+tasks:
+  suite: pbs-agent-brutal-v0.1
+models:
+  - glm-5.1-cloud
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800
