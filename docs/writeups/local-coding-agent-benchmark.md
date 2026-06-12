@@ -2,6 +2,10 @@
 
 *Jun 2026 — single-machine local-only benchmark, no API calls*
 
+*Updated 2026-06-12: added an 8-seed replication of the hard suite (it
+moved one model's number by 6.6 points — see "Eight seeds later") and a
+frontier-model comparison on the same tasks.*
+
 ---
 
 I've been building a local agentic eval harness on my homelab server's RTX 3080 Ti (12GB VRAM) and wanted to share what I found. The headline result is counterintuitive: **Gemma 4 12B and Qwen3-Coder 30B both hit 100% pass rate; Llama 3.3 70B hit 58%; Qwen2.5-Coder 32B hit 0%.** Coding benchmark leaderboard rankings don't predict this at all, and the reason is straightforward once you look at the trajectories.
@@ -97,7 +101,7 @@ The lesson I keep coming back to: **agentic capability is not a function of mode
 
 The easy suite saturated (two models at 100%), so I built a 32-task hard suite — code, data, shell, and multi-hop categories: multi-file bug hunts, ETL pipelines over multiple files, multi-hop HTTP fixture chains, log-analysis pipelines with deliberate edge cases. Every task has a machine-verified answer. I also added Devstral Small 24B, Mistral's agentic-coding model.
 
-Results (32 tasks, react scaffold, temp 0, single seed — n=32 cells per model):
+Results (32 tasks, react scaffold, temp 0, single seed — n=32 cells per model; an 8-seed replication below revises these):
 
 | Model | Hard-suite pass rate |
 |---|---|
@@ -125,6 +129,50 @@ Even with its fair shot, Devstral's 53% against Gemma 4's 94% says the rest of t
 
 ---
 
+## Eight seeds later: my single-seed numbers were off by up to 6.6 points
+
+The tables above are single-seed, and I disclosed that — but disclosure isn't the same as knowing the size of the error. So I re-ran the full hard suite at **8 seeds per cell** (32 tasks × 3 models × 8 seeds = 768 episodes, v2 prompt, temp 0) with bootstrap confidence intervals:
+
+| Model | pass@1 (8 seeds) | 95% CI | pass^8 | seed spread | single seed said |
+|---|---|---|---|---|---|
+| Gemma 4 12B | **91.4%** | [82.0, 98.8] | 87.5% | 6.2pp | 93.8 (−2.4) |
+| Qwen3-Coder-30B | 74.6% | [59.0, 87.5] | 71.9% | 3.1pp | 81.3 (**−6.6**) |
+| Devstral Small 24B | 52.0% | [35.5, 68.4] | 46.9% | **12.5pp** | 53.1 (−1.1) |
+
+(pass^8 = the probability all 8 seeds pass a task — "when it works, does it always work?")
+
+Four things the single seed couldn't see:
+
+1. **Qwen3-Coder's number was 6.6 points flattering — and not via seed noise.** Three tasks it passed in the original run went **0-for-8** in the replication; one it failed went 7-for-8. Within each run the outcomes are nearly deterministic; *between* runs of the identical config, they flip. Replication variance exceeded seed variance — a single run can't see this failure mode at all, and 8 seeds inside one run only half-see it.
+2. **My own headline contained a 1-in-8 event.** Gemma 4's pass on one code task (an LRU-cache trace) turned out to pass in exactly 1 of 8 seeds — and seed 1 was the lucky one. The lab's methodology caught its own number.
+3. **Temperature 0 is not determinism.** Devstral's pass rate swings **12.5 points across seeds** at temp 0 (GPU non-determinism compounds across a multi-step episode). The common claim that temp-0 variance is 2–6pp held for the strong models and badly understated the weak one.
+4. **The narration failures are fully deterministic.** Qwen3-Coder's four cursed code-fix tasks went 0-for-8 — every seed, every time. That gap is training, not luck.
+
+The ranking itself never flipped — Gemma 4 > Qwen3-Coder > Devstral at every individual seed — but the confidence intervals overlap, which is the honest cost of a 32-task suite. If you take one method away from this section: multi-seed isn't a luxury for agent benchmarks; single seeds silently mix capability with coin flips.
+
+---
+
+## How far is local from frontier?
+
+Same 32 tasks, same scaffold, same prompt, same seed-1 protocol — two frontier-class models through the identical harness:
+
+| Model | Hard-suite pass rate |
+|---|---|
+| GLM-5.1 (cloud) | **100%** |
+| Qwen3-Coder-480B (cloud) | 96.9% |
+| Gemma 4 12B (local, 12 GB) | 93.8% (91.4% at 8 seeds) |
+| Qwen3-Coder-30B (local) | 81.3% (74.6% at 8 seeds) |
+| Devstral Small 24B (local) | 53.1% (52.0% at 8 seeds) |
+
+Two results worth more than the table:
+
+- **A 12B model on a consumer GPU lands roughly two tasks behind a frontier model** on this suite. Local agents aren't a toy tier; on verifiable multi-step tool work, the gap is small and measurable.
+- **Within one model family, scale cured the failure mode.** Qwen3-Coder-480B doesn't just outscore its 30B sibling by ~16 points — it passes, with clean structured tool calls, *exactly the four code tasks the 30B fails by narrating*. And across all 64 frontier episodes, the trajectory scanner found **zero** of the failure modes this writeup is about: no text-emitted calls, no narration. The protocol-fidelity problems are a small-model phenomenon, not a scaffold artifact.
+
+GLM-5.1's perfect score also means this suite is now saturated at the frontier — it can rank local models but not frontier ones. (A harder tier exists; results pending.)
+
+---
+
 ## Appendix: harness details
 
 **Infrastructure:** Arch Linux, RTX 3080 Ti (12GB), ollama + llama-swap for model management, litellm proxy for a uniform OpenAI-compatible endpoint. All local, no internet calls during eval.
@@ -135,4 +183,4 @@ Even with its fair shot, Devstral's 53% against Gemma 4's 94% says the rest of t
 
 **Observability:** MLflow experiment tracking (one run per model per task per seed) with MLflow Tracing + OpenTelemetry spans (Tempo), and raw trajectory JSONL archived to S3 (MinIO). Trajectory inspection is how I found the malformed tool-call patterns — the full message sequences are queryable.
 
-**Reproducibility:** The postgres schema, MLflow instance, and harness code all live locally; nothing is behind a paid API. The only external dependency is the model weights themselves (all publicly available on Hugging Face/Ollama hub).
+**Reproducibility:** The postgres schema, MLflow instance, and harness code all live locally; nothing is behind a paid API. The only external dependency is the model weights themselves (all publicly available on Hugging Face/Ollama hub). The 8-seed analysis (per-model tables, per-task seed matrices, bootstrap CIs) is committed in the repo under `analysis/EXP-009/`, with the experiment pre-registration in `docs/exp/` and the distilled findings in `docs/findings/`.

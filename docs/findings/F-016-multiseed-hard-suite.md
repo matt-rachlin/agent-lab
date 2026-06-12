@@ -56,12 +56,17 @@ Pre-registered verdicts:
   overlap: 32 tasks cannot CI-separate a 17pp gap when per-task
   outcomes are this correlated. Direction: robust. Magnitude: soft.
 - **H2 (±5pp anchoring) REFUTED for qwen3-coder** — its single-seed
-  0.812 was 6.6pp flattering. Cause visible in the seed matrix:
-  shell-access-log-slow-error-endpoints failed *only* seed 1 (7/8),
-  while three other cells it passed at seed 1 are flakier than they
-  looked. gemma4's anchor held (−2.4pp), but its
-  code-lru-cache-trace pass was a 1-in-8 fluke that seed 1 happened
-  to catch.
+  0.812 was 6.6pp flattering, and the mechanism is CROSS-RUN, not
+  within-run: three tasks it passed in HARD-BENCH-002
+  (multi-http-catalog-pricing, multi-http-index-aggregate,
+  shell-fragment-reassembly) went **0/8** in HARD-BENCH-003, while
+  shell-access-log-slow-error-endpoints flipped 0 → 7/8. Outcomes are
+  near-deterministic within a run but flip between identical-config
+  runs — replication variance exceeds seed variance. (CORRECTED
+  2026-06-12: an earlier wording attributed this to within-run
+  flakiness; the seed matrix refutes that.) gemma4's anchor held
+  (−2.4pp), but its code-lru-cache-trace pass was a 1-in-8 fluke that
+  seed 1 happened to catch.
 - **H3 (2–6pp spread) REFUTED** — devstral's across-seed spread is
   **12.5pp** at temperature 0 (gemma4 6.2pp, qwen3 3.1pp). The
   reliability protocol's literature-derived 2–6pp band understates
