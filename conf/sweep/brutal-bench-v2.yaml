@@ -1,0 +1,24 @@
+# EXP-010 RESTART per kill criterion: BRUTAL-BENCH-001 found a fixture-env
+# defect (4 longhaul HTTP tasks fetched the live internet; adjudicated
+# 2026-06-12, suite patched + guard test added). Per the pre-registration,
+# defect => fix suite, restart experiment — not patch cells. Identical
+# matrix; slug BRUTAL-BENCH-002 supersedes -001 for all H1-H4 verdicts.
+experiment:
+  slug: BRUTAL-BENCH-002
+  title: "Brutal suite validation RESTART after fixture-env fix: gemma4 vs Qwen3-Coder-30B vs Devstral-24B"
+  hypothesis: "gemma4-12b drops to <=0.85 (headroom restored); EXP-008 ranking holds; >=22/24 tasks solvable by at least one model; devstral worst at longhaul, qwen3 below its mean on debug."
+tasks:
+  suite: pbs-agent-brutal-v0.1
+models:
+  - gemma4-12b
+  - qwen3-coder-30b
+  - devstral-24b
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800

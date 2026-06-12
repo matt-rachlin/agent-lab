@@ -29,7 +29,7 @@ tags:
 # EXP-010: BRUTAL-BENCH-001 — validation + first ranking on the brutal suite
 
 Date created: 2026-06-11
-Status: planned
+Status: RESTARTED as BRUTAL-BENCH-002 (2026-06-12) per kill criterion — fixture-env defect on 4 longhaul HTTP tasks (live-internet fetches); suite patched, guard test added; BRUTAL-BENCH-001 cells for those tasks are environment artifacts
 Pre-registered: <commit SHA filled by `lab exp register` at registration time>
 
 ## Question

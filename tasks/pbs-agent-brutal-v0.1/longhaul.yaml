@@ -1,481 +1,752 @@
 suite: pbs-agent-brutal-v0.1
 category: longhaul
-
 tasks:
-  - slug: longhaul-vendor-ledger-pagination
-    difficulty: hard
-    description: |
-      HTTP pagination chain: index -> 4 transaction pages -> per-vendor detail
-      endpoints keyed by vendor ids discovered in the pages, cross-referenced
-      against a local approval CSV. Tests that the agent keeps the full set of
-      discovered vendors and transactions across a 13-call chain.
-    input: |
-      You are auditing vendor payments.
-      Step 1: fetch http://example.com/api/ledger/index.json; it lists
-      transaction page paths (relative to http://example.com).
-      Step 2: fetch every listed page and collect all transactions (each has
-      fields vendor and cents).
-      Step 3: for each distinct vendor id seen in any transaction, fetch
-      http://example.com/api/vendors/<vendor>.json to learn its tier.
-      Step 4: read approved.csv in the workspace (header vendor,status).
-      A vendor is eligible only if its tier is exactly "gold" AND its status
-      in approved.csv is exactly "approved".
-      Step 5: write eligible_vendors.txt containing the eligible vendor ids
-      sorted ascending, one per line, followed by one final line
-      eligible_count=<number of eligible vendors>.
-      Step 6: sum cents over all transactions whose vendor is eligible and
-      write /workspace/out.txt with exactly two lines:
-      eligible_ids=<comma-joined ascending eligible vendor ids>
-      eligible_total_cents=<sum>
-    system_prompt_id: tool_use_system_v2
-    tools:
-      - name: http_fetch
-      - name: fs_read
-      - name: fs_write
-      - name: python_eval
-    max_turns: 20
-    tool_budget: 24
-    sandbox:
-      network: ["example.com"]
-      env:
-        LAB_HTTP_ALLOWLIST: "example.com"
-      workspace_files:
-        "_http_fixtures/example.com/api/ledger/index.json": |
-          {"pages": ["/api/tx/p1.json", "/api/tx/p2.json", "/api/tx/p3.json", "/api/tx/p4.json"]}
-        "_http_fixtures/example.com/api/tx/p1.json": |
-          {"transactions": [{"vendor": "v-ax", "cents": 1250}, {"vendor": "v-bk", "cents": 900}, {"vendor": "v-cn", "cents": 410}]}
-        "_http_fixtures/example.com/api/tx/p2.json": |
-          {"transactions": [{"vendor": "v-dq", "cents": 5000}, {"vendor": "v-ax", "cents": 730}]}
-        "_http_fixtures/example.com/api/tx/p3.json": |
-          {"transactions": [{"vendor": "v-cn", "cents": 615}, {"vendor": "v-er", "cents": 220}, {"vendor": "v-bk", "cents": 180}]}
-        "_http_fixtures/example.com/api/tx/p4.json": |
-          {"transactions": [{"vendor": "v-ax", "cents": 1005}, {"vendor": "v-cn", "cents": 95}]}
-        "_http_fixtures/example.com/api/vendors/v-ax.json": |
-          {"id": "v-ax", "tier": "gold"}
-        "_http_fixtures/example.com/api/vendors/v-bk.json": |
-          {"id": "v-bk", "tier": "silver"}
-        "_http_fixtures/example.com/api/vendors/v-cn.json": |
-          {"id": "v-cn", "tier": "gold"}
-        "_http_fixtures/example.com/api/vendors/v-dq.json": |
-          {"id": "v-dq", "tier": "gold"}
-        "_http_fixtures/example.com/api/vendors/v-er.json": |
-          {"id": "v-er", "tier": "bronze"}
-        "approved.csv": |
-          vendor,status
-          v-ax,approved
-          v-bk,approved
-          v-cn,approved
-          v-dq,revoked
-          v-er,approved
-    success_predicate:
-      type: all_of
-      predicates:
-        - type: workspace_file_contains
-          path: eligible_vendors.txt
-          substring: "eligible_count=2"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "eligible_ids=v-ax,v-cn"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "eligible_total_cents=4105"
+- slug: longhaul-vendor-ledger-pagination
+  difficulty: hard
+  description: 'HTTP pagination chain: index -> 4 transaction pages -> per-vendor detail
 
-  - slug: longhaul-shipment-rate-pagination
-    difficulty: hard
-    description: |
-      Second pagination chain: shipment index -> 3 pages -> route-rate detail
-      endpoints keyed by route codes found in the pages, joined with a local
-      priority manifest. Wrong joins or dropped pages give plausible wrong
-      totals.
-    input: |
-      You are costing express shipments.
-      Step 1: fetch http://example.org/api/ship/index.json; it lists shipment
-      page paths (relative to http://example.org).
-      Step 2: fetch all pages and collect every shipment (fields sid, route,
-      mass_kg).
-      Step 3: for each distinct route code seen, fetch
-      http://example.org/api/routes/<route>.json to get rate_per_kg_cents.
-      Step 4: write routes.txt with one line per distinct route in the form
-      <route>=<rate_per_kg_cents>, sorted by route code ascending, followed
-      by one final line route_count=<number of distinct routes>.
-      Step 5: read manifest.csv in the workspace (header sid,priority).
-      A shipment counts only if its priority is exactly "express".
-      Step 6: each counting shipment costs mass_kg * rate_per_kg_cents of its
-      route. Write /workspace/out.txt with exactly two lines:
-      express_count=<number of express shipments>
-      express_cost_cents=<total cost of express shipments>
-    system_prompt_id: tool_use_system_v2
-    tools:
-      - name: http_fetch
-      - name: fs_read
-      - name: fs_write
-      - name: python_eval
-    max_turns: 17
-    tool_budget: 21
-    sandbox:
-      network: ["example.org"]
-      env:
-        LAB_HTTP_ALLOWLIST: "example.org"
-      workspace_files:
-        "_http_fixtures/example.org/api/ship/index.json": |
-          {"pages": ["/api/ship/pg1.json", "/api/ship/pg2.json", "/api/ship/pg3.json"]}
-        "_http_fixtures/example.org/api/ship/pg1.json": |
-          {"shipments": [{"sid": "s101", "route": "r-7", "mass_kg": 40}, {"sid": "s102", "route": "r-2", "mass_kg": 15}, {"sid": "s103", "route": "r-7", "mass_kg": 22}]}
-        "_http_fixtures/example.org/api/ship/pg2.json": |
-          {"shipments": [{"sid": "s104", "route": "r-9", "mass_kg": 60}, {"sid": "s105", "route": "r-2", "mass_kg": 33}]}
-        "_http_fixtures/example.org/api/ship/pg3.json": |
-          {"shipments": [{"sid": "s106", "route": "r-4", "mass_kg": 18}, {"sid": "s107", "route": "r-9", "mass_kg": 12}, {"sid": "s108", "route": "r-4", "mass_kg": 25}]}
-        "_http_fixtures/example.org/api/routes/r-7.json": |
-          {"route": "r-7", "rate_per_kg_cents": 12}
-        "_http_fixtures/example.org/api/routes/r-2.json": |
-          {"route": "r-2", "rate_per_kg_cents": 30}
-        "_http_fixtures/example.org/api/routes/r-9.json": |
-          {"route": "r-9", "rate_per_kg_cents": 8}
-        "_http_fixtures/example.org/api/routes/r-4.json": |
-          {"route": "r-4", "rate_per_kg_cents": 21}
-        "manifest.csv": |
-          sid,priority
-          s101,express
-          s102,standard
-          s103,express
-          s104,express
-          s105,standard
-          s106,express
-          s107,standard
-          s108,express
-    success_predicate:
-      type: all_of
-      predicates:
-        - type: workspace_file_contains
-          path: routes.txt
-          substring: "route_count=4"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "express_count=5"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "express_cost_cents=2127"
+    endpoints keyed by vendor ids discovered in the pages, cross-referenced
 
-  - slug: longhaul-orders-etl-staged
-    difficulty: hard
-    description: |
-      Pure-local staged ETL across 6 workspace files: merge three order CSVs,
-      blacklist-filter, price-join, aggregate, and name-lookup. Named
-      intermediate artifacts stage1.csv and stage2.csv are predicate-checked,
-      forcing real staged execution.
-    input: |
-      Run a staged ETL over the local workspace files.
-      Stage 1: read orders_a.csv, orders_b.csv, orders_c.csv (each has header
-      order_id,customer_id,product_id,qty). Merge all data rows, sort them by
-      order_id ascending, and write stage1.csv containing the same header,
-      the sorted rows, and one final line stage1_checksum=<sum of all qty
-      values>.
-      Stage 2: drop rows whose customer_id appears in blacklist.txt (one id
-      per line). Join products.csv (header product_id,unit_cents) and compute
-      total_cents = qty * unit_cents for each remaining order. Write
-      stage2.csv with header order_id,total_cents, the rows sorted by
-      order_id ascending, and one final line stage2_orders=<number of data
-      rows in stage2>.
-      Stage 3: compute the grand total of total_cents over stage2 data rows,
-      and find the customer_id with the highest summed total_cents; look up
-      that customer's name in customers.csv (header customer_id,name,region).
-      Write /workspace/out.txt with exactly two lines:
-      orders_grand_cents=<grand total>
-      top_customer=<name>
-    system_prompt_id: tool_use_system_v2
-    tools:
-      - name: fs_read
-      - name: fs_write
-      - name: python_eval
-    max_turns: 16
-    tool_budget: 20
-    sandbox:
-      network: []
-      workspace_files:
-        "orders_a.csv": |
-          order_id,customer_id,product_id,qty
-          o101,c1,p1,3
-          o102,c2,p2,1
-          o103,c3,p1,5
-          o104,c1,p3,2
-          o105,c4,p2,4
-        "orders_b.csv": |
-          order_id,customer_id,product_id,qty
-          o106,c2,p3,6
-          o107,c5,p1,2
-          o108,c3,p2,3
-          o109,c4,p1,1
-        "orders_c.csv": |
-          order_id,customer_id,product_id,qty
-          o110,c5,p3,4
-          o111,c1,p2,2
-          o112,c2,p1,7
-          o113,c3,p3,1
-          o114,c4,p3,3
-        "customers.csv": |
-          customer_id,name,region
-          c1,Alder,east
-          c2,Birch,west
-          c3,Cedar,east
-          c4,Doyle,west
-          c5,Elm,north
-        "products.csv": |
-          product_id,unit_cents
-          p1,250
-          p2,130
-          p3,480
-        "blacklist.txt": |
-          c3
-          c5
-    success_predicate:
-      type: all_of
-      predicates:
-        - type: workspace_file_contains
-          path: stage1.csv
-          substring: "stage1_checksum=44"
-        - type: workspace_file_contains
-          path: stage2.csv
-          substring: "stage2_orders=9"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "orders_grand_cents=8940"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "top_customer=Birch"
+    against a local approval CSV. Tests that the agent keeps the full set of
 
-  - slug: longhaul-sensor-alerts-staged
-    difficulty: hard
-    description: |
-      Pure-local pipeline over 7 files: five daily reading files calibrated
-      via sensor metadata, zone-day averaging against per-zone thresholds,
-      then alert aggregation. Both intermediate stage files are
-      predicate-checked.
-    input: |
-      Process five days of sensor readings from the local workspace.
-      Stage 1: read readings_d1.txt through readings_d5.txt. Each line has
-      the form <sensor_id> <raw_value>; the day id is the dN part of the
-      filename (d1..d5). Read sensors.csv (header sid,zone,offset) and
-      compute calibrated = raw_value + offset for every reading. Write
-      stage1.txt with one line per reading in the form
-      <sid>,<day>,<calibrated>, sorted by day then sid ascending, followed by
-      one final line stage1_count=<total number of readings>.
-      Stage 2: for each zone and day, compute the mean calibrated value over
-      that zone's sensors for that day. Read thresholds.json (a JSON object
-      mapping zone -> threshold). A zone-day is an alert when its mean is
-      strictly greater than the zone's threshold. Write stage2.txt with one
-      line per alert in the form <zone>,<day>,<mean> (mean formatted with
-      exactly one decimal place), sorted by day then zone ascending, followed
-      by one final line stage2_alerts=<number of alerts>.
-      Stage 3: write /workspace/out.txt with exactly two lines:
-      worst_zone=<the zone with the most alerts>
-      peak_avg=<the highest zone-day mean across all zones and days,
-      formatted with exactly one decimal place>
-    system_prompt_id: tool_use_system_v2
-    tools:
-      - name: fs_read
-      - name: fs_write
-      - name: shell_exec
-      - name: python_eval
-    max_turns: 16
-    tool_budget: 20
-    sandbox:
-      network: []
-      workspace_files:
-        "readings_d1.txt": |
-          s1 20
-          s2 25
-          s3 30
-          s4 18
-        "readings_d2.txt": |
-          s1 22
-          s2 21
-          s3 35
-          s4 26
-        "readings_d3.txt": |
-          s1 30
-          s2 29
-          s3 28
-          s4 30
-        "readings_d4.txt": |
-          s1 18
-          s2 16
-          s3 40
-          s4 35
-        "readings_d5.txt": |
-          s1 26
-          s2 28
-          s3 33
-          s4 29
-        "sensors.csv": |
-          sid,zone,offset
-          s1,zoneA,2
-          s2,zoneA,-1
-          s3,zoneB,0
-          s4,zoneB,3
-        "thresholds.json": |
-          {"zoneA": 28, "zoneB": 31}
-    success_predicate:
-      type: all_of
-      predicates:
-        - type: workspace_file_contains
-          path: stage1.txt
-          substring: "stage1_count=20"
-        - type: workspace_file_contains
-          path: stage2.txt
-          substring: "stage2_alerts=4"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "worst_zone=zoneB"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "peak_avg=39.0"
+    discovered vendors and transactions across a 13-call chain.
 
-  - slug: longhaul-epoch-routed-score
-    difficulty: hard
-    description: |
-      Data-dependent routing: the epoch value fetched in step 1 decides which
-      deploy profile (blue vs green) to follow; each branch chains to its own
-      feed, segments, and local dataset. The wrong branch yields a plausible
-      but different score (263 instead of 401).
-    input: |
-      Follow the deployment routing chain on http://example.net.
-      Step 1: fetch http://example.net/api/control/status.json and note the
-      integer field epoch.
-      Step 2: if epoch is odd, fetch http://example.net/api/deploy/blue.json;
-      if epoch is even, fetch http://example.net/api/deploy/green.json. The
-      chosen profile document gives fields profile, weight, and feed (a path
-      relative to http://example.net).
-      Step 3: fetch the feed document; it gives feed_id, dataset, scale, and
-      a list of segment paths.
-      Step 4: fetch every segment document and sum their bonus values.
-      Step 5: read the local CSV file named <dataset>.csv (header value, one
-      integer per data row) and sum the values.
-      Step 6: write route_trace.txt with exactly four lines:
-      trace_epoch=<epoch>
-      trace_profile=<profile>
-      trace_feed=<feed_id>
-      trace_dataset=<dataset>
-      Step 7: compute score = (csv value sum) * scale * weight + (sum of
-      segment bonuses) and write /workspace/out.txt with exactly one line:
-      routed_score=<score>
-    system_prompt_id: tool_use_system_v2
-    tools:
-      - name: http_fetch
-      - name: fs_read
-      - name: fs_write
-    max_turns: 16
-    tool_budget: 20
-    sandbox:
-      network: ["example.net"]
-      env:
-        LAB_HTTP_ALLOWLIST: "example.net"
-      workspace_files:
-        "_http_fixtures/example.net/api/control/status.json": |
-          {"service": "router", "epoch": 7}
-        "_http_fixtures/example.net/api/deploy/blue.json": |
-          {"profile": "blue", "weight": 4, "feed": "/api/feeds/f17.json"}
-        "_http_fixtures/example.net/api/deploy/green.json": |
-          {"profile": "green", "weight": 5, "feed": "/api/feeds/f22.json"}
-        "_http_fixtures/example.net/api/feeds/f17.json": |
-          {"feed_id": "f17", "dataset": "ds_north", "scale": 3, "segments": ["/api/seg/s17a.json", "/api/seg/s17b.json"]}
-        "_http_fixtures/example.net/api/feeds/f22.json": |
-          {"feed_id": "f22", "dataset": "ds_south", "scale": 2, "segments": ["/api/seg/s22a.json", "/api/seg/s22b.json"]}
-        "_http_fixtures/example.net/api/seg/s17a.json": |
-          {"segment": "s17a", "bonus": 11}
-        "_http_fixtures/example.net/api/seg/s17b.json": |
-          {"segment": "s17b", "bonus": 6}
-        "_http_fixtures/example.net/api/seg/s22a.json": |
-          {"segment": "s22a", "bonus": 9}
-        "_http_fixtures/example.net/api/seg/s22b.json": |
-          {"segment": "s22b", "bonus": 14}
-        "ds_north.csv": |
-          value
-          5
-          8
-          12
-          7
-        "ds_south.csv": |
-          value
-          9
-          11
-          4
-    success_predicate:
-      type: all_of
-      predicates:
-        - type: workspace_file_contains
-          path: route_trace.txt
-          substring: "trace_profile=blue"
-        - type: workspace_file_contains
-          path: route_trace.txt
-          substring: "trace_feed=f17"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "routed_score=401"
+    '
+  input: 'You are auditing vendor payments.
 
-  - slug: longhaul-fx-invoice-rounding
-    difficulty: hard
-    description: |
-      HTTP + local + computation with a stage-specific rounding rule: FX
-      rates fetched per currency, local invoices converted with exact decimal
-      math, and half-up rounding to 2 decimals applied once AFTER summing.
-      Per-item rounding yields 114.36 instead of the correct 114.35.
-    input: |
-      Convert invoices to USD with an exact rounding rule.
-      Step 1: fetch http://example.com/api/fx/index.json to get the list of
-      currencies.
-      Step 2: fetch http://example.com/api/fx/<CUR>.json for each currency to
-      get its usd_per_unit rate. Write stage_rates.txt with one line per
-      currency in index order in the form <CUR>=<usd_per_unit>, followed by
-      one final line fx_rates=<number of currencies>.
-      Step 3: read invoices.csv (header inv_id,currency,amount). Convert each
-      invoice with exact decimal arithmetic: usd = amount * usd_per_unit. Do
-      NOT round per invoice. Write converted.txt with one line per invoice in
-      file order in the form <inv_id>=<exact unrounded usd value>, followed
-      by one final line invoice_lines=<number of invoices>.
-      Step 4: sum all exact unrounded usd values, and only then round that
-      single sum to exactly 2 decimal places using half-up rounding (a third
-      decimal of 5 rounds away from zero). Write /workspace/out.txt with
-      exactly one line:
-      grand_usd=<rounded sum with exactly 2 decimals>
-    system_prompt_id: tool_use_system_v2
-    tools:
-      - name: http_fetch
-      - name: fs_read
-      - name: fs_write
-      - name: python_eval
-    max_turns: 16
-    tool_budget: 20
-    sandbox:
-      network: ["example.com"]
-      env:
-        LAB_HTTP_ALLOWLIST: "example.com"
-      workspace_files:
-        "_http_fixtures/example.com/api/fx/index.json": |
-          {"currencies": ["EUR", "GBP", "JPY"]}
-        "_http_fixtures/example.com/api/fx/EUR.json": |
-          {"currency": "EUR", "usd_per_unit": "1.085"}
-        "_http_fixtures/example.com/api/fx/GBP.json": |
-          {"currency": "GBP", "usd_per_unit": "1.265"}
-        "_http_fixtures/example.com/api/fx/JPY.json": |
-          {"currency": "JPY", "usd_per_unit": "0.0068"}
-        "invoices.csv": |
-          inv_id,currency,amount
-          i01,EUR,10.90
-          i02,EUR,11.50
-          i03,EUR,10.10
-          i04,GBP,10.10
-          i05,GBP,12.10
-          i06,JPY,5000
-          i07,JPY,2500
-    success_predicate:
-      type: all_of
-      predicates:
-        - type: workspace_file_contains
-          path: stage_rates.txt
-          substring: "fx_rates=3"
-        - type: workspace_file_contains
-          path: converted.txt
-          substring: "invoice_lines=7"
-        - type: workspace_file_contains
-          path: out.txt
-          substring: "grand_usd=114.35"
+    Step 1: fetch http://example.com/api/ledger/index.json; it lists
+
+    transaction page paths (relative to http://example.com).
+
+    Step 2: fetch every listed page and collect all transactions (each has
+
+    fields vendor and cents).
+
+    Step 3: for each distinct vendor id seen in any transaction, fetch
+
+    http://example.com/api/vendors/<vendor>.json to learn its tier.
+
+    Step 4: read approved.csv in the workspace (header vendor,status).
+
+    A vendor is eligible only if its tier is exactly "gold" AND its status
+
+    in approved.csv is exactly "approved".
+
+    Step 5: write eligible_vendors.txt containing the eligible vendor ids
+
+    sorted ascending, one per line, followed by one final line
+
+    eligible_count=<number of eligible vendors>.
+
+    Step 6: sum cents over all transactions whose vendor is eligible and
+
+    write /workspace/out.txt with exactly two lines:
+
+    eligible_ids=<comma-joined ascending eligible vendor ids>
+
+    eligible_total_cents=<sum>
+
+    '
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: http_fetch
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  max_turns: 20
+  tool_budget: 24
+  sandbox:
+    network:
+    - example.com
+    env:
+      LAB_HTTP_ALLOWLIST: example.com
+      LAB_HTTP_FIXTURE_DIR: /workspace/_http_fixtures
+    workspace_files:
+      _http_fixtures/example.com/api/ledger/index.json: '{"pages": ["/api/tx/p1.json", "/api/tx/p2.json",
+        "/api/tx/p3.json", "/api/tx/p4.json"]}
+
+        '
+      _http_fixtures/example.com/api/tx/p1.json: '{"transactions": [{"vendor": "v-ax", "cents":
+        1250}, {"vendor": "v-bk", "cents": 900}, {"vendor": "v-cn", "cents": 410}]}
+
+        '
+      _http_fixtures/example.com/api/tx/p2.json: '{"transactions": [{"vendor": "v-dq", "cents":
+        5000}, {"vendor": "v-ax", "cents": 730}]}
+
+        '
+      _http_fixtures/example.com/api/tx/p3.json: '{"transactions": [{"vendor": "v-cn", "cents":
+        615}, {"vendor": "v-er", "cents": 220}, {"vendor": "v-bk", "cents": 180}]}
+
+        '
+      _http_fixtures/example.com/api/tx/p4.json: '{"transactions": [{"vendor": "v-ax", "cents":
+        1005}, {"vendor": "v-cn", "cents": 95}]}
+
+        '
+      _http_fixtures/example.com/api/vendors/v-ax.json: '{"id": "v-ax", "tier": "gold"}
+
+        '
+      _http_fixtures/example.com/api/vendors/v-bk.json: '{"id": "v-bk", "tier": "silver"}
+
+        '
+      _http_fixtures/example.com/api/vendors/v-cn.json: '{"id": "v-cn", "tier": "gold"}
+
+        '
+      _http_fixtures/example.com/api/vendors/v-dq.json: '{"id": "v-dq", "tier": "gold"}
+
+        '
+      _http_fixtures/example.com/api/vendors/v-er.json: '{"id": "v-er", "tier": "bronze"}
+
+        '
+      approved.csv: 'vendor,status
+
+        v-ax,approved
+
+        v-bk,approved
+
+        v-cn,approved
+
+        v-dq,revoked
+
+        v-er,approved
+
+        '
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: eligible_vendors.txt
+      substring: eligible_count=2
+    - type: workspace_file_contains
+      path: out.txt
+      substring: eligible_ids=v-ax,v-cn
+    - type: workspace_file_contains
+      path: out.txt
+      substring: eligible_total_cents=4105
+- slug: longhaul-shipment-rate-pagination
+  difficulty: hard
+  description: 'Second pagination chain: shipment index -> 3 pages -> route-rate detail
+
+    endpoints keyed by route codes found in the pages, joined with a local
+
+    priority manifest. Wrong joins or dropped pages give plausible wrong
+
+    totals.
+
+    '
+  input: 'You are costing express shipments.
+
+    Step 1: fetch http://example.org/api/ship/index.json; it lists shipment
+
+    page paths (relative to http://example.org).
+
+    Step 2: fetch all pages and collect every shipment (fields sid, route,
+
+    mass_kg).
+
+    Step 3: for each distinct route code seen, fetch
+
+    http://example.org/api/routes/<route>.json to get rate_per_kg_cents.
+
+    Step 4: write routes.txt with one line per distinct route in the form
+
+    <route>=<rate_per_kg_cents>, sorted by route code ascending, followed
+
+    by one final line route_count=<number of distinct routes>.
+
+    Step 5: read manifest.csv in the workspace (header sid,priority).
+
+    A shipment counts only if its priority is exactly "express".
+
+    Step 6: each counting shipment costs mass_kg * rate_per_kg_cents of its
+
+    route. Write /workspace/out.txt with exactly two lines:
+
+    express_count=<number of express shipments>
+
+    express_cost_cents=<total cost of express shipments>
+
+    '
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: http_fetch
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  max_turns: 17
+  tool_budget: 21
+  sandbox:
+    network:
+    - example.org
+    env:
+      LAB_HTTP_ALLOWLIST: example.org
+      LAB_HTTP_FIXTURE_DIR: /workspace/_http_fixtures
+    workspace_files:
+      _http_fixtures/example.org/api/ship/index.json: '{"pages": ["/api/ship/pg1.json", "/api/ship/pg2.json",
+        "/api/ship/pg3.json"]}
+
+        '
+      _http_fixtures/example.org/api/ship/pg1.json: '{"shipments": [{"sid": "s101", "route":
+        "r-7", "mass_kg": 40}, {"sid": "s102", "route": "r-2", "mass_kg": 15}, {"sid": "s103",
+        "route": "r-7", "mass_kg": 22}]}
+
+        '
+      _http_fixtures/example.org/api/ship/pg2.json: '{"shipments": [{"sid": "s104", "route":
+        "r-9", "mass_kg": 60}, {"sid": "s105", "route": "r-2", "mass_kg": 33}]}
+
+        '
+      _http_fixtures/example.org/api/ship/pg3.json: '{"shipments": [{"sid": "s106", "route":
+        "r-4", "mass_kg": 18}, {"sid": "s107", "route": "r-9", "mass_kg": 12}, {"sid": "s108",
+        "route": "r-4", "mass_kg": 25}]}
+
+        '
+      _http_fixtures/example.org/api/routes/r-7.json: '{"route": "r-7", "rate_per_kg_cents":
+        12}
+
+        '
+      _http_fixtures/example.org/api/routes/r-2.json: '{"route": "r-2", "rate_per_kg_cents":
+        30}
+
+        '
+      _http_fixtures/example.org/api/routes/r-9.json: '{"route": "r-9", "rate_per_kg_cents":
+        8}
+
+        '
+      _http_fixtures/example.org/api/routes/r-4.json: '{"route": "r-4", "rate_per_kg_cents":
+        21}
+
+        '
+      manifest.csv: 'sid,priority
+
+        s101,express
+
+        s102,standard
+
+        s103,express
+
+        s104,express
+
+        s105,standard
+
+        s106,express
+
+        s107,standard
+
+        s108,express
+
+        '
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: routes.txt
+      substring: route_count=4
+    - type: workspace_file_contains
+      path: out.txt
+      substring: express_count=5
+    - type: workspace_file_contains
+      path: out.txt
+      substring: express_cost_cents=2127
+- slug: longhaul-orders-etl-staged
+  difficulty: hard
+  description: 'Pure-local staged ETL across 6 workspace files: merge three order CSVs,
+
+    blacklist-filter, price-join, aggregate, and name-lookup. Named
+
+    intermediate artifacts stage1.csv and stage2.csv are predicate-checked,
+
+    forcing real staged execution.
+
+    '
+  input: 'Run a staged ETL over the local workspace files.
+
+    Stage 1: read orders_a.csv, orders_b.csv, orders_c.csv (each has header
+
+    order_id,customer_id,product_id,qty). Merge all data rows, sort them by
+
+    order_id ascending, and write stage1.csv containing the same header,
+
+    the sorted rows, and one final line stage1_checksum=<sum of all qty
+
+    values>.
+
+    Stage 2: drop rows whose customer_id appears in blacklist.txt (one id
+
+    per line). Join products.csv (header product_id,unit_cents) and compute
+
+    total_cents = qty * unit_cents for each remaining order. Write
+
+    stage2.csv with header order_id,total_cents, the rows sorted by
+
+    order_id ascending, and one final line stage2_orders=<number of data
+
+    rows in stage2>.
+
+    Stage 3: compute the grand total of total_cents over stage2 data rows,
+
+    and find the customer_id with the highest summed total_cents; look up
+
+    that customer''s name in customers.csv (header customer_id,name,region).
+
+    Write /workspace/out.txt with exactly two lines:
+
+    orders_grand_cents=<grand total>
+
+    top_customer=<name>
+
+    '
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  max_turns: 16
+  tool_budget: 20
+  sandbox:
+    network: []
+    workspace_files:
+      orders_a.csv: 'order_id,customer_id,product_id,qty
+
+        o101,c1,p1,3
+
+        o102,c2,p2,1
+
+        o103,c3,p1,5
+
+        o104,c1,p3,2
+
+        o105,c4,p2,4
+
+        '
+      orders_b.csv: 'order_id,customer_id,product_id,qty
+
+        o106,c2,p3,6
+
+        o107,c5,p1,2
+
+        o108,c3,p2,3
+
+        o109,c4,p1,1
+
+        '
+      orders_c.csv: 'order_id,customer_id,product_id,qty
+
+        o110,c5,p3,4
+
+        o111,c1,p2,2
+
+        o112,c2,p1,7
+
+        o113,c3,p3,1
+
+        o114,c4,p3,3
+
+        '
+      customers.csv: 'customer_id,name,region
+
+        c1,Alder,east
+
+        c2,Birch,west
+
+        c3,Cedar,east
+
+        c4,Doyle,west
+
+        c5,Elm,north
+
+        '
+      products.csv: 'product_id,unit_cents
+
+        p1,250
+
+        p2,130
+
+        p3,480
+
+        '
+      blacklist.txt: 'c3
+
+        c5
+
+        '
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: stage1.csv
+      substring: stage1_checksum=44
+    - type: workspace_file_contains
+      path: stage2.csv
+      substring: stage2_orders=9
+    - type: workspace_file_contains
+      path: out.txt
+      substring: orders_grand_cents=8940
+    - type: workspace_file_contains
+      path: out.txt
+      substring: top_customer=Birch
+- slug: longhaul-sensor-alerts-staged
+  difficulty: hard
+  description: 'Pure-local pipeline over 7 files: five daily reading files calibrated
+
+    via sensor metadata, zone-day averaging against per-zone thresholds,
+
+    then alert aggregation. Both intermediate stage files are
+
+    predicate-checked.
+
+    '
+  input: 'Process five days of sensor readings from the local workspace.
+
+    Stage 1: read readings_d1.txt through readings_d5.txt. Each line has
+
+    the form <sensor_id> <raw_value>; the day id is the dN part of the
+
+    filename (d1..d5). Read sensors.csv (header sid,zone,offset) and
+
+    compute calibrated = raw_value + offset for every reading. Write
+
+    stage1.txt with one line per reading in the form
+
+    <sid>,<day>,<calibrated>, sorted by day then sid ascending, followed by
+
+    one final line stage1_count=<total number of readings>.
+
+    Stage 2: for each zone and day, compute the mean calibrated value over
+
+    that zone''s sensors for that day. Read thresholds.json (a JSON object
+
+    mapping zone -> threshold). A zone-day is an alert when its mean is
+
+    strictly greater than the zone''s threshold. Write stage2.txt with one
+
+    line per alert in the form <zone>,<day>,<mean> (mean formatted with
+
+    exactly one decimal place), sorted by day then zone ascending, followed
+
+    by one final line stage2_alerts=<number of alerts>.
+
+    Stage 3: write /workspace/out.txt with exactly two lines:
+
+    worst_zone=<the zone with the most alerts>
+
+    peak_avg=<the highest zone-day mean across all zones and days,
+
+    formatted with exactly one decimal place>
+
+    '
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: fs_read
+  - name: fs_write
+  - name: shell_exec
+  - name: python_eval
+  max_turns: 16
+  tool_budget: 20
+  sandbox:
+    network: []
+    workspace_files:
+      readings_d1.txt: 's1 20
+
+        s2 25
+
+        s3 30
+
+        s4 18
+
+        '
+      readings_d2.txt: 's1 22
+
+        s2 21
+
+        s3 35
+
+        s4 26
+
+        '
+      readings_d3.txt: 's1 30
+
+        s2 29
+
+        s3 28
+
+        s4 30
+
+        '
+      readings_d4.txt: 's1 18
+
+        s2 16
+
+        s3 40
+
+        s4 35
+
+        '
+      readings_d5.txt: 's1 26
+
+        s2 28
+
+        s3 33
+
+        s4 29
+
+        '
+      sensors.csv: 'sid,zone,offset
+
+        s1,zoneA,2
+
+        s2,zoneA,-1
+
+        s3,zoneB,0
+
+        s4,zoneB,3
+
+        '
+      thresholds.json: '{"zoneA": 28, "zoneB": 31}
+
+        '
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: stage1.txt
+      substring: stage1_count=20
+    - type: workspace_file_contains
+      path: stage2.txt
+      substring: stage2_alerts=4
+    - type: workspace_file_contains
+      path: out.txt
+      substring: worst_zone=zoneB
+    - type: workspace_file_contains
+      path: out.txt
+      substring: peak_avg=39.0
+- slug: longhaul-epoch-routed-score
+  difficulty: hard
+  description: 'Data-dependent routing: the epoch value fetched in step 1 decides which
+
+    deploy profile (blue vs green) to follow; each branch chains to its own
+
+    feed, segments, and local dataset. The wrong branch yields a plausible
+
+    but different score (263 instead of 401).
+
+    '
+  input: 'Follow the deployment routing chain on http://example.net.
+
+    Step 1: fetch http://example.net/api/control/status.json and note the
+
+    integer field epoch.
+
+    Step 2: if epoch is odd, fetch http://example.net/api/deploy/blue.json;
+
+    if epoch is even, fetch http://example.net/api/deploy/green.json. The
+
+    chosen profile document gives fields profile, weight, and feed (a path
+
+    relative to http://example.net).
+
+    Step 3: fetch the feed document; it gives feed_id, dataset, scale, and
+
+    a list of segment paths.
+
+    Step 4: fetch every segment document and sum their bonus values.
+
+    Step 5: read the local CSV file named <dataset>.csv (header value, one
+
+    integer per data row) and sum the values.
+
+    Step 6: write route_trace.txt with exactly four lines:
+
+    trace_epoch=<epoch>
+
+    trace_profile=<profile>
+
+    trace_feed=<feed_id>
+
+    trace_dataset=<dataset>
+
+    Step 7: compute score = (csv value sum) * scale * weight + (sum of
+
+    segment bonuses) and write /workspace/out.txt with exactly one line:
+
+    routed_score=<score>
+
+    '
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: http_fetch
+  - name: fs_read
+  - name: fs_write
+  max_turns: 16
+  tool_budget: 20
+  sandbox:
+    network:
+    - example.net
+    env:
+      LAB_HTTP_ALLOWLIST: example.net
+      LAB_HTTP_FIXTURE_DIR: /workspace/_http_fixtures
+    workspace_files:
+      _http_fixtures/example.net/api/control/status.json: '{"service": "router", "epoch":
+        7}
+
+        '
+      _http_fixtures/example.net/api/deploy/blue.json: '{"profile": "blue", "weight": 4, "feed":
+        "/api/feeds/f17.json"}
+
+        '
+      _http_fixtures/example.net/api/deploy/green.json: '{"profile": "green", "weight": 5,
+        "feed": "/api/feeds/f22.json"}
+
+        '
+      _http_fixtures/example.net/api/feeds/f17.json: '{"feed_id": "f17", "dataset": "ds_north",
+        "scale": 3, "segments": ["/api/seg/s17a.json", "/api/seg/s17b.json"]}
+
+        '
+      _http_fixtures/example.net/api/feeds/f22.json: '{"feed_id": "f22", "dataset": "ds_south",
+        "scale": 2, "segments": ["/api/seg/s22a.json", "/api/seg/s22b.json"]}
+
+        '
+      _http_fixtures/example.net/api/seg/s17a.json: '{"segment": "s17a", "bonus": 11}
+
+        '
+      _http_fixtures/example.net/api/seg/s17b.json: '{"segment": "s17b", "bonus": 6}
+
+        '
+      _http_fixtures/example.net/api/seg/s22a.json: '{"segment": "s22a", "bonus": 9}
+
+        '
+      _http_fixtures/example.net/api/seg/s22b.json: '{"segment": "s22b", "bonus": 14}
+
+        '
+      ds_north.csv: 'value
+
+        5
+
+        8
+
+        12
+
+        7
+
+        '
+      ds_south.csv: 'value
+
+        9
+
+        11
+
+        4
+
+        '
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: route_trace.txt
+      substring: trace_profile=blue
+    - type: workspace_file_contains
+      path: route_trace.txt
+      substring: trace_feed=f17
+    - type: workspace_file_contains
+      path: out.txt
+      substring: routed_score=401
+- slug: longhaul-fx-invoice-rounding
+  difficulty: hard
+  description: 'HTTP + local + computation with a stage-specific rounding rule: FX
+
+    rates fetched per currency, local invoices converted with exact decimal
+
+    math, and half-up rounding to 2 decimals applied once AFTER summing.
+
+    Per-item rounding yields 114.36 instead of the correct 114.35.
+
+    '
+  input: 'Convert invoices to USD with an exact rounding rule.
+
+    Step 1: fetch http://example.com/api/fx/index.json to get the list of
+
+    currencies.
+
+    Step 2: fetch http://example.com/api/fx/<CUR>.json for each currency to
+
+    get its usd_per_unit rate. Write stage_rates.txt with one line per
+
+    currency in index order in the form <CUR>=<usd_per_unit>, followed by
+
+    one final line fx_rates=<number of currencies>.
+
+    Step 3: read invoices.csv (header inv_id,currency,amount). Convert each
+
+    invoice with exact decimal arithmetic: usd = amount * usd_per_unit. Do
+
+    NOT round per invoice. Write converted.txt with one line per invoice in
+
+    file order in the form <inv_id>=<exact unrounded usd value>, followed
+
+    by one final line invoice_lines=<number of invoices>.
+
+    Step 4: sum all exact unrounded usd values, and only then round that
+
+    single sum to exactly 2 decimal places using half-up rounding (a third
+
+    decimal of 5 rounds away from zero). Write /workspace/out.txt with
+
+    exactly one line:
+
+    grand_usd=<rounded sum with exactly 2 decimals>
+
+    '
+  system_prompt_id: tool_use_system_v2
+  tools:
+  - name: http_fetch
+  - name: fs_read
+  - name: fs_write
+  - name: python_eval
+  max_turns: 16
+  tool_budget: 20
+  sandbox:
+    network:
+    - example.com
+    env:
+      LAB_HTTP_ALLOWLIST: example.com
+      LAB_HTTP_FIXTURE_DIR: /workspace/_http_fixtures
+    workspace_files:
+      _http_fixtures/example.com/api/fx/index.json: '{"currencies": ["EUR", "GBP", "JPY"]}
+
+        '
+      _http_fixtures/example.com/api/fx/EUR.json: '{"currency": "EUR", "usd_per_unit": "1.085"}
+
+        '
+      _http_fixtures/example.com/api/fx/GBP.json: '{"currency": "GBP", "usd_per_unit": "1.265"}
+
+        '
+      _http_fixtures/example.com/api/fx/JPY.json: '{"currency": "JPY", "usd_per_unit": "0.0068"}
+
+        '
+      invoices.csv: 'inv_id,currency,amount
+
+        i01,EUR,10.90
+
+        i02,EUR,11.50
+
+        i03,EUR,10.10
+
+        i04,GBP,10.10
+
+        i05,GBP,12.10
+
+        i06,JPY,5000
+
+        i07,JPY,2500
+
+        '
+  success_predicate:
+    type: all_of
+    predicates:
+    - type: workspace_file_contains
+      path: stage_rates.txt
+      substring: fx_rates=3
+    - type: workspace_file_contains
+      path: converted.txt
+      substring: invoice_lines=7
+    - type: workspace_file_contains
+      path: out.txt
+      substring: grand_usd=114.35
