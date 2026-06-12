@@ -1,0 +1,37 @@
+# EXP-012 pre-flight v2: think low/medium/high through the ollama_chat lane
+# (gpt-oss-20b-ollama) after v1 proved the knob inert on the llama-swap
+# openai route (identical latency/tokens across arms). Gate for the full
+# REASONING-EFFORT sweep: arms must show differentiated latency/token usage.
+experiment:
+  slug: REASONING-SMOKE-002
+  title: "Think-knob plumbing smoke v2 (ollama_chat lane): gpt-oss low/medium/high on pbs-agent-v0.1"
+  hypothesis: "Plumbing check only: latency and thinking-token usage differ across arms on the ollama route."
+tasks:
+  suite: pbs-agent-v0.1
+models:
+  - gpt-oss-20b-ollama
+configs:
+  - name: react-4096-think-low
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "low"
+  - name: react-4096-think-medium
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "medium"
+  - name: react-4096-think-high
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: "high"
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800

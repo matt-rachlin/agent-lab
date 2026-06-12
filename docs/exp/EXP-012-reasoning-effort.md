@@ -25,7 +25,7 @@ tags:
 # EXP-012: REASONING-EFFORT-001 — reasoning effort vs agentic performance
 
 Date created: 2026-06-11
-Status: planned
+Status: smoke KILLED 2026-06-12 per kill criterion (knob inert via llama-swap openai route: identical latency+tokens across arms; 502s incidental). Re-plumbed to ollama_chat lane gpt-oss-20b-ollama; smoke v2 queued; full sweep re-queues only after v2 shows differentiated arms.
 Pre-registered: <commit SHA filled by `lab exp register` at registration time>
 
 ## Question
