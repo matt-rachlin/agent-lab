@@ -26,7 +26,7 @@ tags:
 # EXP-016: CONSTRAINT-GATE-001 — does the steward's model obey negative constraints?
 
 Date created: 2026-06-12
-Status: planned
+Status: complete — H1 CONFIRMED (0 readonly+scope violations, 24 cells), H2 CONFIRMED (exactly 1 forbidden-tool slip), H3 REFUTED (budget: zero violations — call-counting was fine), H4 CONFIRMED (48/48 task pass under constraints). Steward tier-1 gate OPEN as of 2026-06-12.
 Pre-registered: <commit SHA filled by `lab exp register` at registration time>
 
 ## Question
