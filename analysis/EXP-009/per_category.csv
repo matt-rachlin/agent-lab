@@ -1,0 +1,4 @@
+model,code,data,multi,shell
+devstral-24b,0.531,0.406,0.641,0.500
+gemma4-12b,0.766,1.000,1.000,0.891
+qwen3-coder-30b,0.500,1.000,0.625,0.859

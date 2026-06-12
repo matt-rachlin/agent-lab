@@ -28,7 +28,7 @@ tags:
 # EXP-009: HARD-BENCH-003 — N=8 seed confirmation of the hard-suite ranking
 
 Date created: 2026-06-11
-Status: planned
+Status: complete — H1 INCONCLUSIVE, H2 REFUTED (qwen3), H3 REFUTED, H4-H5 CONFIRMED; see ../findings/F-016-multiseed-hard-suite.md
 Pre-registered: <commit SHA filled by `lab exp register` at registration time>
 Protocol: [reliability-sweep](../protocols/reliability-sweep.md) (ADR-004)
 
