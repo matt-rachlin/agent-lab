@@ -313,8 +313,15 @@ def test_all_of_fails_when_workspace_sub_fails(monkeypatch: pytest.MonkeyPatch) 
     )
     s = _run(end_state(), state)
     assert s.value == 0.0
-    assert "FAIL" in (s.explanation or "")
-    assert "workspace_file_contains" in (s.explanation or "")
+    expl = s.explanation or ""
+    assert "FAIL" in expl
+    assert "workspace_file_contains" in expl
+    # Per-sub report (forensic-audit follow-up): BOTH halves appear with
+    # their verdicts — the explanation must say which subs passed, not
+    # just name the first failure.
+    assert "all_of FAIL 1/2 sub-predicates passed" in expl
+    assert "[0 db_query] PASS" in expl
+    assert "[1 workspace_file_contains] FAIL" in expl
 
 
 def test_all_of_fails_on_no_tool_calls_trajectory(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -361,8 +368,10 @@ def test_all_of_fails_on_no_tool_calls_trajectory(monkeypatch: pytest.MonkeyPatc
     assert "not present" in (s.explanation or "")
 
 
-def test_all_of_short_circuits_on_first_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The db_query sub-predicate fails first → file half isn't evaluated."""
+def test_all_of_reports_all_subs_when_first_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The db_query sub-predicate fails first, but the file half is STILL
+    evaluated and reported (no short-circuit — the old behaviour stopped at
+    the first failure and the explanation carried zero triage value)."""
     # Return zero rows so db_query fails.
     _patch_db_query(monkeypatch, [])
     state = _state(
@@ -381,7 +390,29 @@ def test_all_of_short_circuits_on_first_failure(monkeypatch: pytest.MonkeyPatch)
     )
     s = _run(end_state(), state)
     assert s.value == 0.0
-    assert "db_query" in (s.explanation or "")
+    expl = s.explanation or ""
+    assert "db_query" in expl
+    # The second sub-predicate is evaluated despite the earlier failure.
+    assert "all_of FAIL 1/2 sub-predicates passed" in expl
+    assert "[0 db_query] FAIL" in expl
+    assert "[1 workspace_file_contains] PASS" in expl
+
+
+def test_all_of_explanation_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Many failing subs with long paths → explanation truncated with marker."""
+    predicate: dict[str, Any] = {
+        "type": "all_of",
+        "predicates": [
+            {"type": "workspace_file_exists", "path": f"deeply/nested/dir/{i:02d}/" + "x" * 60}
+            for i in range(12)
+        ],
+    }
+    value, explanation = _eval_all_of_predicate(predicate, {})
+    assert value == 0.0
+    assert len(explanation) <= 600
+    assert explanation.endswith("…[truncated]")
+    # The verdict header survives truncation.
+    assert explanation.startswith("all_of FAIL 0/12 sub-predicates passed")
 
 
 def test_all_of_rejects_empty_predicates_list() -> None:

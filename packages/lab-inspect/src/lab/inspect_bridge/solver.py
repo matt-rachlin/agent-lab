@@ -93,6 +93,47 @@ def _first_user_content(chat: list[dict[str, Any]]) -> str:
     return ""
 
 
+def _extract_assistant_text(message: dict[str, Any]) -> tuple[str, str]:
+    """Pull (content_text, reasoning_text) off a chat-completions assistant message.
+
+    Most lanes return `content` as a plain string and no reasoning. The
+    gemma4-12b lane (ollama_chat backend) is a thinking model: LiteLLM maps
+    Ollama's `thinking` field to `reasoning_content` and returns `content`
+    as an empty string for turns where the model only thinks and/or
+    tool-calls — verified live against the proxy (forensic-audit follow-up;
+    gemma4 trajectories showed tokens_out in the hundreds-to-thousands with
+    empty content on every tool-call turn). Defensive extras: `content`
+    may be None, or a list of parts (`[{"type": "text", "text": ...}, ...]`)
+    on providers that return multi-part content — flatten part text in order.
+
+    The reasoning text is returned separately and must NOT be merged into
+    content: it is not assistant-visible output, and merging would pollute
+    the text-tool-call recovery regex and the conversation echo.
+    """
+
+    raw = message.get("content")
+    if isinstance(raw, str):
+        content = raw
+    elif isinstance(raw, list):
+        parts: list[str] = []
+        for part in raw:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict):
+                text = part.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+        content = "\n".join(p for p in parts if p)
+    elif raw is None:
+        content = ""
+    else:
+        content = str(raw)
+
+    reasoning = message.get("reasoning_content")
+    reasoning_text = reasoning if isinstance(reasoning, str) else ""
+    return content, reasoning_text
+
+
 def _truncate(value: Any, cap: int = _TURN_PAYLOAD_CAP) -> Any:
     """Bound large tool I/O in the recorded trajectory.
 
@@ -777,7 +818,7 @@ def model_with_tools(
                     actual_turns += 1
                     planner_choice = (planner_resp.get("choices") or [{}])[0]
                     planner_msg = (planner_choice or {}).get("message") or {}
-                    plan_text = planner_msg.get("content") or ""
+                    plan_text, planner_reasoning = _extract_assistant_text(planner_msg)
                     if not plan_text.strip():
                         plan_text = "(planner returned an empty plan)"
                     planner_usage = planner_resp.get("usage") or {}
@@ -785,19 +826,25 @@ def model_with_tools(
                     # see the call inline with the executor turns. The plan
                     # is stored truncated (_PLAN_CAP); the executor gets the
                     # full text.
-                    turns.append(
-                        {
-                            "turn": 0,
-                            "type": "turn",
-                            "planner": True,
-                            "latency_ms": planner_latency_ms,
-                            "tokens_in": planner_usage.get("prompt_tokens"),
-                            "tokens_out": planner_usage.get("completion_tokens"),
-                            "content_preview": _truncate(plan_text, cap=512),
-                            "plan": _truncate(plan_text, cap=_PLAN_CAP),
-                            "tool_calls_requested": 0,
-                        }
-                    )
+                    planner_entry: dict[str, Any] = {
+                        "turn": 0,
+                        "type": "turn",
+                        "planner": True,
+                        "latency_ms": planner_latency_ms,
+                        "tokens_in": planner_usage.get("prompt_tokens"),
+                        "tokens_out": planner_usage.get("completion_tokens"),
+                        "content_preview": _truncate(plan_text, cap=512),
+                        "plan": _truncate(plan_text, cap=_PLAN_CAP),
+                        "tool_calls_requested": 0,
+                    }
+                    if planner_reasoning:
+                        # Thinking-model lanes (gemma4 via ollama_chat) put
+                        # the model's reasoning here; keep it as its own
+                        # field, never merged into content/plan.
+                        planner_entry["reasoning_content"] = _truncate(
+                            planner_reasoning, cap=_PLAN_CAP
+                        )
+                    turns.append(planner_entry)
                     # ---- Phase B setup: inject the plan into the system
                     # prompt the executor (the unchanged react loop) sees.
                     plan_section = (
@@ -863,7 +910,7 @@ def model_with_tools(
                     actual_turns += 1
                     choice = (resp.get("choices") or [{}])[0]
                     assistant_msg = (choice or {}).get("message") or {}
-                    content_text = assistant_msg.get("content") or ""
+                    content_text, reasoning_text = _extract_assistant_text(assistant_msg)
                     tool_calls = assistant_msg.get("tool_calls") or []
                     if not tool_calls and content_text:
                         # Fallback: some models emit tool calls as JSON text in
@@ -902,6 +949,13 @@ def model_with_tools(
                         "content_preview": _truncate(content_text, cap=512),
                         "tool_calls_requested": len(tool_calls),
                     }
+                    if reasoning_text:
+                        # Thinking-model lanes (gemma4-12b via ollama_chat)
+                        # return empty `content` with the model's thinking in
+                        # `reasoning_content`; without this field those turns
+                        # logged nothing despite thousands of tokens_out.
+                        # Kept separate — never merged into content.
+                        turn_entry["reasoning_content"] = _truncate(reasoning_text)
 
                     if not tool_calls:
                         turns.append(turn_entry)

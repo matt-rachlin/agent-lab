@@ -226,17 +226,29 @@ def _eval_single_predicate(
     return NOANSWER, f"end_state not applicable to predicate type {ptype!r}"
 
 
+# Explanation strings land in Postgres score rows and triage greps; bound
+# them so a pathological predicate (many subs, long file lists) can't bloat
+# the row. 600 chars comfortably fits a handful of sub-reports.
+_ALL_OF_EXPLANATION_CAP = 600
+_ALL_OF_TRUNCATION_MARKER = "…[truncated]"
+
+
 def _eval_all_of_predicate(
     predicate: dict[str, Any], snapshot: dict[str, Any] | None
 ) -> tuple[float | str, str]:
     """Evaluate a composite `all_of` predicate.
 
-    All sub-predicates must pass (1.0). The first failure short-circuits
-    and is named in the explanation so debugging is greppable. A nested
-    NOANSWER from an unknown sub-type counts as a fail at the composite
-    level (not NOANSWER for the whole composite) because the task author
-    explicitly opted into a multi-check predicate — silently treating a
-    typo'd sub-predicate as "not applicable" would hide the bug.
+    All sub-predicates must pass (1.0). Every sub-predicate is evaluated —
+    no short-circuiting — and the explanation is a compact per-sub report
+    ("all_of FAIL 1/2 sub-predicates passed: [0 ...] PASS: ... | [1 ...]
+    FAIL: ..."). The earlier version stopped at the first failure, which a
+    forensic audit showed gave zero triage value: 12 cells in one
+    experiment all read "file 'X' not present" with no signal about the
+    other halves of the composite. A nested NOANSWER from an unknown
+    sub-type counts as a fail at the composite level (not NOANSWER for the
+    whole composite) because the task author explicitly opted into a
+    multi-check predicate — silently treating a typo'd sub-predicate as
+    "not applicable" would hide the bug.
 
     The F-009 follow-up pattern: pair `db_query` (meta-check that the
     predicate code-path itself works against Postgres) with a
@@ -250,8 +262,8 @@ def _eval_all_of_predicate(
     if not isinstance(subs_raw, list) or not subs_raw:
         return 0.0, "all_of predicate requires non-empty 'predicates' list"
 
-    failures: list[str] = []
-    passes: list[str] = []
+    parts: list[str] = []
+    n_passed = 0
     for idx, sub in enumerate(subs_raw):
         if not isinstance(sub, dict):
             return 0.0, f"all_of: sub-predicate {idx} is not a dict"
@@ -262,14 +274,21 @@ def _eval_all_of_predicate(
             # generalise then.
             return 0.0, f"all_of: nested all_of at index {idx} not supported"
         sub_value, sub_expl = _eval_single_predicate(sub, snapshot)
-        tag = f"[{idx} {sub_type}]"
-        if sub_value == 1.0:
-            passes.append(f"{tag} {sub_expl}")
-            continue
-        failures.append(f"{tag} {sub_expl}")
-        # Short-circuit on first failure.
-        return 0.0, f"all_of FAIL: {'; '.join(failures)}"
-    return 1.0, f"all_of PASS ({len(passes)} sub-predicates): {' | '.join(passes)}"
+        passed = sub_value == 1.0
+        if passed:
+            n_passed += 1
+        parts.append(f"[{idx} {sub_type}] {'PASS' if passed else 'FAIL'}: {sub_expl}")
+
+    total = len(subs_raw)
+    all_passed = n_passed == total
+    verdict = "PASS" if all_passed else "FAIL"
+    explanation = f"all_of {verdict} {n_passed}/{total} sub-predicates passed: " + " | ".join(parts)
+    if len(explanation) > _ALL_OF_EXPLANATION_CAP:
+        explanation = (
+            explanation[: _ALL_OF_EXPLANATION_CAP - len(_ALL_OF_TRUNCATION_MARKER)]
+            + _ALL_OF_TRUNCATION_MARKER
+        )
+    return (1.0 if all_passed else 0.0), explanation
 
 
 @scorer(metrics=[mean()], name="end_state")
