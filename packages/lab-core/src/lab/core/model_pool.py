@@ -165,8 +165,8 @@ class ModelPool:
 
     # ----- public API ------------------------------------------------------
 
-    def declare(self, plan: PipelineModelPlan) -> None:
-        """Record the plan and run the pre-flight pass.
+    def declare(self, plan: PipelineModelPlan, *, preflight: bool = True) -> None:
+        """Record the plan and (optionally) run the pre-flight pass.
 
         Pre-flight pass: for each unique model in the plan, fire one
         ``max_tokens=1`` completion against llama-swap to trigger a load,
@@ -181,6 +181,14 @@ class ModelPool:
         free for the cell's real work. Page cache stays warm.
 
         Network failures are logged and swallowed — caller is unaffected.
+
+        ``preflight=False`` records the plan (so :meth:`teardown` knows what
+        to evict) WITHOUT the load+evict round-trip. Use it for resident-batch
+        backends (SGLang) where the model's ~5-min CUDA-graph capture must
+        happen exactly once on the first real request and stay warm across the
+        batch — a preflight load+evict would pay that cost twice (SGLang Phase 1
+        M2). The first dispatched cell triggers the single resident load; the
+        sweep calls ``teardown()`` once at the end to free the VRAM.
         """
 
         with self._lock:
@@ -200,7 +208,11 @@ class ModelPool:
             pipeline_id=plan.pipeline_id,
             steps=len(plan.steps),
             models=models,
+            preflight=preflight,
         )
+
+        if not preflight:
+            return
 
         for model_id in models:
             self._preflight_one(model_id)

@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import FrameType
@@ -400,6 +401,48 @@ def _is_local_backend(backend: str) -> bool:
     return backend in _LOCAL_BACKENDS
 
 
+# Backends that keep the model RESIDENT in VRAM across the whole sweep and
+# exploit continuous batching (SGLang). For these the runner switches to the
+# throughput path: dispatch cells concurrently (G1), hold ONE gpu_lease for the
+# whole resident batch instead of per-cell (M1), and hoist model lifecycle to
+# the sweep — declare once / teardown once — instead of per-cell (M2). Ollama
+# serves serially and keeps the per-cell lease + per-cell lifecycle (the serial
+# path below is unchanged for it and for every cloud backend).
+_RESIDENT_BATCH_BACKENDS = frozenset({"sglang-local"})
+
+
+def _resident_batch_model(cells: list[Cell], max_concurrency: int) -> str | None:
+    """Return the single litellm_id eligible for resident-batch concurrent
+    dispatch, or None to fall back to the unchanged serial per-cell loop.
+
+    Eligible iff ``max_concurrency > 1`` AND every todo cell shares one backend
+    in :data:`_RESIDENT_BATCH_BACKENDS` AND one model. The single-model
+    requirement is deliberate: SGLang serves exactly one model per container, so
+    a multi-model matrix would thrash the resident slot (defeating the point);
+    such a matrix falls back to serial. Any other shape — ollama, cloud, mixed
+    backends, or ``max_concurrency <= 1`` — also returns None, so the throughput
+    path is strictly opt-in via config and never perturbs an existing sweep.
+    """
+
+    if max_concurrency <= 1 or not cells:
+        return None
+    backends = {c.model_backend for c in cells}
+    models = {c.model_litellm_id for c in cells}
+    if len(backends) == 1 and next(iter(backends)) in _RESIDENT_BATCH_BACKENDS and len(models) == 1:
+        return next(iter(models))
+    if backends & _RESIDENT_BATCH_BACKENDS:
+        # A resident-batch backend is present but the matrix isn't a clean
+        # single-backend/single-model shape; serial is the safe choice. Surface
+        # it so a misconfigured concurrent sweep isn't silently serialized.
+        log.warning(
+            "sweep_resident_batch_ineligible",
+            backends=sorted(backends),
+            models=sorted(models),
+            max_concurrency=max_concurrency,
+        )
+    return None
+
+
 def _call_litellm(
     *,
     settings: Any,
@@ -624,6 +667,7 @@ def execute_cell(
     model_default_system: str | None = None,
     model_default_extra: dict[str, Any] | None = None,
     model_pool: ModelPool | None = None,
+    skip_cell_lease: bool = False,
 ) -> CellResult:
     """Execute one matrix cell.
 
@@ -638,6 +682,12 @@ def execute_cell(
     explicit eviction post-cell so the VRAM is free for the next cell.
     Failures inside the model_pool are swallowed by design — the
     inference call below will trigger its own load if pre-flight no-op'd.
+
+    ``skip_cell_lease`` (SGLang Phase 1 M1): when True the executor does NOT
+    acquire the per-cell ``gpu_lease`` — the resident-batch dispatcher holds one
+    lease for the whole concurrent batch, so a per-cell acquisition would
+    serialize the concurrency it just enabled. The resident-batch path also
+    passes ``model_pool=None`` here (lifecycle is hoisted to the sweep, M2).
     """
 
     is_bfcl = _is_bfcl_cell(cell.task_payload)
@@ -720,6 +770,7 @@ def execute_cell(
                     timeout=timeout,
                     manifest_sha=manifest.sha,
                     model_default_extra=model_default_extra,
+                    skip_cell_lease=skip_cell_lease,
                 )
             elif is_agent:
                 result = _execute_agent_cell(
@@ -727,6 +778,7 @@ def execute_cell(
                     manifest_sha=manifest.sha,
                     timeout=timeout,
                     model_default_extra=model_default_extra,
+                    skip_cell_lease=skip_cell_lease,
                 )
             else:
                 result = _execute_single_turn(
@@ -736,6 +788,7 @@ def execute_cell(
                     manifest_sha=manifest.sha,
                     model_default_system=model_default_system,
                     model_default_extra=model_default_extra,
+                    skip_cell_lease=skip_cell_lease,
                 )
 
             current_span_attrs(
@@ -802,6 +855,7 @@ def _execute_single_turn(
     manifest_sha: str,
     model_default_system: str | None,
     model_default_extra: dict[str, Any] | None = None,
+    skip_cell_lease: bool = False,
 ) -> CellResult:
     """Phase 1-5 fast path: one LiteLLM call, one trace row, no Inspect."""
 
@@ -826,7 +880,7 @@ def _execute_single_turn(
     result: CellResult
 
     try:
-        if _is_local_backend(cell.model_backend):
+        if _is_local_backend(cell.model_backend) and not skip_cell_lease:
             with (
                 span("gpu_lease_acquire", **{"lab.model": cell.model_litellm_id}),
                 gpu_lease(
@@ -985,6 +1039,7 @@ def _execute_bfcl_cell(
     timeout: int,
     manifest_sha: str,
     model_default_extra: dict[str, Any] | None = None,
+    skip_cell_lease: bool = False,
 ) -> CellResult:
     """Phase 17.5 path: one tool-calling LiteLLM request, vendored AST grader.
 
@@ -1040,7 +1095,7 @@ def _execute_bfcl_cell(
     result: CellResult
     bfcl_grade: dict[str, Any] | None = None
     try:
-        if _is_local_backend(cell.model_backend):
+        if _is_local_backend(cell.model_backend) and not skip_cell_lease:
             with (
                 span("gpu_lease_acquire", **{"lab.model": cell.model_litellm_id}),
                 gpu_lease(
@@ -1230,6 +1285,7 @@ def _execute_agent_cell(
     manifest_sha: str,
     timeout: int,
     model_default_extra: dict[str, Any] | None = None,
+    skip_cell_lease: bool = False,
 ) -> CellResult:
     """Phase 6 path: build an Inspect task, run it, mirror the log into Postgres + MinIO."""
 
@@ -1402,7 +1458,7 @@ def _execute_agent_cell(
             # samples / metadata out of it. Persistence and metric-extraction
             # therefore happen INSIDE the TemporaryDirectory `with` block.
             with tempfile.TemporaryDirectory(prefix="lab-inspect-") as log_dir:
-                if _is_local_backend(cell.model_backend):
+                if _is_local_backend(cell.model_backend) and not skip_cell_lease:
                     with (
                         span(
                             "gpu_lease_acquire",
@@ -1498,6 +1554,137 @@ def _execute_agent_cell(
 # ----------------------------------------------------------------------------
 # Top-level orchestrator
 # ----------------------------------------------------------------------------
+
+
+def _model_defaults_for(spec: SweepConfig, cell: Cell) -> tuple[str | None, dict[str, Any] | None]:
+    """Per-model system prompt + extra overrides for a cell (or (None, None))."""
+
+    md = spec.model_defaults.get(cell.model_litellm_id)
+    if md is None:
+        return None, None
+    return md.system_prompt, (dict(md.extra) if md.extra else None)
+
+
+def _run_resident_batch(
+    *,
+    todo: list[Cell],
+    spec: SweepConfig,
+    litellm_key: str,
+    model_pool: ModelPool | None,
+    batch_model: str,
+    on_result: Callable[[Cell, CellResult], None],
+) -> None:
+    """Throughput path for a resident-batch backend (SGLang). Implements the
+    three coordinated SGLang Phase 1 runner changes together:
+
+    * **G1 (concurrency):** dispatch cells through a ``ThreadPoolExecutor`` of
+      ``spec.max_concurrency`` workers so they hit the resident SGLang server
+      concurrently and exploit continuous batching. ``on_result`` is invoked
+      from THIS (main) thread as each future completes, so the caller's
+      progress bar / summary / progress-log stay single-threaded.
+    * **M1 (one lease per batch):** acquire a SINGLE ``gpu_lease`` wrapping the
+      whole concurrent dispatch and pass ``skip_cell_lease=True`` to every cell,
+      so the per-cell lease can't re-serialize the concurrency. The lease TTL
+      must outlast the entire batch (there is no renewal); pueue's ``gpu`` group
+      is the real cross-job serializer, the lease is the in-host backstop, and
+      the sweep signal handler force-releases it on SIGTERM/SIGINT.
+    * **M2 (sweep-scoped lifecycle):** ``declare(preflight=False)`` once before
+      dispatch (records the plan for teardown without the load+evict that would
+      pay SGLang's ~5-min CUDA-graph capture twice) and ``teardown()`` once
+      after. The first dispatched cell triggers the single resident load;
+      llama-swap keeps it warm across the batch. Each cell runs with
+      ``model_pool=None`` so it does no per-cell declare/teardown.
+
+    Resident-batch is single-turn / BFCL only (B2 keeps the ``-awq`` arm off the
+    agent path), so there is no sandbox image and the per-cell image-hash drift
+    guard does not apply here.
+    """
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    max_workers = max(1, int(spec.max_concurrency))
+
+    # M2: record the resident model for teardown WITHOUT a preflight load+evict.
+    if model_pool is not None:
+        try:
+            model_pool.declare(
+                plan_for_cell(
+                    pipeline_id=f"sweep:{spec.experiment.slug}",
+                    model_id=batch_model,
+                    tools=None,
+                ),
+                preflight=False,
+            )
+        except Exception as exc:
+            log.warning("sweep_resident_declare_failed", error=str(exc))
+
+    # M1: one lease for the whole resident batch. No renewal, so the TTL is a
+    # generous ceiling that comfortably covers the cold ~5-min SGLang load plus
+    # the batched run; force-released on cancel/signal.
+    lease_ttl = max(spec.request_timeout_sec + 60, 1800)
+    log.info(
+        "sweep_resident_batch_start",
+        model=batch_model,
+        concurrency=max_workers,
+        cells=len(todo),
+        lease_ttl=lease_ttl,
+    )
+    try:
+        with (
+            span(
+                "gpu_lease_acquire",
+                **{"lab.model": batch_model, "lab.batch_lease": True},
+            ),
+            gpu_lease(
+                f"sweep:{spec.experiment.slug}:{batch_model}:batch",
+                ttl_sec=lease_ttl,
+            ),
+            ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="sweepcell") as pool,
+        ):
+            futures: dict[Any, Cell] = {}
+            for cell in todo:
+                md_sys, md_extra = _model_defaults_for(spec, cell)
+                fut = pool.submit(
+                    execute_cell,
+                    cell,
+                    litellm_key=litellm_key,
+                    timeout=spec.request_timeout_sec,
+                    model_default_system=md_sys,
+                    model_default_extra=md_extra,
+                    model_pool=None,  # M2: lifecycle is sweep-scoped
+                    skip_cell_lease=True,  # M1: batch lease held above
+                )
+                futures[fut] = cell
+            for fut in as_completed(futures):
+                done_cell = futures[fut]
+                try:
+                    result = fut.result()
+                except Exception as exc:  # a worker died hard; record + continue
+                    log.error(
+                        "sweep_concurrent_cell_crashed",
+                        run_id=done_cell.run_id,
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
+                    result = CellResult(
+                        run_id=done_cell.run_id,
+                        status="error",
+                        tokens_in=None,
+                        tokens_out=None,
+                        latency_ms=0,
+                        cost_usd=None,
+                        error=f"{type(exc).__name__}: {exc}",
+                        response_text=None,
+                        raw_response=None,
+                    )
+                on_result(done_cell, result)
+    finally:
+        # M2: single teardown — evict the resident model so the next GPU job
+        # gets the VRAM back without waiting for llama-swap's TTL.
+        if model_pool is not None:
+            try:
+                model_pool.teardown()
+            except Exception as exc:
+                log.warning("sweep_resident_teardown_failed", error=str(exc))
 
 
 def run_sweep(
@@ -1661,72 +1848,26 @@ def run_sweep(
             console=console,
         ) as progress:
             bar = progress.add_task("sweeping", total=len(todo_sorted))
-            for cell in todo_sorted:
-                # Image-hash drift guard. If we know a starting hash, refuse
-                # to dispatch a cell whose image hash disagrees. We re-read
-                # the file each iteration so an out-of-band rebuild (e.g.
-                # `podman image prune` reaping layers + a rebuild on the
-                # next pull) trips the guard the same way a manual change
-                # would. Sweep aborts cleanly; the already-executed cells
-                # remain in the DB tagged with their actual hash, so F-005-
-                # style attribution still works.
-                if starting_image_hash is not None:
-                    current_image_hash = _read_sandbox_image_hash()
-                    if current_image_hash != starting_image_hash:
-                        summary["image_hash_drift"] = {
-                            "starting": starting_image_hash,
-                            "current": current_image_hash,
-                            "at_cell": cell.run_id,
-                            "executed": summary["executed"],
-                        }
-                        progress.console.log(
-                            f"[red]image_hash_drift[/]: "
-                            f"starting={starting_image_hash[:12]}, "
-                            f"current={(current_image_hash or 'MISSING')[:12]}, "
-                            f"at_cell={cell.run_id}; "
-                            f"aborting sweep after {summary['executed']} cells"
-                        )
-                        log.error(
-                            "sweep_image_hash_drift",
-                            starting=starting_image_hash,
-                            current=current_image_hash,
-                            at_cell=cell.run_id,
-                            executed=summary["executed"],
-                        )
-                        raise ImageHashDriftError(
-                            "sandbox image hash drifted mid-sweep: "
-                            f"starting={starting_image_hash}, "
-                            f"current={current_image_hash}, "
-                            f"at_cell={cell.run_id}, "
-                            f"executed={summary['executed']}/{len(todo_sorted)}"
-                        )
 
-                model_default_system = None
-                model_default_extra: dict[str, Any] | None = None
-                md = spec.model_defaults.get(cell.model_litellm_id)
-                if md is not None:
-                    model_default_system = md.system_prompt
-                    model_default_extra = dict(md.extra) if md.extra else None
-                result = execute_cell(
-                    cell,
-                    litellm_key=litellm_key,
-                    timeout=spec.request_timeout_sec,
-                    model_default_system=model_default_system,
-                    model_default_extra=model_default_extra,
-                    model_pool=model_pool,
-                )
+            # Shared post-cell bookkeeping. Invoked once per finished cell from
+            # the MAIN thread on both the serial and the concurrent path (the
+            # resident-batch dispatcher calls it as futures complete), so the
+            # progress bar / summary / progress-log are only ever touched by one
+            # thread.
+            def _on_result(done_cell: Cell, result: CellResult) -> None:
                 summary["executed"] += 1
                 if result.status == "error":
                     summary["errors"] += 1
                     progress.console.log(
-                        f"[red]ERROR[/] {cell.model_litellm_id} {cell.task_slug} seed={cell.seed}: {result.error}"
+                        f"[red]ERROR[/] {done_cell.model_litellm_id} "
+                        f"{done_cell.task_slug} seed={done_cell.seed}: {result.error}"
                     )
                     log.error(
                         "sweep_cell_error",
-                        model=cell.model_litellm_id,
-                        task=cell.task_slug,
-                        seed=cell.seed,
-                        run_id=cell.run_id,
+                        model=done_cell.model_litellm_id,
+                        task=done_cell.task_slug,
+                        seed=done_cell.seed,
+                        run_id=done_cell.run_id,
                         error=result.error,
                     )
                 progress.update(bar, advance=1)
@@ -1734,11 +1875,86 @@ def run_sweep(
                     _plog.write(
                         f"[{time.strftime('%H:%M:%S')}] "
                         f"{summary['executed']}/{len(todo_sorted)} "
-                        f"{cell.model_litellm_id} {cell.task_slug} seed={cell.seed} "
-                        f"-> {result.status}"
+                        f"{done_cell.model_litellm_id} {done_cell.task_slug} "
+                        f"seed={done_cell.seed} -> {result.status}"
                         + (f": {result.error}" if result.status == "error" else "")
                         + "\n"
                     )
+
+            # SGLang Phase 1 G1/M1/M2: a resident-batch backend (SGLang) at
+            # max_concurrency>1 takes the throughput path — concurrent dispatch
+            # under one batch lease with sweep-scoped lifecycle. Everything else
+            # (ollama, cloud, c1, mixed matrices) runs the unchanged serial loop.
+            batch_model = _resident_batch_model(todo_sorted, spec.max_concurrency)
+            if batch_model is not None:
+                console.print(
+                    f"[cyan]resident-batch[/]: model={batch_model} "
+                    f"concurrency={spec.max_concurrency} cells={len(todo_sorted)}"
+                )
+                if _plog is not None:
+                    _plog.write(
+                        f"=== resident-batch dispatch: {batch_model} "
+                        f"concurrency={spec.max_concurrency} ===\n"
+                    )
+                _run_resident_batch(
+                    todo=todo_sorted,
+                    spec=spec,
+                    litellm_key=litellm_key,
+                    model_pool=model_pool,
+                    batch_model=batch_model,
+                    on_result=_on_result,
+                )
+            else:
+                for cell in todo_sorted:
+                    # Image-hash drift guard. If we know a starting hash, refuse
+                    # to dispatch a cell whose image hash disagrees. We re-read
+                    # the file each iteration so an out-of-band rebuild (e.g.
+                    # `podman image prune` reaping layers + a rebuild on the
+                    # next pull) trips the guard the same way a manual change
+                    # would. Sweep aborts cleanly; the already-executed cells
+                    # remain in the DB tagged with their actual hash, so F-005-
+                    # style attribution still works.
+                    if starting_image_hash is not None:
+                        current_image_hash = _read_sandbox_image_hash()
+                        if current_image_hash != starting_image_hash:
+                            summary["image_hash_drift"] = {
+                                "starting": starting_image_hash,
+                                "current": current_image_hash,
+                                "at_cell": cell.run_id,
+                                "executed": summary["executed"],
+                            }
+                            progress.console.log(
+                                f"[red]image_hash_drift[/]: "
+                                f"starting={starting_image_hash[:12]}, "
+                                f"current={(current_image_hash or 'MISSING')[:12]}, "
+                                f"at_cell={cell.run_id}; "
+                                f"aborting sweep after {summary['executed']} cells"
+                            )
+                            log.error(
+                                "sweep_image_hash_drift",
+                                starting=starting_image_hash,
+                                current=current_image_hash,
+                                at_cell=cell.run_id,
+                                executed=summary["executed"],
+                            )
+                            raise ImageHashDriftError(
+                                "sandbox image hash drifted mid-sweep: "
+                                f"starting={starting_image_hash}, "
+                                f"current={current_image_hash}, "
+                                f"at_cell={cell.run_id}, "
+                                f"executed={summary['executed']}/{len(todo_sorted)}"
+                            )
+
+                    model_default_system, model_default_extra = _model_defaults_for(spec, cell)
+                    result = execute_cell(
+                        cell,
+                        litellm_key=litellm_key,
+                        timeout=spec.request_timeout_sec,
+                        model_default_system=model_default_system,
+                        model_default_extra=model_default_extra,
+                        model_pool=model_pool,
+                    )
+                    _on_result(cell, result)
     finally:
         _clear_pidfile(spec.experiment.slug)
         if _plog is not None:
