@@ -18,6 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from lab.core.authz import ApprovalCallback, Authorizer, deny_approver
 from lab.core.control import record_action
 from lab.core.llm import call_litellm_chat
 from lab.core.settings import Settings
@@ -72,6 +73,8 @@ def run_agent(
     tools: list[Tool],
     actor: str = "agent",
     allow_side_effects: frozenset[str] | set[str] = DEFAULT_ALLOWED,
+    authorizer: Authorizer | None = None,
+    approver: ApprovalCallback | None = None,
     max_turns: int = 24,
     max_tool_calls: int = 24,
     timeout: int = 90,
@@ -81,8 +84,18 @@ def run_agent(
 ) -> AgentResult:
     """Drive `model` through `tools` until it stops, the budget is hit, or
     `stop_predicate(results_so_far)` is True. Every tool call (and every blocked
-    call) is recorded via record_action under `actor`."""
+    call) is recorded via record_action under `actor`.
+
+    Authorization (ADR-013): when `authorizer` is None the legacy gate applies
+    (a tool whose side_effect is not in `allow_side_effects` is refused) — this
+    keeps the scout's behavior EXACTLY unchanged. When an `authorizer` is given it
+    resolves each call to a tier: allow -> execute; require_approval -> consult
+    `approver` (default fail-closed deny) and execute only on approval; dry_run ->
+    return a shadow result without executing; deny -> refuse. Every decision is
+    audited via record_action regardless of outcome.
+    """
     allowed = frozenset(allow_side_effects)
+    approve = approver or deny_approver
     by_name = {t.name: t for t in tools}
     schemas = [t.to_openai() for t in tools]
     messages: list[dict[str, Any]] = [
@@ -127,15 +140,47 @@ def run_agent(
             result: Any
             if tool is None:
                 result = {"error": f"unknown tool: {name}"}
-            elif tool.side_effect not in allowed:
-                record_action(actor=actor, action=f"blocked:{name}", args=args, outcome="denied")
-                result = {"error": f"blocked: side_effect '{tool.side_effect}' not authorized"}
+            elif authorizer is None:
+                # Legacy gate (backward-compatible): allow-set over classes.
+                if tool.side_effect not in allowed:
+                    record_action(
+                        actor=actor, action=f"blocked:{name}", args=args, outcome="denied"
+                    )
+                    result = {"error": f"blocked: side_effect '{tool.side_effect}' not authorized"}
+                else:
+                    record_action(actor=actor, action=f"tool:{name}", args=args, outcome=None)
+                    try:
+                        result = tool.impl(**args)
+                    except Exception as exc:
+                        result = {"error": f"{type(exc).__name__}: {exc}"}
             else:
-                record_action(actor=actor, action=f"tool:{name}", args=args, outcome=None)
-                try:
-                    result = tool.impl(**args)
-                except Exception as exc:
-                    result = {"error": f"{type(exc).__name__}: {exc}"}
+                # ADR-013 tiered authorization.
+                decision = authorizer.decide(actor, name, tool.side_effect, tool.capability)
+                if decision == "require_approval":
+                    request = {
+                        "actor": actor,
+                        "tool": name,
+                        "side_effect": tool.side_effect,
+                        "capability": tool.capability,
+                        "args": args,
+                    }
+                    decision = "allow" if approve(request) else "deny"
+                if decision == "deny":
+                    record_action(
+                        actor=actor, action=f"blocked:{name}", args=args, outcome="denied"
+                    )
+                    result = {"error": f"denied: side_effect '{tool.side_effect}' not authorized"}
+                elif decision == "dry_run":
+                    record_action(
+                        actor=actor, action=f"dry_run:{name}", args=args, outcome="dry_run"
+                    )
+                    result = {"dry_run": True, "tool": name, "args": args}
+                else:  # allow (including approved require_approval)
+                    record_action(actor=actor, action=f"tool:{name}", args=args, outcome=None)
+                    try:
+                        result = tool.impl(**args)
+                    except Exception as exc:
+                        result = {"error": f"{type(exc).__name__}: {exc}"}
             results.append({"name": name, "args": args, "result": result})
             messages.append(
                 {"role": "tool", "tool_call_id": tc.get("id"), "content": json.dumps(result)[:4000]}
