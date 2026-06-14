@@ -764,6 +764,28 @@ def execute_cell(
                 )
 
 
+def _request_record(
+    config: RunConfig,
+    *,
+    tools: list[dict[str, Any]] | None,
+    tool_choice: Any,
+) -> dict[str, Any]:
+    """The request actually sent to the model, persisted in the trace for
+    auditability. You cannot diagnose an eval (cf. F-017) without the request:
+    the tool schemas, tool_choice, and effective sampling/extra. Stage 0a /
+    research-agent-stage0 D1 (request fidelity)."""
+    return {
+        "request_tools": tools,
+        "tool_choice": tool_choice,
+        "request_sampling": {
+            "temperature": config.temperature,
+            "top_p": config.top_p,
+            "max_tokens": config.max_tokens,
+        },
+        "request_extra": dict(config.extra or {}),
+    }
+
+
 def _execute_single_turn(
     *,
     cell: Cell,
@@ -873,6 +895,7 @@ def _execute_single_turn(
                         "config": cell.config.model_dump(),
                         "seed": cell.seed,
                         "input_messages": messages,
+                        **_request_record(cell_config_for_call, tools=None, tool_choice=None),
                         "response_text": result.response_text,
                         "raw_response": result.raw_response,
                         "latency_ms": result.latency_ms,
@@ -1031,8 +1054,9 @@ def _execute_bfcl_cell(
                         "config": cell.config.model_dump(),
                         "seed": cell.seed,
                         "input_messages": messages,
-                        "request_tools": tools,
-                        "tool_choice": tool_choice_used,
+                        **_request_record(
+                            cell_config_for_call, tools=tools, tool_choice=tool_choice_used
+                        ),
                         "response_text": result.response_text,
                         "raw_response": result.raw_response,
                         "latency_ms": result.latency_ms,
