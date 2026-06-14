@@ -912,6 +912,34 @@ def _execute_single_turn(
     return result
 
 
+def _advance_bfcl_validity(
+    *, cell: Cell, tools: Any, tool_choice: Any, bfcl_grade: dict[str, Any]
+) -> None:
+    """Stage 0b #8 validity gate: advance a BFCL cell raw -> validity_passed when
+    the measurement is sound (request fidelity + preconditions; cf. F-017).
+    Fail-safe — a gate error must never crash a sweep."""
+    from lab.core.trust import bfcl_validity, record_transition
+
+    try:
+        rep = bfcl_validity(
+            request_tools=tools,
+            tool_choice=tool_choice,
+            bfcl_error_type=bfcl_grade.get("error_type"),
+            passed=bfcl_grade.get("valid"),
+        )
+        if rep.passed:
+            record_transition(
+                cell.run_id,
+                "validity_passed",
+                actor="system:bfcl_gate",
+                evidence={"emitted": rep.emitted, "correct": rep.correct},
+            )
+        else:
+            log.warning("validity_gate_failed", run_id=cell.run_id, violations=rep.violations)
+    except Exception as exc:  # gate must never crash a sweep
+        log.warning("validity_gate_error", run_id=cell.run_id, error=str(exc))
+
+
 def _execute_bfcl_cell(
     *,
     cell: Cell,
@@ -1071,6 +1099,9 @@ def _execute_bfcl_cell(
     # truth-bearing — there is no point in re-grading via `lab eval apply`).
     if bfcl_grade is not None and result.status == "done":
         _persist_bfcl_eval_result(run_id=cell.run_id, grade=bfcl_grade)
+        _advance_bfcl_validity(
+            cell=cell, tools=tools, tool_choice=tool_choice_used, bfcl_grade=bfcl_grade
+        )
     return result
 
 
