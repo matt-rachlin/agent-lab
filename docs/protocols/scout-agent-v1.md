@@ -48,6 +48,13 @@ scheduled scans.
 2. `scout_add` rejects an unreachable/hallucinated URL.
 3. Tool calls are audited; no destructive tools available to the scan.
 
+## Driver routing (verified 2026-06-14)
+LiteLLM is the gateway; it routes tool models to **Ollama** (whose renderer
+handles parallel tool calls — the llama.cpp/--jinja path caps ~57% on parallel,
+per the litellm-config note). So the scout's driver MUST use an **Ollama-backed
+tool lane** (default `qwen3-4b-ft-toolcall-q4-latest` or `nemotron-nano-9b-v2-ollama`),
+not a llama.cpp lane. `call_litellm_chat` stays the transport.
+
 ## Open questions
 - Which local model drives reliably (qwen3-30b-a3b? qwen3-4b-ft? else cloud v1).
 - arXiv API directly vs via `http_fetch` (keep a thin `arxiv_search` for clean parse).
