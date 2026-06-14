@@ -926,10 +926,16 @@ def _execute_bfcl_cell(
         merged_extra.update(cell.config.extra)
     if model_default_extra:
         merged_extra.update(model_default_extra)
-    # tool_choice="auto" is the only stable setting across LiteLLM
-    # backends; "required" is rejected by Ollama. Provided as an extra
-    # so per-model overrides can still pin it.
-    merged_extra.setdefault("tool_choice", "auto")
+    # BFCL is a function-calling benchmark: every task is *defined* as emitting
+    # the tool call, so "required" is the semantically correct tool_choice. We
+    # only fall back to "auto" on backends that reject "required" (Ollama).
+    # Under "auto", reasoning models tend to answer in prose and get scored 0
+    # for a decode/format artefact rather than a capability gap; "required"
+    # removes that confound on backends that support it (llama.cpp, cloud).
+    backend_l = (cell.model_backend or "").lower()
+    default_tool_choice = "auto" if "ollama" in backend_l else "required"
+    merged_extra.setdefault("tool_choice", default_tool_choice)
+    tool_choice_used = merged_extra.get("tool_choice", default_tool_choice)
     tools = payload.get("tools") or []
 
     cell_config_for_call = cell.config.model_copy(update={"extra": merged_extra})
@@ -1025,6 +1031,8 @@ def _execute_bfcl_cell(
                         "config": cell.config.model_dump(),
                         "seed": cell.seed,
                         "input_messages": messages,
+                        "request_tools": tools,
+                        "tool_choice": tool_choice_used,
                         "response_text": result.response_text,
                         "raw_response": result.raw_response,
                         "latency_ms": result.latency_ms,

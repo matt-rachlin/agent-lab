@@ -6,6 +6,7 @@ from typing import Any
 
 from lab.analyze.queries import (
     per_cell_results,
+    summary_bfcl_emission,
     summary_by_model_config,
     summary_by_model_simple,
     summary_eval_by_model,
@@ -79,6 +80,7 @@ def make_report(experiment_slug: str) -> str:
     by_model = summary_by_model_simple(experiment_slug)
     by_model_cfg = summary_by_model_config(experiment_slug)
     by_eval = summary_eval_by_model(experiment_slug)
+    bfcl_emit = summary_bfcl_emission(experiment_slug)
 
     out: list[str] = [
         f"# Sweep report: `{experiment_slug}`",
@@ -95,6 +97,23 @@ def make_report(experiment_slug: str) -> str:
         "",
         _eval_pass_rate_table(experiment_slug, by_eval),
     ]
+
+    if bfcl_emit:
+        out.extend(
+            [
+                "## BFCL function-calling decomposition",
+                "",
+                "_BFCL measures **function-calling**, not task-completion. A model that "
+                "answers in prose emits no tool call and is a **non-emission**, not a wrong "
+                "answer. `emit_rate_pct` = runs that emitted any tool call; "
+                "`acc_given_emit_pct` = pass rate among those. A low `pass_rate_pct` driven "
+                "by a low `emit_rate_pct` is a decode/format failure (e.g. a reasoning model "
+                "under permissive `tool_choice`), **not** a capability gap \u2014 compare "
+                "models on `acc_given_emit_pct`._",
+                "",
+                _md_table(bfcl_emit),
+            ]
+        )
 
     # If evaluators have been applied, include reliability summary for the most-applied evaluator
     if by_eval:

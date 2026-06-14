@@ -1,0 +1,33 @@
+# P1.3 validation: phi-4-reasoning-plus BFCL under tool_choice=auto vs required.
+# Under the historical "auto" default phi answered in prose and scored ~1% (2%
+# emission) — a decode/format artefact, NOT a capability gap (BFCL measures
+# function-calling). llama.cpp supports "required"; this A/B quantifies the fix.
+# Balanced 60-task sample (15 / category) so both arms finish in hours; same
+# tasks across arms so tool_choice is the only variable.
+experiment:
+  slug: PHI-TOOLCHOICE-001
+  title: "phi-4-reasoning BFCL: tool_choice auto vs required (harness-fix validation)"
+  hypothesis: "H1: tool_choice=required raises phi emission from ~2% toward parity with other llama.cpp models; acc_given_emit is the true capability signal."
+tasks:
+  suite: bfcl-v3-ast
+  slugs: ["simple_0","simple_1","simple_10","simple_100","simple_101","simple_102","simple_103","simple_104","simple_105","simple_106","simple_107","simple_108","simple_109","simple_11","simple_110","multiple_0","multiple_1","multiple_10","multiple_100","multiple_101","multiple_102","multiple_103","multiple_104","multiple_105","multiple_106","multiple_107","multiple_108","multiple_109","multiple_11","multiple_110","parallel_0","parallel_1","parallel_10","parallel_100","parallel_101","parallel_102","parallel_103","parallel_104","parallel_105","parallel_106","parallel_107","parallel_108","parallel_109","parallel_11","parallel_110","parallel_multiple_0","parallel_multiple_1","parallel_multiple_10","parallel_multiple_100","parallel_multiple_101","parallel_multiple_102","parallel_multiple_103","parallel_multiple_104","parallel_multiple_105","parallel_multiple_106","parallel_multiple_107","parallel_multiple_108","parallel_multiple_109","parallel_multiple_11","parallel_multiple_110"]
+models:
+  - phi-4-reasoning-14b
+configs:
+  - name: auto-bug
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: single_turn
+    extra:
+      tool_choice: auto
+  - name: required-fix
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: single_turn
+    extra:
+      tool_choice: required
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 600

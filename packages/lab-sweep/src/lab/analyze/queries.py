@@ -126,3 +126,44 @@ def per_cell_results(experiment_slug: str, evaluator_name: str) -> list[dict[str
         """
     )
     return fetchall_as_dicts(rel)
+
+
+def summary_bfcl_emission(experiment_slug: str) -> list[dict[str, object]]:
+    """BFCL function-calling decomposition: emission rate vs accuracy-given-emission.
+
+    BFCL measures *function-calling*, so a model that answers in prose (emits no
+    tool call) is a NON-EMISSION, not a wrong answer. Conflating the two scores a
+    capable model 0 for a decode/format failure (acute for reasoning models under
+    a permissive tool_choice). We split them:
+      * emit_rate_pct      - fraction of runs that emitted any tool call
+      * acc_given_emit_pct - pass rate among runs that DID emit a call
+
+    ``model_output:no_tool_call`` is the one error_type reliable in historical
+    data (the success-path 'unclear' label was cosmetic). Returns [] when the
+    experiment has no bfcl_ast_match results.
+    """
+    con = open_db()
+    rel = con.sql(
+        f"""
+        SELECT
+            m.litellm_id                                            AS model,
+            COUNT(*)                                                AS n,
+            ROUND(100.0 * SUM(CASE WHEN json_extract_string(CAST(er.raw AS JSON),
+                  '$.bfcl.error_type') IS DISTINCT FROM 'model_output:no_tool_call'
+                  THEN 1 ELSE 0 END) / COUNT(*), 1)                 AS emit_rate_pct,
+            ROUND(100.0 * AVG(CASE WHEN er.passed THEN 1.0 ELSE 0.0 END), 1) AS pass_rate_pct,
+            ROUND(100.0 * SUM(CASE WHEN er.passed THEN 1.0 ELSE 0.0 END)
+                  / NULLIF(SUM(CASE WHEN json_extract_string(CAST(er.raw AS JSON),
+                  '$.bfcl.error_type') IS DISTINCT FROM 'model_output:no_tool_call'
+                  THEN 1 ELSE 0 END), 0), 1)                        AS acc_given_emit_pct
+        FROM lab.public.eval_results er
+        JOIN lab.public.experiment_runs r ON r.run_id = er.run_id
+        JOIN lab.public.evaluators ev     ON ev.evaluator_id = er.evaluator_id
+        JOIN lab.public.models m          ON m.model_id = r.model_id
+        JOIN lab.public.experiments e     ON e.experiment_id = r.experiment_id
+        WHERE e.slug = '{experiment_slug}' AND ev.name = 'bfcl_ast_match'
+        GROUP BY m.litellm_id
+        ORDER BY acc_given_emit_pct DESC NULLS LAST
+        """
+    )
+    return fetchall_as_dicts(rel)

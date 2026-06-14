@@ -275,7 +275,7 @@ def simple_function_checker(
     result: dict[str, Any] = {
         "valid": True,
         "error": [],
-        "error_type": "simple_function_checker:unclear",
+        "error_type": None,  # success path returns this dict unchanged; failure paths set their own
     }
 
     if func_name not in model_output:
