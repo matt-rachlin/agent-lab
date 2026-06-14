@@ -12,7 +12,7 @@ tags: [lab, adr, research-agent, runtime, deployment]
 ---
 # ADR-012: Agent runtime & deployment
 
-Status: proposed
+Status: accepted
 Date: 2026-06-14
 Deciders: Matt Rachlin
 

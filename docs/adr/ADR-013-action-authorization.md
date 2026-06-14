@@ -12,7 +12,7 @@ tags: [lab, adr, research-agent, authorization, autonomy, safety]
 ---
 # ADR-013: Action authorization
 
-Status: proposed
+Status: accepted
 Date: 2026-06-14
 Deciders: Matt Rachlin
 
