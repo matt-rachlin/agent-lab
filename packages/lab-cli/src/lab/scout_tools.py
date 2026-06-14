@@ -10,6 +10,7 @@ import json
 import re
 import socket
 import subprocess
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -207,7 +208,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
 ]
 
-DISPATCH = {
+DISPATCH: dict[str, Callable[..., Any]] = {
     "arxiv_search": arxiv_search,
     "github_search": github_search,
     "fetch_url": fetch_url,

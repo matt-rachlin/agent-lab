@@ -411,6 +411,20 @@ def scout_add_cmd(
     console.print(f"[{'green' if result == 'added' else 'yellow'}]{result}[/] {source_url}")
 
 
+@scout_app.command("scan")
+def scout_scan_cmd(
+    focus: str = typer.Argument(..., help="What to scan for"),
+    model: str = typer.Option("qwen3-4b-ft-toolcall-q4-latest", "--model"),
+    max_recs: int = typer.Option(6, "--max-recs"),
+    max_tool_calls: int = typer.Option(24, "--max-tool-calls"),
+) -> None:
+    """Autonomous scout scan (ADR-011): the model searches sources + logs cited recs."""
+    from lab.scout_scan import run_scan
+
+    out = run_scan(focus=focus, model=model, max_recs=max_recs, max_tool_calls=max_tool_calls)
+    console.print(f"[green]scan done[/]: {out}")
+
+
 @scout_app.command("list")
 def scout_list_cmd(
     status: str = typer.Option(None, "--status", help="new|triaged|actioned|rejected"),
