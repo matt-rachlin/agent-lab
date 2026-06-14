@@ -1,4 +1,4 @@
-"""Scout driver loop (ADR-011 v1): a bounded LiteLLM tool-use loop. NEW code (the
+"""Scout driver loop (ADR-011): a bounded LiteLLM tool-use loop. NEW code (the
 only existing loop is Inspect+sandbox-bound). Drives a model through the in-process
 scout tools; audits every tool call; single-flight (global audit hash-chain)."""
 
@@ -14,13 +14,24 @@ from lab.scout import context_bundle
 from lab.scout_tools import DISPATCH, TOOL_SCHEMAS
 
 _SYSTEM = """You are the lab's research scout. Read the lab context below; it is
-your relevance filter. Search arXiv + GitHub for work HIGHLY relevant to this lab
-(local tool-calling/agent models for ~12GB, eval/trust/verification methods,
-agent scaffolds, deployable local agents replacing cloud agents). For each
-promising hit: fetch_url to verify the source exists, then scout_add a CITED,
-deduped recommendation (real fetched URL only; pick the right category; set
-confidence). Skip anything already in the dedup list or low-relevance. Do a few
-searches, add the best findings, then stop. Be selective — quality over quantity."""
+your relevance filter. Find work HIGHLY relevant to this lab (local
+tool-calling/agent models for ~12GB, eval/trust/verification methods, agent
+scaffolds, deployable local agents replacing cloud agents).
+
+Tools: use web_search FIRST for broad discovery across the general web (blogs,
+release notes, news, docs, forums); use arxiv_search for papers and
+github_search for code/repos. For each promising hit: fetch_url to verify the
+source exists and read it, then scout_add a CITED, deduped recommendation (use a
+real URL you actually fetched; set confidence honestly).
+
+Pick the MOST SPECIFIC category for each rec: model (a specific model/release),
+architecture (a system or agent design), software (a tool/library/framework),
+paper (a research finding), method (a technique/recipe), benchmark (an
+eval/dataset). Do NOT default everything to 'software'.
+
+Skip anything already in the dedup list or low-relevance. Do several searches
+across different sources, add the best findings, then stop. Be selective —
+quality over quantity."""
 
 
 def run_scan(

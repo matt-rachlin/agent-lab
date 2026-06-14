@@ -72,6 +72,24 @@ mission: a local agent driving a real workflow.)
   (mission milestone) and dogfoods the agent-tool + LiteLLM stack.
 - Web search is the one new primitive — deferred to v2 (SearXNG); v1 ships value
   on source APIs alone.
+
+### v2 IMPLEMENTED (2026-06-14)
+SearXNG general web search shipped. New compose service `lab-searxng`
+(docker.io/searxng/searxng) on loopback `:8888`, JSON format enabled,
+limiter off (trusted single local client); config in
+`/data/lab/services/searxng/settings.yml`. New `web_search(query,
+max_results, categories=general|science|it|news)` tool talks to the local
+SearXNG **directly** — it deliberately bypasses the public-host SSRF guard
+(localhost is intentionally private); the result URLs it returns are still
+verified through the SSRF-guarded `fetch_url`/`scout_add` before any rec is
+logged. Driver prompt now leads with web_search for broad discovery and
+selects the most specific category (no more all-`software`). Verified live:
+qwen3-4b-ft and qwen3-14b both drove web_search-first scans; a web-sourced
+rec (aclanthology TinyAgent) passed verification into the queue. Still v2-
+open: run under the #13 sandboxed egress identity; richer driver (14B beats
+4B on relevance, both still log the occasional off-target rec).
+
+NOTE: the shipped `fetch_url` enforces an **SSRF guard only** (blocks private/loopback/link-local IPs; any public host allowed) — NOT the host allowlist the v1 section above describes. Intentional for v2: general web search cannot pre-enumerate hosts, so the public-IP guard is the right boundary; the host allowlist is deferred to the #13 sandboxed identity.
 - Risk: a weak local model may not drive a multi-tool loop reliably — v1 keeps the
   loop simple + bounded and the driver configurable, scans single-flight; "can model X drive the scout"
   is itself a measurable question for the scoreboard.

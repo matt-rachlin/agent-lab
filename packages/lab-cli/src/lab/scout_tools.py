@@ -1,12 +1,20 @@
-"""In-process scout tools (ADR-011 v1): source-API search + SSRF-guarded fetch +
-cited-add. NOT the sandboxed lab.agent.tools (MCP/podman) — that is v2. Plain
-callables + hand-written OpenAI tool schemas for the driver loop.
+"""In-process scout tools (ADR-011): source-API search + general web search
+(SearXNG) + SSRF-guarded fetch + cited-add. NOT the sandboxed lab.agent.tools
+(MCP/podman). Plain callables + hand-written OpenAI tool schemas for the driver
+loop.
+
+v2 adds web_search: general-web discovery via the lab-local SearXNG JSON API.
+SearXNG is a trusted local service (loopback), so web_search talks to it
+directly — it deliberately bypasses the public-host guard that fetch_url uses.
+The result URLs web_search returns are public and are still verified through the
+SSRF-guarded fetch_url / scout_add path before anything is logged.
 """
 
 from __future__ import annotations
 
 import ipaddress
 import json
+import os
 import re
 import socket
 import subprocess
@@ -18,10 +26,13 @@ import httpx
 
 from lab.scout import add_recommendation
 
-_UA = "Mozilla/5.0 (compatible; lab-scout/0.1)"
+_UA = "Mozilla/5.0 (compatible; lab-scout/0.2)"
 _REACHABLE = {200, 301, 302, 303, 307, 308}
 _CATEGORIES = ("model", "architecture", "software", "paper", "method", "benchmark")
 _CONFIDENCE = ("low", "medium", "high")
+# lab-local SearXNG (compose service lab-searxng); loopback, trusted.
+_SEARXNG_URL = os.environ.get("LAB_SEARXNG_URL", "http://localhost:8888").rstrip("/")
+_SEARXNG_CATEGORIES = ("general", "science", "it", "news")
 
 
 def _is_public_host(host: str) -> bool:
@@ -68,6 +79,37 @@ def fetch_url(url: str) -> dict[str, Any]:
     except (ImportError, ValueError, TypeError):
         pass
     return {"status": r.status_code, "text": text}
+
+
+def web_search(
+    query: str, max_results: int = 6, categories: str = "general"
+) -> list[dict[str, Any]]:
+    """General-web search via the lab-local SearXNG JSON API (blogs, news, docs,
+    forums — beyond arXiv/GitHub). Talks to the trusted loopback service
+    directly; returned URLs are still verified via fetch_url/scout_add."""
+    if categories not in _SEARXNG_CATEGORIES:
+        categories = "general"
+    try:
+        r = httpx.get(
+            f"{_SEARXNG_URL}/search",
+            params={"q": query, "format": "json", "categories": categories},
+            headers={"User-Agent": _UA},
+            timeout=20.0,
+        )
+        r.raise_for_status()
+        data = r.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        return [{"error": str(exc)}]
+    out: list[dict[str, Any]] = []
+    for item in data.get("results", [])[: int(max_results)]:
+        out.append(
+            {
+                "title": item.get("title", ""),
+                "url": item.get("url", ""),
+                "content": (item.get("content") or "")[:400],
+            }
+        )
+    return out
 
 
 def arxiv_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
@@ -155,6 +197,26 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "web_search",
+            "description": (
+                "General-web search (blogs, news, docs, forums) via SearXNG. Use this "
+                "first for broad discovery; use arxiv_search/github_search for papers/code. "
+                "categories: general|science|it|news."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "max_results": {"type": "integer"},
+                    "categories": {"type": "string", "enum": list(_SEARXNG_CATEGORIES)},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "arxiv_search",
             "description": "Search arXiv for papers.",
             "parameters": {
@@ -209,6 +271,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
 ]
 
 DISPATCH: dict[str, Callable[..., Any]] = {
+    "web_search": web_search,
     "arxiv_search": arxiv_search,
     "github_search": github_search,
     "fetch_url": fetch_url,
