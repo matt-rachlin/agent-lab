@@ -388,8 +388,16 @@ def _build_messages(
     return messages
 
 
+# Local backends that are GPU-resident on this host and therefore must
+# acquire the global gpu_lease for VRAM mutual exclusion. ollama-local is
+# Ollama on :11434; sglang-local is the SGLang container routed via
+# llama-swap on :8080 (Phase 1). Both contend for the single GPU, so both
+# take the lease. Cloud backends never acquire it.
+_LOCAL_BACKENDS = frozenset({"ollama-local", "sglang-local"})
+
+
 def _is_local_backend(backend: str) -> bool:
-    return backend == "ollama-local"
+    return backend in _LOCAL_BACKENDS
 
 
 def _call_litellm(
@@ -1013,6 +1021,14 @@ def _execute_bfcl_cell(
     # Under "auto", reasoning models tend to answer in prose and get scored 0
     # for a decode/format artefact rather than a capability gap; "required"
     # removes that confound on backends that support it (llama.cpp, cloud).
+    #
+    # SGLang (sglang-local) INTENTIONALLY gets "required" here: SGLang serves
+    # OpenAI tool_choice="required" when launched with a tool-call parser
+    # (--tool-call-parser qwen), so it falls into the non-ollama branch by
+    # design (F-017-correct). "ollama" not in "sglang-local", so no special
+    # case is needed. VERIFIED-PENDING: confirm SGLang honors "required" with
+    # the qwen parser on the c1 BFCL reference before trusting -awq scores; if
+    # it does not, route sglang-local to "auto" (spec B1 / G4).
     backend_l = (cell.model_backend or "").lower()
     default_tool_choice = "auto" if "ollama" in backend_l else "required"
     merged_extra.setdefault("tool_choice", default_tool_choice)

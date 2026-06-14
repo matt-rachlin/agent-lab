@@ -76,6 +76,17 @@ model_list:
       api_key: dummy
       timeout: 600
 
+  # SGLang Phase 1: AWQ-W4A16 Qwen3-4B (throughput tier) -> llama-swap proxy
+  # (port 8080), which launches the SGLang container. OpenAI-compatible route,
+  # mirroring the qwen3-30b-a3b-moe llama-swap lane. Not an ollama_chat/ route,
+  # so it skips the ollama keep_alive preflight.
+  - model_name: qwen3-4b-awq
+    litellm_params:
+      model: openai/qwen3-4b-awq
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 600
+
   # ---- Phase 19e quality-ceiling lane (routed through llama-swap) ----
   # Long timeout (1800s = 30min) because 70B hybrid offload runs ~6-10
   # tok/s; a single PBS-Agent turn at 1024 output tokens is 100-170s,

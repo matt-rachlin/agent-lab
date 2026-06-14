@@ -227,6 +227,34 @@ models:
     description: "Quality-ceiling reference. Offline batch only; ~1.8 tok/s on this hardware."
     ttl: 1800
 
+  # ---- SGLang Phase 1: AWQ throughput tier (container-backed) ----
+  #
+  # In-house AWQ-W4A16 Qwen3-4B served by SGLang (continuous batching) for
+  # small-model sweeps. Foreground-launched podman container with a custom
+  # storage/runroot so the image resolves under /data/lab/containers, and
+  # `--network=host` so SGLang's published port is reachable (the port-publish
+  # gotcha). A pre-start `rm -f` guard removes any orphaned host-net container
+  # still holding the port before exec'ing the server. `cmdStop` stops the
+  # named container on swap/TTL (SIGKILL of the foreground PID alone would
+  # leak the container). mem-fraction 0.55 is the measured-first ceiling that
+  # leaves headroom for the ~2.6 GB hidden CUDA context; `--tool-call-parser
+  # qwen` is the verified parser for this image (qwen, not qwen3/qwen25/coder).
+  # Assigned to the exclusive `sglang-awq` group below.
+  "qwen3-4b-awq":
+    cmd: |
+      sh -c 'podman --root /data/lab/containers/storage --runroot /data/lab/containers/run rm -f sglang-qwen3-4b-awq 2>/dev/null;
+      exec podman --root /data/lab/containers/storage --runroot /data/lab/containers/run
+      run --rm --name sglang-qwen3-4b-awq --device nvidia.com/gpu=all --ipc=host --network=host
+      -v /data/lab/models/awq/qwen3-4b-awq:/model:ro,Z docker.io/lmsysorg/sglang:latest
+      python3 -m sglang.launch_server --model-path /model --host 127.0.0.1 --port ${PORT}
+      --served-model-name qwen3-4b-awq --mem-fraction-static 0.55
+      --attention-backend flashinfer --tool-call-parser qwen'
+    cmdStop: |
+      podman --root /data/lab/containers/storage --runroot /data/lab/containers/run stop -t 10 sglang-qwen3-4b-awq
+    name: "Qwen3-4B AWQ (SGLang, throughput tier)"
+    description: "In-house AWQ-W4A16; continuous batching for small-model sweeps."
+    ttl: 600
+
   # ---- Existing Ollama-backed small/medium models, proxied via llama-swap ----
   #
   # These already run on Ollama (port 11434). We register them in llama-swap
@@ -299,6 +327,15 @@ groups:
     exclusive: true
     members:
       - "llama-3.3-70b-q4"
+
+  # SGLang Phase 1: AWQ throughput tier. Exclusive — the SGLang container
+  # claims the GPU for the resident batch, so loading it evicts the other
+  # lanes (and vice-versa). Solo member today.
+  "sglang-awq":
+    swap: true
+    exclusive: true
+    members:
+      - "qwen3-4b-awq"
   #
   # embedder-big (qwen3-embedding-8b-q8): DEFERRED — not yet pulled.
   #

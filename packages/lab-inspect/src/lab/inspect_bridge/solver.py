@@ -637,6 +637,17 @@ def model_with_tools(
         # with max_turns=1 the executor would get zero turns. Fail loudly
         # at build time rather than producing an un-comparable cell.
         raise ValueError("plan_execute scaffold requires max_turns >= 2")
+    # SGLang Phase 1 / B2: the sglang-local (-awq) arm is single-turn BFCL ONLY
+    # until the multi-turn agent path is validated against it. Fail loudly here
+    # rather than letting an sglang-local arm silently run the untested agent
+    # loop (the ModelPool/llama-swap path below would *accept* it, which is
+    # exactly the silent-success we want to prevent). Remove this guard when
+    # the agent path is validated for SGLang.
+    if model_backend == "sglang-local":
+        raise ValueError(
+            "sglang-local backend is not yet validated on the agent path "
+            "(SGLang Phase 1 B2 — single-turn BFCL only)"
+        )
 
     settings = get_settings()
     litellm_key = _read_litellm_key()

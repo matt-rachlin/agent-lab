@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import sys
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -88,6 +90,72 @@ CLOUD_MODELS = [
         "notes": "Deep reasoning oracle.",
     },
 ]
+
+
+# Curated non-ollama local catalog (SGLang container-served, llama-swap-routed).
+# These models are not discoverable via the Ollama /api/tags path, so they are
+# declared here and merged into the upsert alongside CLOUD_MODELS. Provenance
+# (source_sha256 + quant recipe) is read from the on-disk MANIFEST.json written
+# by the AWQ pipeline — see _sglang_models() below.
+SGLANG_MODELS: list[dict[str, Any]] = [
+    {
+        "publisher": "qwen",
+        "name": "qwen3",
+        "variant": "4b",
+        "quant": "awq-w4a16",
+        "backend": "sglang-local",
+        "litellm_id": "qwen3-4b-awq",
+        # source_sha256 + notes filled in from the manifest by _sglang_models().
+        "manifest_path": "/data/lab/models/awq/qwen3-4b-awq/MANIFEST.json",
+        "ollama_tag": None,
+        "vram_gb": 7,
+        "context_max": 40960,
+        "output_max": 4096,
+        "license": "apache-2.0",
+        "capabilities": ["tool_call"],
+        "notes": "In-house AWQ-W4A16 of Qwen3-4B; SGLang throughput tier (Phase 1).",
+    },
+]
+
+
+def _sglang_models() -> list[dict[str, Any]]:
+    """Materialize SGLANG_MODELS rows, reading provenance from each MANIFEST.json.
+
+    The on-disk manifest's ``output_sha256`` becomes the row ``source_sha256``;
+    the quant recipe/calibration fields are appended to ``notes``. A missing or
+    unreadable manifest is non-fatal: the row is still emitted with
+    ``source_sha256=None`` and a warning so registration stays idempotent.
+    """
+    rows: list[dict[str, Any]] = []
+    for spec in SGLANG_MODELS:
+        row = {k: v for k, v in spec.items() if k != "manifest_path"}
+        row.setdefault("source_sha256", None)
+        manifest_path = spec.get("manifest_path")
+        if manifest_path:
+            try:
+                manifest = json.loads(Path(manifest_path).read_text())
+                row["source_sha256"] = manifest.get("output_sha256")
+                method = manifest.get("quant_method")
+                scheme = manifest.get("scheme")
+                calib = manifest.get("calibration_dataset")
+                provenance = "; ".join(
+                    p
+                    for p in (
+                        f"recipe={method}" if method else "",
+                        f"scheme={scheme}" if scheme else "",
+                        f"calib={calib}" if calib else "",
+                    )
+                    if p
+                )
+                if provenance:
+                    row["notes"] = f"{row.get('notes', '')} [{provenance}]".strip()
+            except (OSError, ValueError) as exc:
+                print(
+                    f"[register] could not read sglang manifest {manifest_path}: {exc}",
+                    file=sys.stderr,
+                )
+        rows.append(row)
+    return rows
 
 
 def _ollama_local_models() -> list[dict[str, Any]]:
@@ -271,6 +339,9 @@ def sync_models(*, include_cloud: bool = True) -> dict[str, int]:
         for cloud in CLOUD_MODELS:
             row = {"source_sha256": None, **cloud}
             rows.append(row)
+    # Curated non-ollama local models (SGLang). Always included — they are not
+    # gated on the Ollama daemon being reachable. Idempotent via ON CONFLICT.
+    rows.extend(_sglang_models())
 
     with psycopg.connect(get_settings().pg_dsn) as conn:
         with conn.cursor() as cur:
@@ -285,6 +356,7 @@ def sync_models(*, include_cloud: bool = True) -> dict[str, int]:
         "total": len(rows),
         "local": len([r for r in rows if r["backend"] == "ollama-local"]),
         "cloud": len([r for r in rows if r["backend"] == "ollama-cloud"]),
+        "sglang": len([r for r in rows if r["backend"] == "sglang-local"]),
     }
 
 
@@ -324,7 +396,8 @@ def _mirror_models_to_mlflow(rows: list[dict[str, Any]]) -> None:
 def main() -> int:
     summary = sync_models()
     print(
-        f"registered {summary['total']} models ({summary['local']} local, {summary['cloud']} cloud)"
+        f"registered {summary['total']} models "
+        f"({summary['local']} local, {summary['cloud']} cloud, {summary['sglang']} sglang)"
     )
     return 0
 
