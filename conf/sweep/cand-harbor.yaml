@@ -1,0 +1,46 @@
+# Candidate suite wiring: Harbor / Terminal-Bench (Stage-1 D4 / task #16).
+#
+# Mirrors conf/sweep/cand-cap-qwen3-14b.yaml (BFCL) so `harbor` is referenceable
+# as a sweep `suite:` the same way `bfcl-v3-ast` is. The suite name resolves via
+# lab.eval.external.harbor -> `lab data add-benchmark harbor` -> lab.tasks.
+#
+# PREREQUISITE (registration):
+#   lab data add-benchmark harbor --limit-per-category 6
+# Needs the vendored corpus at /data/lab/vendor/harbor-datasets/terminal-bench
+# (present on m-box, 89 tasks; else:
+#   git clone https://github.com/laude-institute/terminal-bench \
+#       /data/lab/vendor/harbor-datasets/terminal-bench).
+#
+# EXECUTION CAVEAT (honest): Terminal-Bench tasks are Docker-image-backed and
+# graded by Harbor's own verifier. They run via the Harbor CLI driving
+# lab.agent.harbor_adapter.LabReactAgent (see that module's docstring), NOT via
+# `lab sweep run` — the sweep runner has no Docker lane. This config is the
+# cohort/manifest of which tasks the Harbor run should cover (the task rows carry
+# rubric.harbor_task_id / docker_image / timeouts). Use it for selection +
+# provenance, not as a `lab sweep run` target.
+experiment:
+  slug: CAND-HARBOR-TBENCH-001
+  title: "Candidate suite: Harbor Terminal-Bench (N=6, manifest only)"
+  hypothesis: "Wire harbor as a selectable sweep suite; define the Terminal-Bench cohort the Harbor CLI executes."
+tasks:
+  suite: harbor
+  slugs:
+    - adaptive-rejection-sampler
+    - bn-fit-modify
+    - break-filter-js-from-html
+    - build-cython-ext
+    - build-pmars
+    - build-pov-ray
+models:
+  - qwen3-14b-q4
+configs:
+  - name: greedy
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 8192
+    scaffold: react
+    extra:
+      think: false
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 600

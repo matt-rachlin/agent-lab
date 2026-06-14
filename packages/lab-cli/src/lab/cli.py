@@ -122,11 +122,12 @@ def data_add_benchmark(
 
     * ``bfcl-v3`` — Berkeley Function Calling Leaderboard v3 (Python AST
       categories: simple, multiple, parallel, parallel_multiple).
-
-    Defers (follow-up):
-
-    * ``tau2-bench`` — Salesforce τ²-Bench (requires user-simulator
-      subprocess; not in Phase 17.5).
+    * ``tau2-bench`` — Sierra τ²-bench (loads the vendored domain tasks into
+      a registerable suite; multi-turn dual-control *execution* is a
+      deferred runner lane — rows carry the τ² bookkeeping for it).
+    * ``harbor`` — Terminal-Bench corpus (loads the vendored task dirs into a
+      registerable suite; *execution* is via the Harbor CLI +
+      ``lab.agent.harbor_adapter.LabReactAgent``, not ``lab sweep run``).
     """
 
     if name in {"bfcl-v3", "bfcl"}:
@@ -160,14 +161,59 @@ def data_add_benchmark(
         return
 
     if name in {"tau2-bench", "tau2"}:
-        console.print(
-            "[yellow]τ²-bench is deferred[/] to a Phase 17.5 follow-up — its "
-            "user-simulator subprocess requires non-trivial integration "
-            "beyond the current sweep harness."
-        )
-        raise typer.Exit(code=2)
+        from lab.eval.external.tau2 import DEFAULT_DOMAINS, load_tau2_tasks
+        from lab.eval.external.tau2 import SUITE_NAME as TAU2_SUITE
 
-    console.print(f"[red]unknown benchmark[/] {name!r}; known: bfcl-v3")
+        doms = categories if categories else list(DEFAULT_DOMAINS)
+        console.print(f"[bold]tau2-bench[/] loading {len(doms)} domain(s): {', '.join(doms)}")
+        try:
+            tasks = load_tau2_tasks(doms, limit_per_domain=limit_per_category)
+        except FileNotFoundError as exc:
+            console.print(f"[red]error[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        by_dom: dict[str, int] = {}
+        for t in tasks:
+            by_dom[t.category or "?"] = by_dom.get(t.category or "?", 0) + 1
+        table = Table("Domain", "Count")
+        for dom in doms:
+            table.add_row(dom, str(by_dom.get(dom, 0)))
+        console.print(table)
+        console.print(f"[green]loaded[/] {len(tasks)} task(s)")
+        console.print(
+            "[yellow]note[/] τ²-bench execution (user-simulator + reward) is a "
+            "deferred runner lane; registration makes the suite selectable now."
+        )
+        if dry_run:
+            console.print("[yellow]dry-run[/] — skipping DB write")
+            return
+        n = register_tasks(tasks)
+        console.print(f"[green]registered[/] {n} task(s) into suite {TAU2_SUITE!r}")
+        return
+
+    if name in {"harbor", "terminal-bench"}:
+        from lab.eval.external.harbor import SUITE_NAME as HARBOR_SUITE
+        from lab.eval.external.harbor import load_harbor_tasks
+
+        console.print("[bold]harbor[/] loading Terminal-Bench task corpus")
+        try:
+            tasks = load_harbor_tasks(limit=limit_per_category)
+        except FileNotFoundError as exc:
+            console.print(f"[red]error[/] {exc}")
+            raise typer.Exit(code=2) from exc
+        console.print(f"[green]loaded[/] {len(tasks)} task(s)")
+        console.print(
+            "[yellow]note[/] Harbor execution runs via the Harbor CLI + "
+            "LabReactAgent, not `lab sweep run`; registration makes the suite "
+            "selectable as a cohort manifest."
+        )
+        if dry_run:
+            console.print("[yellow]dry-run[/] — skipping DB write")
+            return
+        n = register_tasks(tasks)
+        console.print(f"[green]registered[/] {n} task(s) into suite {HARBOR_SUITE!r}")
+        return
+
+    console.print(f"[red]unknown benchmark[/] {name!r}; known: bfcl-v3, tau2-bench, harbor")
     raise typer.Exit(code=2)
 
 

@@ -1,0 +1,38 @@
+# Candidate suite wiring: τ²-bench (Stage-1 D4 / task #16).
+#
+# Mirrors conf/sweep/cand-cap-qwen3-14b.yaml (BFCL) so τ²-bench is referenceable
+# as a sweep `suite:` the same way `bfcl-v3-ast` is. The suite name resolves via
+# lab.eval.external.tau2 -> `lab data add-benchmark tau2-bench` -> lab.tasks.
+#
+# PREREQUISITE (registration):
+#   lab data add-benchmark tau2-bench --category airline --limit-per-category 8
+# Needs the vendored dataset at /data/lab/vendor/tau2-bench (present on m-box;
+# else: git clone https://github.com/sierra-research/tau2-bench /data/lab/vendor/tau2-bench).
+#
+# EXECUTION CAVEAT (honest): τ²-bench is multi-turn dual-control — it needs a
+# user-simulator LLM + stateful domain DB/tools + an action/DB/NL reward fn.
+# The sweep runner has no τ² dispatch lane yet (only bfcl/agent/single_turn), so
+# `lab sweep run` will NOT score these cells until that lane lands. This config
+# is the cohort/manifest definition that the future lane will consume; the task
+# rows already carry the τ² bookkeeping (rubric.tau2_domain / user_scenario /
+# evaluation_criteria). Do NOT treat its scores as verified until the lane ships.
+experiment:
+  slug: CAND-TAU2-AIRLINE-001
+  title: "Candidate suite: τ²-bench airline (N=4, manifest only)"
+  hypothesis: "Wire τ²-bench as a selectable sweep suite; establish the cohort for the future dual-control runner lane."
+tasks:
+  suite: tau2-bench
+  slugs: ["airline-0", "airline-1", "airline-2", "airline-3", "airline-4", "airline-5", "airline-6", "airline-7"]
+models:
+  - qwen3-14b-q4
+configs:
+  - name: greedy
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: false
+seeds: [1, 2, 3, 4]
+max_concurrency: 1
+request_timeout_sec: 600

@@ -16,6 +16,6 @@ materialising the dataset.
 
 from __future__ import annotations
 
-from lab.eval.external import bfcl, bfcl_ast_checker
+from lab.eval.external import bfcl, bfcl_ast_checker, harbor, tau2
 
-__all__ = ["bfcl", "bfcl_ast_checker"]
+__all__ = ["bfcl", "bfcl_ast_checker", "harbor", "tau2"]
