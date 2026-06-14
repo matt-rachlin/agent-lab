@@ -16,10 +16,15 @@ Hand-curated, top-level. The scout reads THIS + auto-pulls titles/TL;DRs from
 docs/adr/*, docs/findings/*, SETUP.md for currency. (The `kb` knowledgebase is
 the test corpus and is OFF-LIMITS as a source.)
 
-## Goal
-Build **capable, reliable, safe/controlled AI agents for all manner of tasks**,
-run **locally**. A trust+control substrate (ADR-008) + an objective scoreboard
-(ADR-009) are built; a research/scout agent is next.
+## Goal (see [charter](../charter.md))
+The lab is an **agent factory**: build **capable, reliable, safe/controlled LOCAL
+agents that DRIVE REAL SOFTWARE** — deployable across all of Matt's personal &
+professional domains, **replacing cloud/Claude-driven agents in our own apps**
+(e.g. a local agent driving an app workflow in place of a Claude agent). Trust
+substrate (ADR-008) + scoreboard (ADR-009) exist to make agents trustworthy enough
+to DEPLOY. Highly relevant therefore: agents that drive app workflows, local
+replacements for cloud agents, on-device agent runtimes, deployment/integration/
+adapter patterns.
 
 ## Hard constraints (shape what's relevant)
 - **Single 12 GB GPU** (RTX 3080 Ti on m-box) — models must fit (≈≤14B q4, or MoE
