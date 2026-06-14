@@ -312,11 +312,62 @@ def sweep_run(
         "--key-file",
         help="Path to LiteLLM master key file",
     ),
+    queue: bool = typer.Option(
+        False,
+        "--queue",
+        help=(
+            "Enqueue into the pueue gpu group (labeled with the experiment slug) "
+            "instead of running in-process. Serializes GPU work and surfaces the "
+            "sweep in the Bridge Queue + Lab tabs with live console output."
+        ),
+    ),
 ) -> None:
     """Run a sweep from a YAML config."""
+    import shutil
+    import subprocess
+    import sys
+
     from lab.sweep.runner import SlowModelGateError
 
     spec = load_sweep(config)
+
+    if queue:
+        # Re-invoke this same command (minus --queue) under pueue's gpu group so
+        # it serializes against other GPU work and shows up in the Queue tab. The
+        # slug label is what Bridge uses to link the pueue task <-> experiment.
+        pueue = shutil.which("pueue") or "/home/m/.local/bin/pueue"
+        lab_bin = str(Path(sys.executable).with_name("lab"))
+        inner = [lab_bin, "sweep", "run", str(config.resolve())]
+        if not resume:
+            inner.append("--no-resume")
+        if dry_run:
+            inner.append("--dry-run")
+        if enforce_pre_registration:
+            inner.append("--enforce-pre-registration")
+        if allow_slow_models:
+            inner.append("--allow-slow-models")
+        inner += ["--key-file", str(key_file)]
+        result = subprocess.run(
+            [
+                pueue,
+                "add",
+                "-g",
+                "gpu",
+                "-w",
+                "/data/lab/code",
+                "--label",
+                spec.experiment.slug,
+                "--",
+                *inner,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        out = (result.stdout + result.stderr).strip()
+        console.print(out or f"enqueued {spec.experiment.slug}")
+        raise typer.Exit(code=result.returncode)
+
     if enforce_pre_registration and not is_pre_registered(spec.experiment.slug):
         console.print(
             f"[red]ERROR[/]: experiment {spec.experiment.slug!r} is not pre-registered. "

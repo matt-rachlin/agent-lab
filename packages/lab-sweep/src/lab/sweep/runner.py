@@ -1564,6 +1564,42 @@ def run_sweep(
     _install_signal_handlers(spec.experiment.slug)
     _write_pidfile(spec.experiment.slug)
 
+    # Mark the experiment live the moment execution begins, so the dashboard
+    # shows 'running' during the sweep instead of only at the end. total_cells
+    # is set unconditionally (drives the dashboard's done/total progress and its
+    # derived running count); the status->'running' promotion only fires on a
+    # freshly-registered 'planned' row (a resume of a 'done'/terminal row is left
+    # alone — the finally re-stamps completion).
+    if experiment_id is not None:
+        with psycopg.connect(get_settings().pg_dsn) as _c, _c.cursor() as _cur:
+            _cur.execute(
+                "UPDATE experiments SET total_cells = %s WHERE experiment_id = %s",
+                (len(cells), experiment_id),
+            )
+            _cur.execute(
+                "UPDATE experiments SET status = 'running',"
+                " started_at = COALESCE(started_at, NOW())"
+                " WHERE experiment_id = %s AND status = 'planned'",
+                (experiment_id,),
+            )
+
+    # Plain-text progress log for the Lab console panel — pueue-independent, so
+    # it works for direct (`nohup`) runs as well as pueue-enqueued ones. Bridge
+    # tails it at /ws/experiment/<slug>/log. The full rich console additionally
+    # lands in pueue's own log when the sweep is launched via `--queue`.
+    _plog = None
+    try:
+        _plog_path = Path("/data/lab/runs/logs") / f"{spec.experiment.slug}.log"
+        _plog_path.parent.mkdir(parents=True, exist_ok=True)
+        _plog = _plog_path.open("a", buffering=1)  # line-buffered
+        _plog.write(
+            f"=== {time.strftime('%H:%M:%S')} sweep start {spec.experiment.slug}: "
+            f"{len(todo)} to run, {len(done)} already done, {len(cells)} total ===\n"
+        )
+    except OSError as exc:
+        log.warning("sweep_progress_log_open_failed", error=str(exc))
+        _plog = None
+
     # Phase 19c — single ModelPool for the entire sweep; each cell
     # re-declares its plan. The pool itself is a thin HTTP client, so
     # sharing across cells is fine. Failures in the pool degrade
@@ -1678,21 +1714,48 @@ def run_sweep(
                         error=result.error,
                     )
                 progress.update(bar, advance=1)
+                if _plog is not None:
+                    _plog.write(
+                        f"[{time.strftime('%H:%M:%S')}] "
+                        f"{summary['executed']}/{len(todo_sorted)} "
+                        f"{cell.model_litellm_id} {cell.task_slug} seed={cell.seed} "
+                        f"-> {result.status}"
+                        + (f": {result.error}" if result.status == "error" else "")
+                        + "\n"
+                    )
     finally:
         _clear_pidfile(spec.experiment.slug)
-
-    # Mark experiment running/completed
-    if experiment_id is not None:
-        with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE experiments
-                   SET status = 'running',
-                       started_at = COALESCE(started_at, NOW())
-                 WHERE experiment_id = %s
-                """,
-                (experiment_id,),
-            )
+        if _plog is not None:
+            try:
+                _plog.write(
+                    f"=== {time.strftime('%H:%M:%S')} sweep end: "
+                    f"executed={summary['executed']} errors={summary['errors']} ===\n"
+                )
+                _plog.close()
+            except OSError:
+                pass
+        # Finalize on EVERY exit path (success, error, signal) so a finished
+        # sweep never stays 'running'. 'done' = executed, awaiting analysis; the
+        # analyze step later advances it to 'analyzed'/'written_up', so don't
+        # clobber a terminal lifecycle if a re-run passed through here.
+        # completed_at is the authoritative "execution ended" marker the
+        # dashboard keys on.
+        if experiment_id is not None:
+            try:
+                with psycopg.connect(get_settings().pg_dsn) as _c, _c.cursor() as _cur:
+                    _cur.execute(
+                        """
+                        UPDATE experiments
+                           SET status = 'done',
+                               completed_at = NOW(),
+                               started_at = COALESCE(started_at, NOW())
+                         WHERE experiment_id = %s
+                           AND status NOT IN ('analyzed', 'written_up', 'abandoned')
+                        """,
+                        (experiment_id,),
+                    )
+            except Exception as _exc:
+                log.warning("experiment_finalize_failed", error=str(_exc))
 
     # Best-effort notification on sweep completion
     try:
