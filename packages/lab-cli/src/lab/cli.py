@@ -348,6 +348,15 @@ analyze_app = typer.Typer(help="Analyze sweep results")
 app.add_typer(analyze_app, name="analyze")
 
 
+@analyze_app.command("scoreboard")
+def analyze_scoreboard() -> None:
+    """Multi-axis scoreboard over verified results (ADR-009): capability/
+    reliability/safety gate, safety veto, cost reported. Sparse until baselines."""
+    from lab.analyze.scoreboard import render_scoreboard
+
+    sys.stdout.write(render_scoreboard())
+
+
 @analyze_app.command("report")
 def analyze_report(
     experiment: str = typer.Argument(..., help="Experiment slug"),
