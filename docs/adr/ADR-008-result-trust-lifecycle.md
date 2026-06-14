@@ -16,7 +16,7 @@ tags:
 ---
 # ADR-008: Result-trust lifecycle
 
-Status: proposed  (front-matter `status: active` tracks the doc; the decision is not yet accepted)
+Status: accepted  (open questions resolved 2026-06-13; front-matter `status: active` tracks the doc)
 Date: 2026-06-13
 Deciders: Matt Rachlin
 

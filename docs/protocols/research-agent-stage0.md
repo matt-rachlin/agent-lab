@@ -179,9 +179,28 @@ Split:
   the self-test (criterion 3). Estimate ~1.5-3 weeks total, dominated by
   multi-path enforcement and the framework/identity work, not the verifier.
 
-## Open questions
+## Open questions (resolved 2026-06-13 — see Resolved decisions)
 - Minimum battery sizes (N seeds, M prompt variants, anchor count) for a
   meaningful `verified`.
 - Hash-chaining vs signed transitions for tamper-evidence — which is worth it now.
 - Exact least-privilege identity mechanism on m-box (separate user vs scoped
   token vs container).
+
+## Resolved decisions (v0, 2026-06-13) — supersede the Open questions above
+
+1. **Minimum refutation battery (D3), conservative v0 (tunable via verifier config):**
+   `verified` requires UNANIMOUS survival of all of: >=16 seeds; >=5
+   semantic-preserving prompt variants (F-013); >=2 independent re-grade paths
+   that must agree; >=2 anchors per model-class under test. Any single failure ->
+   `artefact-suspected`. Cost stays bounded — the battery runs only on candidate
+   findings, not every cell.
+2. **Tamper-evidence (D2 / ADR-008 §3):** hash-chained append-only
+   `trust_transitions` (each row binds `prev_hash`) PLUS Ed25519-signed promotion
+   rows for `verified`/`finding`, signing key held outside the agent's
+   environment. Integrity + authenticity together enforce "the agent cannot mint
+   its own findings".
+3. **Agent identity isolation (D5), maximal v0:** rootless-podman container; a
+   dedicated `lab_agent` DB role (SELECT broad; INSERT only up to
+   `reliability_confirmed`; promotions via a SECURITY DEFINER function the role
+   cannot execute); no git/cloud/signing credentials mounted; network egress
+   allowlisted to the litellm gateway only.
