@@ -129,6 +129,35 @@ class ValidityReport:
     correct: bool | None = None
 
 
+def decode_integrity(raw_response: dict[str, Any] | None) -> list[str]:
+    """Advanced validity check: decode/template artefacts — truncation or an empty
+    completion. A response was captured but mangled (cf. F-017 reasoning-token
+    truncation). Code-doable; complements emission/correctness."""
+    choices = (raw_response or {}).get("choices") or []
+    if not choices:
+        return ["decode: no choices in response"]
+    ch = choices[0] or {}
+    out: list[str] = []
+    if ch.get("finish_reason") == "length":
+        out.append("decode: response truncated (finish_reason=length)")
+    msg = ch.get("message") or {}
+    if not (msg.get("content") or msg.get("tool_calls")):
+        out.append("decode: empty completion")
+    return out
+
+
+def baseline_sanity(value: float, lo: float | None, hi: float | None) -> list[str]:
+    """Advanced validity check: flag an aggregate implausibly outside a known-good
+    range, in EITHER direction (matching a published number is not proof). No range
+    configured -> no-op. Ranges are populated from data later (a baselines registry)."""
+    out: list[str] = []
+    if lo is not None and value < lo:
+        out.append(f"baseline: {value:.3f} below expected floor {lo:.3f}")
+    if hi is not None and value > hi:
+        out.append(f"baseline: {value:.3f} above expected ceiling {hi:.3f}")
+    return out
+
+
 def bfcl_validity(
     *,
     request_tools: list[dict[str, Any]] | None,
@@ -165,6 +194,8 @@ def single_turn_validity(
     has_output = bool(response_text) or bool((raw_response or {}).get("choices"))
     if not has_output:
         violations.append("telemetry: done run produced no model output")
+    elif (raw_response or {}).get("choices"):
+        violations.extend(decode_integrity(raw_response))
     return ValidityReport(
         passed=not violations, violations=violations, emitted=has_output, correct=None
     )

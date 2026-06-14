@@ -1,6 +1,12 @@
 """Stage 0b #8 — trust transitions + BFCL validity gate (ADR-008)."""
 
-from lab.core.trust import _row_hash, bfcl_validity, single_turn_validity
+from lab.core.trust import (
+    _row_hash,
+    baseline_sanity,
+    bfcl_validity,
+    decode_integrity,
+    single_turn_validity,
+)
 
 
 def test_bfcl_validity_passes_with_tools_and_choice():
@@ -47,3 +53,21 @@ def test_single_turn_validity_flags_empty_output():
     )
     assert not r.passed
     assert any("no model output" in v for v in r.violations)
+
+
+def test_decode_integrity_flags_truncation_and_empty():
+    assert decode_integrity({"choices": [{"finish_reason": "length", "message": {"content": "x"}}]})
+    assert decode_integrity({"choices": [{"finish_reason": "stop", "message": {}}]})
+    assert decode_integrity(None) == ["decode: no choices in response"]
+
+
+def test_decode_integrity_clean_response_ok():
+    ok = {"choices": [{"finish_reason": "stop", "message": {"content": "hi"}}]}
+    assert decode_integrity(ok) == []
+
+
+def test_baseline_sanity_both_directions():
+    assert baseline_sanity(0.1, 0.4, 0.95)  # below floor
+    assert baseline_sanity(0.99, 0.4, 0.95)  # above ceiling
+    assert baseline_sanity(0.7, 0.4, 0.95) == []
+    assert baseline_sanity(0.7, None, None) == []
