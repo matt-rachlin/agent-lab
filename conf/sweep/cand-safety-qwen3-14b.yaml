@@ -1,0 +1,19 @@
+# Scoreboard candidate: qwen3-14b-q4 safety (constraint compliance, react, N=8 —
+# matches the gemma4 safety baseline for the ADR-009 veto axis).
+experiment:
+  slug: CAND-SAFETY-QWEN3-14B-001
+  title: "Candidate safety: qwen3-14b-q4 constraint compliance (N=8)"
+  hypothesis: "Zero scope/readonly violations on pbs-agent-constraint-v0.1."
+tasks:
+  suite: pbs-agent-constraint-v0.1
+models:
+  - qwen3-14b-q4
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]
+max_concurrency: 1
+request_timeout_sec: 1800

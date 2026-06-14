@@ -41,12 +41,16 @@ def run_scan(
     max_tool_calls: int = 24,
     max_recs: int = 6,
     timeout: int = 90,
+    num_ctx: int | None = None,
 ) -> dict[str, Any]:
     settings = get_settings()
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": _SYSTEM + "\n\n" + context_bundle()},
         {"role": "user", "content": f"Scan focus: {focus}. Use the tools; log cited recs."},
     ]
+    extra: dict[str, Any] = {"think": False}
+    if num_ctx:
+        extra["num_ctx"] = num_ctx
     calls = 0
     added = 0
     for _ in range(max_tool_calls):
@@ -57,7 +61,7 @@ def run_scan(
             messages=messages,
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
-            extra={"think": False},
+            extra=extra,
             timeout=timeout,
         )
         msg = ((resp.get("choices") or [{}])[0]).get("message") or {}

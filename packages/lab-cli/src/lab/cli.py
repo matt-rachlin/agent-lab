@@ -417,11 +417,20 @@ def scout_scan_cmd(
     model: str = typer.Option("qwen3-4b-ft-toolcall-q4-latest", "--model"),
     max_recs: int = typer.Option(6, "--max-recs"),
     max_tool_calls: int = typer.Option(24, "--max-tool-calls"),
+    num_ctx: int | None = typer.Option(
+        None, "--num-ctx", help="Ollama context window; raise for reasoning drivers (gpt-oss)"
+    ),
 ) -> None:
     """Autonomous scout scan (ADR-011): the model searches sources + logs cited recs."""
     from lab.scout_scan import run_scan
 
-    out = run_scan(focus=focus, model=model, max_recs=max_recs, max_tool_calls=max_tool_calls)
+    out = run_scan(
+        focus=focus,
+        model=model,
+        max_recs=max_recs,
+        max_tool_calls=max_tool_calls,
+        num_ctx=num_ctx,
+    )
     console.print(f"[green]scan done[/]: {out}")
 
 

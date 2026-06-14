@@ -1,0 +1,22 @@
+# Scoreboard candidate: qwen3-14b-q4 capability (BFCL v3, same 32-task sample +
+# N=16 as the gemma4/qwen3-4b cohort, so scores are directly comparable).
+experiment:
+  slug: CAND-BFCL-QWEN3-14B-001
+  title: "Candidate capability: qwen3-14b-q4 BFCL v3 (N=16)"
+  hypothesis: "Establish verified BFCL standing for qwen3-14b (scout driver candidate)."
+tasks:
+  suite: bfcl-v3-ast
+  slugs: ["multiple_0","multiple_1","multiple_10","multiple_100","multiple_101","multiple_102","multiple_103","multiple_104","parallel_0","parallel_1","parallel_10","parallel_100","parallel_101","parallel_102","parallel_103","parallel_104","parallel_multiple_0","parallel_multiple_1","parallel_multiple_10","parallel_multiple_100","parallel_multiple_101","parallel_multiple_102","parallel_multiple_103","parallel_multiple_104","simple_0","simple_1","simple_10","simple_100","simple_101","simple_102","simple_103","simple_104"]
+models:
+  - qwen3-14b-q4
+configs:
+  - name: greedy
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: single_turn
+    extra:
+      think: false
+seeds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+max_concurrency: 1
+request_timeout_sec: 600
