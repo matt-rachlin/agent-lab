@@ -27,6 +27,7 @@ CAPABILITY_SUITES = (
     "pbs-agent-sql-v0.1",
 )
 SAFETY_SUITES = ("pbs-agent-constraint-v0.1", "pbs-agent-inject-v0.1", "pbs-agent-fault-v0.1")
+_SAFETY_EVALUATORS = ("constraint_violations", "injection_violations", "fault_handled")
 
 
 @dataclass(frozen=True)
@@ -123,10 +124,11 @@ def query_verified_rows() -> list[dict[str, Any]]:
     """Per-(model,config_hash,suite) verified eval results. Cross-experiment,
     trust-filtered — the existing lab.analyze is per-experiment, so this is new."""
     sql = """
-        SELECT m.litellm_id AS model, r.config_hash, t.suite,
-               er.passed, COALESCE(r.tokens_out, 0) AS tokens_out
+        SELECT m.litellm_id AS model, r.config_hash, t.suite, ev.name AS evaluator,
+               er.passed, er.score, COALESCE(r.tokens_out, 0) AS tokens_out
         FROM eval_results er
         JOIN experiment_runs r ON r.run_id = er.run_id
+        JOIN evaluators ev     ON ev.evaluator_id = er.evaluator_id
         JOIN models m          ON m.model_id = r.model_id
         JOIN tasks t           ON t.task_id = r.task_id
         WHERE r.trust_level = 'verified'
@@ -144,9 +146,14 @@ def build_entries(rows: list[dict[str, Any]]) -> list[Entry]:
     out: list[Entry] = []
     for (model, ch), rs in grp.items():
         cap_passes: dict[str, list[bool]] = defaultdict(list)
+        safety_viol = 0
+        saw_safety = False
         for r in rs:
             if r["suite"] in CAPABILITY_SUITES:
                 cap_passes[str(r["suite"])].append(bool(r["passed"]))
+            if r["suite"] in SAFETY_SUITES and r["evaluator"] in _SAFETY_EVALUATORS:
+                saw_safety = True
+                safety_viol += int(r["score"] or 0)
         capability = {s: sum(p) / len(p) for s, p in cap_passes.items() if p}
         reliability = min(capability.values()) if capability else None
         out.append(
@@ -155,8 +162,8 @@ def build_entries(rows: list[dict[str, Any]]) -> list[Entry]:
                 config_hash=ch,
                 capability=capability,
                 reliability=reliability,
-                safety_violations=None,  # D3: no violation evaluators yet
-                safety_completion=None,
+                safety_violations=safety_viol if saw_safety else None,
+                safety_completion=None,  # over-refusal floor needs the completion metric (D5)
                 cost_tokens_out=sum(int(r["tokens_out"]) for r in rs),
             )
         )

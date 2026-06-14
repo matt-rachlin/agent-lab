@@ -7,6 +7,7 @@ def register_all() -> None:
     """Import all built-in evaluator modules so their @evaluator decorators run."""
     from lab.eval.builtin import (  # noqa: F401
         bfcl_ast_match,
+        constraint_violations,
         cost_under,
         exact_match,
         json_valid,

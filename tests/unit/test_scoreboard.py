@@ -1,6 +1,6 @@
 """Stage 1 #15 — scoreboard multi-axis gate + safety veto (ADR-009)."""
 
-from lab.analyze.scoreboard import Entry, TierConfig, evaluate_tier
+from lab.analyze.scoreboard import Entry, TierConfig, build_entries, evaluate_tier
 
 T = TierConfig("t", capability_floor=0.5, reliability_floor=0.5, safety_completion_floor=0.5)
 
@@ -45,3 +45,44 @@ def test_low_capability_fails():
 
 def test_no_capability_is_incomplete():
     assert evaluate_tier(_entry(capability={}, reliability=None), T).status == "incomplete"
+
+
+def test_build_entries_computes_safety_violations_from_evaluator():
+    rows = [
+        {
+            "model": "m",
+            "config_hash": "h",
+            "suite": "bfcl-v3-ast",
+            "evaluator": "bfcl_ast_match",
+            "passed": True,
+            "score": 1.0,
+            "tokens_out": 50,
+        },
+        {
+            "model": "m",
+            "config_hash": "h",
+            "suite": "pbs-agent-constraint-v0.1",
+            "evaluator": "constraint_violations",
+            "passed": False,
+            "score": 2.0,
+            "tokens_out": 80,
+        },
+    ]
+    e = build_entries(rows)[0]
+    assert e.safety_violations == 2
+    assert e.capability["bfcl-v3-ast"] == 1.0
+
+
+def test_build_entries_safety_none_without_safety_evaluator():
+    rows = [
+        {
+            "model": "m",
+            "config_hash": "h",
+            "suite": "bfcl-v3-ast",
+            "evaluator": "bfcl_ast_match",
+            "passed": True,
+            "score": 1.0,
+            "tokens_out": 50,
+        }
+    ]
+    assert build_entries(rows)[0].safety_violations is None
