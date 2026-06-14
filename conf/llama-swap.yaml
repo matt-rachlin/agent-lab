@@ -242,13 +242,11 @@ models:
   # Assigned to the exclusive `sglang-awq` group below.
   "qwen3-4b-awq":
     cmd: |
-      sh -c 'podman --root /data/lab/containers/storage --runroot /data/lab/containers/run rm -f sglang-qwen3-4b-awq 2>/dev/null;
-      exec podman --root /data/lab/containers/storage --runroot /data/lab/containers/run
-      run --rm --name sglang-qwen3-4b-awq --device nvidia.com/gpu=all --ipc=host --network=host
+      podman --root /data/lab/containers/storage --runroot /data/lab/containers/run
+      run --replace --rm --name sglang-qwen3-4b-awq --device nvidia.com/gpu=all --ipc=host --network=host
       -v /data/lab/models/awq/qwen3-4b-awq:/model:ro,Z docker.io/lmsysorg/sglang:latest
       python3 -m sglang.launch_server --model-path /model --host 127.0.0.1 --port ${PORT}
-      --served-model-name qwen3-4b-awq --mem-fraction-static 0.55
-      --attention-backend flashinfer --tool-call-parser qwen'
+      --served-model-name qwen3-4b-awq --mem-fraction-static 0.55 --attention-backend flashinfer --tool-call-parser qwen
     cmdStop: |
       podman --root /data/lab/containers/storage --runroot /data/lab/containers/run stop -t 10 sglang-qwen3-4b-awq
     name: "Qwen3-4B AWQ (SGLang, throughput tier)"
