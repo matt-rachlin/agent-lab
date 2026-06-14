@@ -1,17 +1,17 @@
-"""Scout driver loop (ADR-011): a bounded LiteLLM tool-use loop. NEW code (the
-only existing loop is Inspect+sandbox-bound). Drives a model through the in-process
-scout tools; audits every tool call; single-flight (global audit hash-chain)."""
+"""Scout driver (ADR-011) — now a thin caller of the Lab Agent Runtime
+(ADR-012, lab.core.agent_runtime). The bounded tool-loop, tool dispatch, audit,
+and the side-effect authorization gate all live in the shared runtime; this module
+supplies only the scout's system prompt, tools, and rec-count stop condition.
+Proves the runtime end-to-end (the scout is its first caller)."""
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from lab.core.control import record_action
-from lab.core.llm import call_litellm_chat
+from lab.core.agent_runtime import run_agent
 from lab.core.settings import get_settings
 from lab.scout import context_bundle
-from lab.scout_tools import DISPATCH, TOOL_SCHEMAS
+from lab.scout_tools import build_tools
 
 _SYSTEM = """You are the lab's research scout. Read the lab context below; it is
 your relevance filter. Find work HIGHLY relevant to this lab (local
@@ -34,6 +34,16 @@ across different sources, add the best findings, then stop. Be selective —
 quality over quantity."""
 
 
+def _recs_added(results: list[dict[str, Any]]) -> int:
+    return sum(
+        1
+        for r in results
+        if r["name"] == "scout_add"
+        and isinstance(r["result"], dict)
+        and r["result"].get("result") == "added"
+    )
+
+
 def run_scan(
     *,
     focus: str,
@@ -44,51 +54,25 @@ def run_scan(
     num_ctx: int | None = None,
 ) -> dict[str, Any]:
     settings = get_settings()
-    messages: list[dict[str, Any]] = [
-        {"role": "system", "content": _SYSTEM + "\n\n" + context_bundle()},
-        {"role": "user", "content": f"Scan focus: {focus}. Use the tools; log cited recs."},
-    ]
-    extra: dict[str, Any] = {"think": False}
-    if num_ctx:
-        extra["num_ctx"] = num_ctx
-    calls = 0
-    added = 0
-    for _ in range(max_tool_calls):
-        resp, _ms = call_litellm_chat(
-            settings=settings,
-            litellm_key=settings.litellm_key,
-            model=model,
-            messages=messages,
-            tools=TOOL_SCHEMAS,
-            tool_choice="auto",
-            extra=extra,
-            timeout=timeout,
-        )
-        msg = ((resp.get("choices") or [{}])[0]).get("message") or {}
-        messages.append(msg)
-        tool_calls = msg.get("tool_calls") or []
-        if not tool_calls:
-            break
-        for tc in tool_calls:
-            calls += 1
-            fn = tc.get("function") or {}
-            name = fn.get("name") or ""
-            try:
-                args = json.loads(fn.get("arguments") or "{}")
-            except json.JSONDecodeError:
-                args = {}
-            record_action(actor="scout", action=f"tool:{name}", args=args, outcome=None)
-            try:
-                result: Any = (
-                    DISPATCH[name](**args) if name in DISPATCH else {"error": "unknown tool"}
-                )
-            except Exception as exc:
-                result = {"error": f"{type(exc).__name__}: {exc}"}
-            if name == "scout_add" and isinstance(result, dict) and result.get("result") == "added":
-                added += 1
-            messages.append(
-                {"role": "tool", "tool_call_id": tc.get("id"), "content": json.dumps(result)[:4000]}
-            )
-        if added >= max_recs or calls >= max_tool_calls:
-            break
-    return {"tool_calls": calls, "recs_added": added, "model": model}
+    res = run_agent(
+        settings=settings,
+        litellm_key=settings.litellm_key,
+        model=model,
+        system=_SYSTEM + "\n\n" + context_bundle(),
+        user=f"Scan focus: {focus}. Use the tools; log cited recs.",
+        tools=build_tools(),
+        actor="scout",
+        # scout may search the web AND log recs (write_local); not irreversible.
+        allow_side_effects=frozenset({"read", "external_read", "write_local"}),
+        max_turns=max_tool_calls,
+        max_tool_calls=max_tool_calls,
+        timeout=timeout,
+        num_ctx=num_ctx,
+        stop_predicate=lambda results: _recs_added(results) >= max_recs,
+    )
+    return {
+        "tool_calls": res.tool_calls,
+        "recs_added": _recs_added(res.tool_results),
+        "model": model,
+        "stop": res.stop_reason,
+    }

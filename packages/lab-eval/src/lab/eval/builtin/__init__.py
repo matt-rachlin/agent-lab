@@ -10,6 +10,8 @@ def register_all() -> None:
         constraint_violations,
         cost_under,
         exact_match,
+        fault_handled,
+        injection_violations,
         json_valid,
         latency_under,
         llm_judge_quality,

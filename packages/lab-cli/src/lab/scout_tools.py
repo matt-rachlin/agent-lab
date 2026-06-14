@@ -18,12 +18,12 @@ import os
 import re
 import socket
 import subprocess
-from collections.abc import Callable
 from typing import Any
 from urllib.parse import quote, urlparse
 
 import httpx
 
+from lab.core.agent_runtime import Tool
 from lab.scout import add_recommendation
 
 _UA = "Mozilla/5.0 (compatible; lab-scout/0.2)"
@@ -192,70 +192,69 @@ def scout_add_tool(
     return {"result": res, "blocked_but_accepted": blocked}
 
 
-# OpenAI tool schemas for the driver loop + dispatch map.
-TOOL_SCHEMAS: list[dict[str, Any]] = [
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": (
+_INT: dict[str, str] = {"type": "integer"}
+
+
+def build_tools() -> list[Tool]:
+    """The scout's tools as ADR-012 Tool ABI instances (in-process backend).
+    Search/fetch are external_read; scout_add mutates the rec store (write_local)."""
+    return [
+        Tool(
+            name="web_search",
+            description=(
                 "General-web search (blogs, news, docs, forums) via SearXNG. Use this "
-                "first for broad discovery; use arxiv_search/github_search for papers/code. "
+                "first for broad discovery; arxiv_search/github_search for papers/code. "
                 "categories: general|science|it|news."
             ),
-            "parameters": {
+            parameters={
                 "type": "object",
                 "properties": {
                     "query": {"type": "string"},
-                    "max_results": {"type": "integer"},
+                    "max_results": _INT,
                     "categories": {"type": "string", "enum": list(_SEARXNG_CATEGORIES)},
                 },
                 "required": ["query"],
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "arxiv_search",
-            "description": "Search arXiv for papers.",
-            "parameters": {
+            impl=web_search,
+            side_effect="external_read",
+        ),
+        Tool(
+            name="arxiv_search",
+            description="Search arXiv for papers.",
+            parameters={
                 "type": "object",
-                "properties": {"query": {"type": "string"}, "max_results": {"type": "integer"}},
+                "properties": {"query": {"type": "string"}, "max_results": _INT},
                 "required": ["query"],
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "github_search",
-            "description": "Search GitHub repos.",
-            "parameters": {
+            impl=arxiv_search,
+            side_effect="external_read",
+        ),
+        Tool(
+            name="github_search",
+            description="Search GitHub repos.",
+            parameters={
                 "type": "object",
-                "properties": {"query": {"type": "string"}, "max_results": {"type": "integer"}},
+                "properties": {"query": {"type": "string"}, "max_results": _INT},
                 "required": ["query"],
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "fetch_url",
-            "description": "Fetch + extract a public URL to verify/quote a source.",
-            "parameters": {
+            impl=github_search,
+            side_effect="external_read",
+        ),
+        Tool(
+            name="fetch_url",
+            description="Fetch + extract a public URL to verify/quote a source.",
+            parameters={
                 "type": "object",
                 "properties": {"url": {"type": "string"}},
                 "required": ["url"],
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scout_add",
-            "description": "Log a cited recommendation (verifies reachability; deduped).",
-            "parameters": {
+            impl=fetch_url,
+            side_effect="external_read",
+        ),
+        Tool(
+            name="scout_add",
+            description="Log a cited recommendation (verifies reachability; deduped).",
+            parameters={
                 "type": "object",
                 "properties": {
                     "source_url": {"type": "string"},
@@ -266,14 +265,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "required": ["source_url", "title", "category", "why"],
             },
-        },
-    },
-]
-
-DISPATCH: dict[str, Callable[..., Any]] = {
-    "web_search": web_search,
-    "arxiv_search": arxiv_search,
-    "github_search": github_search,
-    "fetch_url": fetch_url,
-    "scout_add": scout_add_tool,
-}
+            impl=scout_add_tool,
+            side_effect="write_local",
+        ),
+    ]
