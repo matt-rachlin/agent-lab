@@ -127,6 +127,38 @@ models:
     description: "Math/reasoning specialist; beats DSR1-distill-70B on AIME 2025."
     ttl: 600
 
+  # Nemotron Nano 2 (9B v2) — hybrid Mamba-2/Transformer reasoning model
+  # (added 2026-06-13). Dense 9B, but only 4 of 57 layers are attention, so
+  # the KV cache is tiny — fully offloads (-ngl 99) at ~7.1 GB model VRAM
+  # (smoke 2026-06-13: 9976 MiB used total with the rerank server resident,
+  # ~1.9 GB free). Built for agentic tool-use with long reasoning traces at
+  # up to ~6x the throughput of a dense 8B in reasoning settings.
+  #
+  # Reasoning is left ON (the model default) — the OPPOSITE of qwen3-30b-a3b-moe.
+  # Verified 2026-06-13 on AB-NEMOTRON-NANO2-BFCL-001: with enable_thinking=false
+  # this model emits the tool call as a ```json block in `content` and NO native
+  # tool_calls, so every BFCL cell graded "no_tool_call" (0/40). Flip thinking ON
+  # and llama.cpp's --jinja path engages the native tool-call channel — proper
+  # tool_calls, content empty. Nemotron is a reasoning model designed to think
+  # then call tools; suppressing the think block also suppresses tool emission
+  # here. (qwen3-MoE is reversed — it needs think:false or it narrates instead of
+  # calling, the F-009 pattern. Per-model, not a global default.) Thinking ON is
+  # also BFCL's on-leaderboard config for reasoning models.
+  #
+  # Requires llama.cpp >= b6315 for the nemotron_h arch; this host is b8183,
+  # which predates the b8227 thinking regression (issue #20268) — smoked clean.
+  "nemotron-nano-9b-v2":
+    cmd: |
+      ${LLAMA_SERVER}
+      --port ${PORT} --host 127.0.0.1 --ctx-size 8192 -ngl 99
+      --model ${MODELS_DIR}/nemotron-nano-9b-v2/nvidia_NVIDIA-Nemotron-Nano-9B-v2-Q4_K_M.gguf
+      --jinja
+    env:
+      - "LD_LIBRARY_PATH=${LD_LIB}"
+    name: "Nemotron Nano 2 9B (hybrid Mamba-Transformer)"
+    description: "Agentic tool-use + reasoning. Q4_K_M, full offload. Reasoning ON — required for native tool calls (see comment)."
+    ttl: 600
+
   # Hermes 4.3 36B — landed 2026-05-27. ~21 GB Q4_K_M; far too big to
   # fully offload on a 12 GB card. Use hybrid offload with -ngl 22 +
   # q8_0 KV cache: smoked clean Phase 19d at ~11.4 GB VRAM with
@@ -246,6 +278,7 @@ groups:
     members:
       - "qwen3-14b-q4"
       - "phi-4-reasoning-14b"
+      - "nemotron-nano-9b-v2"
 
   "big-llm":
     swap: true

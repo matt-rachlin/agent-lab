@@ -34,6 +34,41 @@ model_list:
       api_key: dummy
       timeout: 600
 
+  # Nemotron Nano 2 9B (hybrid Mamba-Transformer) -> llama-swap medium-llm group.
+  # Reasoning ON (model default) — required for native tool calls on this path.
+  - model_name: nemotron-nano-9b-v2
+    litellm_params:
+      model: openai/nemotron-nano-9b-v2
+      api_base: http://host.containers.internal:8080/v1
+      api_key: dummy
+      timeout: 600
+
+  # Ollama-served nemotron variants. Unlike the llama-server (--jinja) path above,
+  # Ollama's nemotron-3-nano renderer/parser handles PARALLEL tool calls, so these
+  # are the lanes used for BFCL (the llama-server path caps at ~57% on parallel).
+  - model_name: nemotron-nano-9b-v2-ollama
+    litellm_params:
+      model: ollama_chat/nemotron-nano-9b-v2
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+      timeout: 600
+  - model_name: nemotron-3-nano-4b
+    litellm_params:
+      model: ollama_chat/nemotron-3-nano:4b
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+      timeout: 600
+
+  # qwen3-30b-a3b via Ollama — true (parallel-capable) number vs the llama-server
+  # lane's ~57% ceiling. 18GB MoE, CPU-offloaded on the 12GB card (slow). think:false
+  # set per-sweep (model_defaults) per F-009.
+  - model_name: qwen3-30b-a3b-ollama
+    litellm_params:
+      model: ollama_chat/qwen3-30b-a3b
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+      timeout: 600
+
   - model_name: hermes-4.3-36b
     litellm_params:
       model: openai/hermes-4.3-36b
@@ -181,6 +216,25 @@ model_list:
       model: ollama_chat/qwen3-vl:235b-cloud
       api_base: http://host.containers.internal:11434
       max_tokens: 16384
+      timeout: 900
+
+  - model_name: qwen3-4b-ft-toolcall-q4-latest
+    litellm_params:
+      model: ollama_chat/qwen3-4b-ft-toolcall-q4:latest
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+
+  - model_name: qwen3-4b
+    litellm_params:
+      model: ollama_chat/qwen3:4b
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
+
+  - model_name: gpt-oss-20b-ollama
+    litellm_params:
+      model: ollama_chat/gpt-oss:20b
+      api_base: http://host.containers.internal:11434
+      keep_alive: 5m
       timeout: 900
 
 litellm_settings:
