@@ -282,6 +282,34 @@ def _message_to_jsonable(msg: Any) -> dict[str, Any]:
     }
 
 
+def _request_fidelity(ctx: SweepContext, lab_agent: dict[str, Any]) -> dict[str, Any]:
+    """Agent-path request fidelity (Stage 0a #12): the effective generate config
+    + the tool surface the agent exercised, persisted in the trajectory header so
+    an agent eval is auditable from its trace (cf. F-017, single-turn/BFCL parity).
+    Full offered-tool SCHEMAS remain a deeper follow-up; this captures config,
+    tool_choice, and invoked tool names."""
+    cfg = ctx.config or {}
+    extra = cfg.get("extra") or {}
+    tools_invoked: set[str] = set()
+    for turn in lab_agent.get("turns") or []:
+        if not isinstance(turn, dict):
+            continue
+        for tc in turn.get("tools") or turn.get("tool_calls") or []:
+            if isinstance(tc, dict):
+                name = tc.get("tool") or tc.get("name")
+                if name:
+                    tools_invoked.add(str(name))
+    return {
+        "sampling": {
+            "temperature": cfg.get("temperature"),
+            "top_p": cfg.get("top_p"),
+            "max_tokens": cfg.get("max_tokens"),
+        },
+        "tool_choice": extra.get("tool_choice") or cfg.get("tool_choice"),
+        "tools_invoked": sorted(tools_invoked),
+    }
+
+
 def _trajectory_bytes(*, ctx: SweepContext, extracted: dict[str, Any]) -> bytes:
     """Serialise the trajectory to one JSON object per line.
 
@@ -306,6 +334,7 @@ def _trajectory_bytes(*, ctx: SweepContext, extracted: dict[str, Any]) -> bytes:
                 "config_hash": ctx.config_hash,
                 "seed": ctx.seed,
                 "manifest_sha": ctx.manifest_sha,
+                "request": _request_fidelity(ctx, lab_agent),
             },
             default=str,
         )
