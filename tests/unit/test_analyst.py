@@ -6,6 +6,11 @@ zero tool calls), and analyze_experiment runs against a MOCKED run_agent driving
 a scripted tool-using trajectory. The golden assertion is that the read tools
 surface the right numbers and the planted smell is detectable from the tool
 outputs — proving the read tools + agent wiring, not the LLM.
+
+The slug is now BOUND into the tools (build_tools(slug, cursor_factory=...)), so
+the model never supplies it. The scripted trajectory therefore builds the tools
+per-slug and invokes each impl with NO arguments, mirroring how the real runtime
+dispatches a zero-parameter tool.
 """
 
 from __future__ import annotations
@@ -195,7 +200,7 @@ def test_run_metadata_reads_trace_fields() -> None:
 
 
 def test_build_tools_are_all_read_only() -> None:
-    tools = build_tools()
+    tools = build_tools("EXP-NS1")
     names = {t.name for t in tools}
     assert names == {
         "analyst_query_experiment",
@@ -203,6 +208,30 @@ def test_build_tools_are_all_read_only() -> None:
         "analyst_run_metadata",
     }
     assert all(t.side_effect == "read" for t in tools)
+
+
+def test_build_tools_bind_slug_and_expose_no_slug_param() -> None:
+    """The slug is bound into the impls via closures (mirroring maintainer_tools);
+    the JSON parameters carry NO slug, so the model cannot supply/garble it, and
+    each tool always queries the experiment it was built for."""
+    factory, cur = _factory(_synthetic())
+    tools = build_tools("EXP-NS1", cursor_factory=factory)
+    for t in tools:
+        # no slug (and indeed no required params) in the tool's JSON schema
+        assert t.parameters.get("required") == []
+        assert "slug" not in t.parameters.get("properties", {})
+    by_name = {t.name: t for t in tools}
+    # the bound impl is called with NO arguments (as the runtime would) and still
+    # queries the correct, bound experiment
+    out = by_name["analyst_query_experiment"].impl()
+    assert out["slug"] == "EXP-NS1"
+    assert cur.executed[-1][1] == ("EXP-NS1",)
+    # a different slug builds tools bound to that slug instead
+    factory2, cur2 = _factory(_synthetic())
+    other = {t.name: t for t in build_tools("OTHER", cursor_factory=factory2)}
+    out2 = other["analyst_pass_rates"].impl()
+    assert out2["slug"] == "OTHER"
+    assert cur2.executed[-1][1] == ("OTHER",)
 
 
 # --------------------------------------------------------------------------- #
@@ -223,20 +252,29 @@ def test_analyze_experiment_golden_surfaces_planted_smell(monkeypatch: Any) -> N
     """Mock run_agent to a scripted trajectory that actually invokes the real
     read tools (against synthetic data), then assert analyze_experiment lifts
     the planted F-017 smell out of the tool results and a writeup out of the
-    messages. No LLM, no DB."""
+    messages. No LLM, no DB.
+
+    The tools are now built PER-SLUG with the cursor_factory bound, and each impl
+    is called with NO arguments (the slug is closed over) — exactly as the real
+    runtime dispatches a zero-parameter tool. We rebuild the tools here with the
+    synthetic factory because analyze_experiment's own build_tools(slug) would
+    bind the real-DB cursor factory."""
     factory, _ = _factory(_synthetic())
 
     def fake_run_agent(**kwargs: Any) -> _FakeAgentResult:
-        # mirror the loop: dispatch the agent's tools by name, as run_agent would
-        tools = {t.name: t for t in kwargs["tools"]}
         # confirm wiring: analyst is read-only (default allow-set, no grants)
         assert "allow_side_effects" not in kwargs
         assert kwargs["actor"] == "analyst"
         slug = "EXP-NS1"
+        # Rebind the tools to the synthetic factory (the slug is bound, not passed).
+        tools = {t.name: t for t in build_tools(slug, cursor_factory=factory)}
+        # the model supplies NO slug — the impls are zero-arg closures
+        for t in build_tools(slug, cursor_factory=factory):
+            assert "slug" not in t.parameters.get("properties", {})
         results: list[dict[str, Any]] = []
         for name in ("analyst_query_experiment", "analyst_pass_rates", "analyst_run_metadata"):
-            res = tools[name].impl(slug, cursor_factory=factory)
-            results.append({"name": name, "args": {"slug": slug}, "result": res})
+            res = tools[name].impl()  # no slug arg — cannot be garbled
+            results.append({"name": name, "args": {}, "result": res})
         messages = [
             {"role": "system", "content": kwargs["system"]},
             {"role": "user", "content": kwargs["user"]},
@@ -279,9 +317,9 @@ def test_analyze_experiment_clean_experiment_has_no_smells(monkeypatch: Any) -> 
     factory, _ = _factory(clean)
 
     def fake_run_agent(**kwargs: Any) -> _FakeAgentResult:
-        tools = {t.name: t for t in kwargs["tools"]}
-        res = tools["analyst_pass_rates"].impl("EXP", cursor_factory=factory)
-        results = [{"name": "analyst_pass_rates", "args": {"slug": "EXP"}, "result": res}]
+        tools = {t.name: t for t in build_tools("EXP", cursor_factory=factory)}
+        res = tools["analyst_pass_rates"].impl()
+        results = [{"name": "analyst_pass_rates", "args": {}, "result": res}]
         messages = [{"role": "assistant", "content": "all models healthy"}]
         return _FakeAgentResult(messages, results)
 

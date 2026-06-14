@@ -11,6 +11,13 @@ The read tools accept an injectable ``cursor_factory`` (default = a real psycopg
 cursor over the configured ``pg_dsn``) so tests drive them against synthetic rows
 without ever touching the live DB. Every SQL statement is SELECT-only and binds
 its slug as a parameter (no string interpolation).
+
+The experiment slug is NOT a tool parameter the model supplies. ``build_tools``
+takes the slug (and cursor_factory) and BINDS them into each tool via a factory
+closure (mirroring ``lab.maintainer_tools.make_read``/``make_write``), so the model
+cannot garble the slug — every tool always queries the one experiment it was
+built for and is called with NO arguments. The live smoke that surfaced a model
+corrupting the slug ("CAND-BQCL...") is structurally impossible after this.
 """
 
 from __future__ import annotations
@@ -108,7 +115,9 @@ _METADATA_SQL = """
 
 
 # --------------------------------------------------------------------------- #
-# Read-only tools (Tool ABI, side_effect="read").                             #
+# Read-only query impls. Each takes the slug explicitly (so they remain unit-  #
+# testable in isolation); build_tools BINDS the slug into them via a closure   #
+# so the agent never supplies it.                                              #
 # --------------------------------------------------------------------------- #
 
 
@@ -169,47 +178,90 @@ def analyst_run_metadata(
     return {"slug": slug, "runs": runs}
 
 
-_SLUG_PARAMS: dict[str, Any] = {
-    "type": "object",
-    "properties": {"slug": {"type": "string"}},
-    "required": ["slug"],
-}
+# --------------------------------------------------------------------------- #
+# Slug-binding factory closures (mirror maintainer_tools.make_read/make_write).#
+# Each returns a zero-arg callable closing over the slug + cursor_factory, so  #
+# the model cannot supply or garble the slug.                                  #
+# --------------------------------------------------------------------------- #
 
 
-def build_tools() -> list[Tool]:
-    """The analyst's three read-only tools as ADR-012 Tool ABI instances."""
+def make_query_experiment(
+    slug: str, cursor_factory: CursorFactory = _default_cursor_factory
+) -> Callable[[], dict[str, Any]]:
+    def query_experiment() -> dict[str, Any]:
+        """Read every run of THIS experiment joined to its per-evaluator scores."""
+        return analyst_query_experiment(slug, cursor_factory=cursor_factory)
+
+    return query_experiment
+
+
+def make_pass_rates(
+    slug: str, cursor_factory: CursorFactory = _default_cursor_factory
+) -> Callable[[], dict[str, Any]]:
+    def pass_rates() -> dict[str, Any]:
+        """Aggregate THIS experiment to per-(model, evaluator) rates + F-017 flags."""
+        return analyst_pass_rates(slug, cursor_factory=cursor_factory)
+
+    return pass_rates
+
+
+def make_run_metadata(
+    slug: str, cursor_factory: CursorFactory = _default_cursor_factory
+) -> Callable[[], dict[str, Any]]:
+    def run_metadata() -> dict[str, Any]:
+        """Read per-run trace metadata for THIS experiment."""
+        return analyst_run_metadata(slug, cursor_factory=cursor_factory)
+
+    return run_metadata
+
+
+#: The bound tools take NO arguments — the slug is closed over, not a parameter.
+_NO_PARAMS: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+
+def build_tools(
+    slug: str, *, cursor_factory: CursorFactory = _default_cursor_factory
+) -> list[Tool]:
+    """The analyst's three read-only tools, each BOUND to ``slug``.
+
+    The slug (and the cursor_factory) are bound into the tool impls via factory
+    closures; the tools' JSON ``parameters`` carry NO ``slug`` field, so the model
+    calls them with no arguments and they always query the correct experiment.
+    """
     return [
         Tool(
             name="analyst_query_experiment",
             description=(
-                "Read every run of an experiment (by slug) joined to its "
-                "per-evaluator scores: run_id, model, backend, evaluator, score, "
-                "passed, status, trust_level. Read-only."
+                "Read every run of THIS experiment joined to its per-evaluator "
+                "scores: run_id, model, backend, evaluator, score, passed, status, "
+                "trust_level. The experiment is fixed; takes no arguments. Read-only."
             ),
-            parameters=_SLUG_PARAMS,
-            impl=analyst_query_experiment,
+            parameters=_NO_PARAMS,
+            impl=make_query_experiment(slug, cursor_factory),
             side_effect="read",
         ),
         Tool(
             name="analyst_pass_rates",
             description=(
-                "Aggregate an experiment (by slug) to per-(model, evaluator) mean "
-                "score and pass rate, and pre-flag F-017 non-emission artefacts "
-                "(cells whose mean score collapses to ~0). Read-only."
+                "Aggregate THIS experiment to per-(model, evaluator) mean score and "
+                "pass rate, and pre-flag F-017 non-emission artefacts (cells whose "
+                "mean score collapses to ~0). Fixed experiment; takes no arguments. "
+                "Read-only."
             ),
-            parameters=_SLUG_PARAMS,
-            impl=analyst_pass_rates,
+            parameters=_NO_PARAMS,
+            impl=make_pass_rates(slug, cursor_factory),
             side_effect="read",
         ),
         Tool(
             name="analyst_run_metadata",
             description=(
-                "Read per-run trace metadata for an experiment (by slug): status, "
-                "error, trace_path, tool_call_count, actual_turns, tokens_out — to "
-                "corroborate F-017 (prose tokens, zero tool calls). Read-only."
+                "Read per-run trace metadata for THIS experiment: status, error, "
+                "trace_path, tool_call_count, actual_turns, tokens_out — to "
+                "corroborate F-017 (prose tokens, zero tool calls). Fixed "
+                "experiment; takes no arguments. Read-only."
             ),
-            parameters=_SLUG_PARAMS,
-            impl=analyst_run_metadata,
+            parameters=_NO_PARAMS,
+            impl=make_run_metadata(slug, cursor_factory),
             side_effect="read",
         ),
     ]
@@ -231,7 +283,8 @@ Finally draft a short writeup of the findings: which models pass, which are
 suspect, and an explicit recommendation to quarantine any F-017 cell before it
 reaches a leaderboard.
 
-You are read-only; you cannot modify any lab state."""
+The tools are already scoped to the one experiment under investigation; call them
+with no arguments. You are read-only; you cannot modify any lab state."""
 
 
 def _smells_from_results(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -268,9 +321,11 @@ def analyze_experiment(
 ) -> dict[str, Any]:
     """Drive the analyst LAR over one experiment and return the surfaced result.
 
-    Leaves ``allow_side_effects`` at the runtime default (read-only); the analyst
-    is wired as actor="analyst". Returns the slug, the model, the number of tool
-    calls, the stop reason, the lifted F-017 smells, and the drafted writeup."""
+    The slug is BOUND into the read tools (build_tools(slug)) so the model never
+    supplies it and cannot garble it. Leaves ``allow_side_effects`` at the runtime
+    default (read-only); the analyst is wired as actor="analyst". Returns the slug,
+    the model, the number of tool calls, the stop reason, the lifted F-017 smells,
+    and the drafted writeup."""
     settings = get_settings()
     res = run_agent(
         settings=settings,
@@ -278,10 +333,11 @@ def analyze_experiment(
         model=model,
         system=_SYSTEM,
         user=(
-            f"Analyze experiment {slug}. Use the read tools to pull its results, "
+            f"Analyze experiment {slug}. Use the read tools (they are already scoped "
+            "to this experiment; call them with no arguments) to pull its results, "
             "compute pass rates, flag any F-017 artefact, and draft a writeup."
         ),
-        tools=build_tools(),
+        tools=build_tools(slug),
         actor="analyst",
         max_turns=max_tool_calls,
         max_tool_calls=max_tool_calls,

@@ -29,6 +29,12 @@ Everything irreversible is therefore safe-by-default: ``digest``/``triage`` retu
 the *proposed* action and its disposition ("proposed"/"blocked"/"sent") rather
 than firing it. Real transports (``notify-phone`` subprocess; a future Gmail/IMAP
 client) live behind the seams in ``lab.comms_tools`` and are mocked in tests.
+
+The digest's rec count is the REAL number of OPEN scout recommendations (status
+``new``/``triaged`` — neither actioned nor rejected), read read-only from the
+``scout_recommendations`` table. The smoke that reported "0 open recommendations"
+was caused by ``digest`` defaulting ``recs`` to ``0``; it now defaults to that
+live count (still read-only; overridable for tests).
 """
 
 from __future__ import annotations
@@ -39,6 +45,11 @@ from lab.comms_tools import CommsTools
 from lab.core.agent_runtime import run_agent
 from lab.core.authz import ApprovalCallback, Authorizer, default_authorizer
 from lab.core.settings import get_settings
+
+#: scout statuses that count as "open" (still need attention) — not actioned/
+#: rejected. Mirrors migration 008's status CHECK (new|triaged|actioned|rejected).
+_OPEN_SCOUT_STATUSES: tuple[str, ...] = ("new", "triaged")
+
 
 # --------------------------------------------------------------------------- #
 # Approvers (fail-closed by default; explicit, scoped openers for the gate).   #
@@ -57,6 +68,32 @@ def approve_class(*classes: str) -> ApprovalCallback:
         return request.get("side_effect") in allowed
 
     return _approver
+
+
+# --------------------------------------------------------------------------- #
+# Open scout-rec count (read-only; the real digest input).                     #
+# --------------------------------------------------------------------------- #
+
+
+def open_rec_count() -> int:
+    """Count OPEN scout recommendations (status in new|triaged) from the live DB.
+
+    Read-only single SELECT over ``scout_recommendations`` (same DSN/pattern as
+    ``lab.scout``); statuses bound as parameters, no interpolation. This is the
+    real number the digest reports — replacing the old hard ``0`` default that
+    made the smoke say "0 open recommendations"."""
+    import psycopg
+
+    # status bound as a single array param (= ANY) so the SQL stays a literal and
+    # the open-status list is never interpolated into the query text.
+    sql = "SELECT count(*) FROM scout_recommendations WHERE status = ANY(%s)"
+    with (
+        psycopg.connect(get_settings().pg_dsn) as conn,
+        conn.cursor() as cur,
+    ):
+        cur.execute(sql, (list(_OPEN_SCOUT_STATUSES),))
+        row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
 
 
 # --------------------------------------------------------------------------- #
@@ -101,7 +138,8 @@ def _digest_text(*, recs: int) -> str:
 def digest(
     *,
     model: str = "qwen3-4b-ft-toolcall-q4-latest",
-    recs: int = 0,
+    recs: int | None = None,
+    rec_counter: Any = open_rec_count,
     tools: CommsTools | None = None,
     authorizer: Authorizer | None = None,
     approver: ApprovalCallback | None = None,
@@ -111,18 +149,26 @@ def digest(
 ) -> dict[str, Any]:
     """Compose a lab digest and propose a phone push.
 
+    ``recs`` is the number of OPEN scout recommendations to report. When left as
+    ``None`` (the default), digest reads the REAL count via ``rec_counter`` (which
+    defaults to the read-only ``open_rec_count`` DB query) — so the digest no
+    longer hard-codes "0 open recommendations". Pass an explicit ``recs`` (or a
+    fake ``rec_counter``) to override, e.g. in tests.
+
     With the ADR-013 defaults (``authorizer=None`` -> ``default_authorizer()``,
     ``approver=None`` -> fail-closed ``deny_approver``), the proposed ``ntfy_push``
     is IRREVERSIBLE and therefore resolves to require_approval -> deny: the push is
     returned as ``"proposed"`` and NEVER fires. Pass an ``approver`` that returns
     True for the irreversible class to actually send.
 
-    Returns ``{"digest_text", "push": "proposed"|"sent", "tool_calls", "stop"}``.
+    Returns ``{"digest_text", "push": "proposed"|"sent", "recs", "tool_calls",
+    "stop"}``.
     """
     settings = get_settings()
     ct = tools or CommsTools()
     authz = authorizer or default_authorizer()
-    text = _digest_text(recs=recs)
+    rec_count = recs if recs is not None else int(rec_counter())
+    text = _digest_text(recs=rec_count)
     res = run_agent(
         settings=settings,
         litellm_key=settings.litellm_key,
@@ -145,6 +191,7 @@ def digest(
     return {
         "digest_text": _final_text(res.messages) or text,
         "push": "sent" if pushed else "proposed",
+        "recs": rec_count,
         "tool_calls": res.tool_calls,
         "stop": res.stop_reason,
     }
