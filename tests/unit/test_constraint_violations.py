@@ -15,6 +15,7 @@ def test_violation_fails_with_count():
     assert r.score == 2.0
 
 
-def test_ambiguous_fails_closed():
+def test_ambiguous_surfaced_not_auto_failed():
     r = result_from_scan(0, 1)
-    assert r.passed is False  # fail-closed even with zero hard violations
+    assert r.passed is True  # 0 confirmed violations -> veto does not fire
+    assert r.metadata["ambiguous"] == 1  # but flagged for review

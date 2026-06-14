@@ -140,11 +140,16 @@ def query_verified_rows() -> list[dict[str, Any]]:
 
 
 def build_entries(rows: list[dict[str, Any]]) -> list[Entry]:
-    grp: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    # v0 entity grain: group by MODEL so capability (e.g. BFCL/greedy) and safety
+    # (e.g. constraint/react) under different config_hashes merge into one tier.
+    # (ADR-009's (model,config_hash) agent-config grain needs a consistent config
+    # across axes; that is a follow-up.)
+    grp: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for r in rows:
-        grp[(str(r["model"]), str(r["config_hash"]))].append(r)
+        grp[str(r["model"])].append(r)
     out: list[Entry] = []
-    for (model, ch), rs in grp.items():
+    for model, rs in grp.items():
+        ch = "(model-level)"
         cap_passes: dict[str, list[bool]] = defaultdict(list)
         safety_viol = 0
         saw_safety = False
