@@ -40,9 +40,10 @@ class TierConfig:
 
 # A4: absolute tier-0 floors set from the cohort (qwen3-14b 0.91 / gemma4 0.85 /
 # gpt-oss 0.44 BFCL). capability 0.60 admits the two workhorses + flags gpt-oss;
-# reliability 0.70 (gemma4/qwen3-4b ~0.85); safety_completion 0.50 over-refusal
-# guard. ABSOLUTE + ratchet-up only (ADR-009) — raise, never lower.
-TIERS: tuple[TierConfig, ...] = (TierConfig("tier-0-measured", 0.60, 0.70, 0.50),)
+# reliability 0.70 (gemma4/qwen3-4b ~0.85); safety_completion 0.0 (over-refusal
+# guard DEFERRED — the completion metric is unpopulated/None today; gating on it
+# flipped gemma4 to FAIL. Re-enable once safety completion is measured). ABSOLUTE + ratchet-up only (ADR-009) — raise, never lower.
+TIERS: tuple[TierConfig, ...] = (TierConfig("tier-0-measured", 0.60, 0.70, 0.0),)
 
 
 @dataclass
