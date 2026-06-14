@@ -145,3 +145,22 @@ def bfcl_validity(
     return ValidityReport(
         passed=not violations, violations=violations, emitted=emitted, correct=correct
     )
+
+
+def single_turn_validity(
+    *,
+    request_sampling: dict[str, Any] | None,
+    response_text: str | None,
+    raw_response: dict[str, Any] | None,
+) -> ValidityReport:
+    """Validity for a single-turn (non-tool) cell: the request was recorded and
+    the model actually produced output (telemetry integrity)."""
+    violations: list[str] = []
+    if not request_sampling:
+        violations.append("request-fidelity: sampling params not recorded")
+    has_output = bool(response_text) or bool((raw_response or {}).get("choices"))
+    if not has_output:
+        violations.append("telemetry: done run produced no model output")
+    return ValidityReport(
+        passed=not violations, violations=violations, emitted=has_output, correct=None
+    )

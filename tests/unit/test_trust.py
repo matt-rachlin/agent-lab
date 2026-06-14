@@ -1,6 +1,6 @@
 """Stage 0b #8 — trust transitions + BFCL validity gate (ADR-008)."""
 
-from lab.core.trust import _row_hash, bfcl_validity
+from lab.core.trust import _row_hash, bfcl_validity, single_turn_validity
 
 
 def test_bfcl_validity_passes_with_tools_and_choice():
@@ -31,3 +31,19 @@ def test_row_hash_is_deterministic_and_chains():
     assert h1 == h1b
     assert h1 != h2
     assert len(h1) == 64
+
+
+def test_single_turn_validity_passes_with_output():
+    r = single_turn_validity(
+        request_sampling={"temperature": 0.0}, response_text="hi", raw_response=None
+    )
+    assert r.passed
+    assert r.emitted is True
+
+
+def test_single_turn_validity_flags_empty_output():
+    r = single_turn_validity(
+        request_sampling={"temperature": 0.0}, response_text="", raw_response={}
+    )
+    assert not r.passed
+    assert any("no model output" in v for v in r.violations)

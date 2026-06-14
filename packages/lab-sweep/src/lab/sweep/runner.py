@@ -909,7 +909,37 @@ def _execute_single_turn(
                 )
 
     _insert_run(cell=cell, result=result, manifest_sha=manifest_sha, trace_path=trace_path)
+    if result.status == "done":
+        _advance_single_turn_validity(cell=cell, config=cell_config_for_call, result=result)
     return result
+
+
+def _advance_single_turn_validity(*, cell: Cell, config: RunConfig, result: CellResult) -> None:
+    """Stage 0b #8 validity gate (single-turn path): advance raw -> validity_passed
+    when the request was recorded and the model produced output. Fail-safe."""
+    from lab.core.trust import record_transition, single_turn_validity
+
+    try:
+        rep = single_turn_validity(
+            request_sampling={
+                "temperature": config.temperature,
+                "top_p": config.top_p,
+                "max_tokens": config.max_tokens,
+            },
+            response_text=result.response_text,
+            raw_response=result.raw_response,
+        )
+        if rep.passed:
+            record_transition(
+                cell.run_id,
+                "validity_passed",
+                actor="system:single_turn_gate",
+                evidence={"emitted": rep.emitted},
+            )
+        else:
+            log.warning("validity_gate_failed", run_id=cell.run_id, violations=rep.violations)
+    except Exception as exc:  # gate must never crash a sweep
+        log.warning("validity_gate_error", run_id=cell.run_id, error=str(exc))
 
 
 def _advance_bfcl_validity(
