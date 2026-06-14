@@ -106,8 +106,9 @@ def _experiment_id(slug: str | None) -> int | None:
 
 _UPSERT = """
 INSERT INTO findings
-    (slug, claim, confidence, source_exp, doc_path, status, created_at)
-VALUES (%(slug)s, %(claim)s, %(confidence)s, %(source_exp)s, %(doc_path)s, 'logged', %(created)s)
+    (slug, claim, confidence, source_exp, doc_path, status, created_at, min_trust_seen)
+VALUES (%(slug)s, %(claim)s, %(confidence)s, %(source_exp)s, %(doc_path)s, 'logged',
+        COALESCE(%(created)s, now()), 'legacy')
 ON CONFLICT (slug) DO UPDATE SET
     claim       = EXCLUDED.claim,
     confidence  = EXCLUDED.confidence,
@@ -219,15 +220,38 @@ Source: EXP-<slug>
 """
 
 
+def _run_trust_level(run_id: str) -> str | None:
+    """The trust_level of a run, or None if the run does not exist (ADR-008)."""
+    with psycopg.connect(get_settings().pg_dsn) as conn, conn.cursor() as cur:
+        cur.execute("SELECT trust_level FROM experiment_runs WHERE run_id = %s", (run_id,))
+        row = cur.fetchone()
+        return str(row[0]) if row else None
+
+
 def new_finding(
     slug: str,
     claim_placeholder: str = "<one-line claim>",
     *,
+    source_run_id: str | None = None,
     dir_: Path = FINDINGS_DIR_DEFAULT,
 ) -> Path:
-    """Scaffold a new F-NNN markdown file in the findings dir and return its path."""
+    """Scaffold a new F-NNN markdown file in the findings dir and return its path.
+
+    If ``source_run_id`` is given the run must be at trust_level ``verified`` (or
+    ``finding``): a finding may only be minted from a verified result (ADR-008).
+    Omit the run only for exploratory/methodological notes.
+    """
     if not re.match(r"^F-\d+$", slug):
         raise ValueError(f"slug must look like F-NNN, got {slug!r}")
+    if source_run_id is not None:
+        lvl = _run_trust_level(source_run_id)
+        if lvl is None:
+            raise ValueError(f"run {source_run_id!r} not found")
+        if lvl not in ("verified", "finding"):
+            raise ValueError(
+                f"run {source_run_id!r} is trust_level={lvl!r}; a finding may only be "
+                "minted from a 'verified' run (ADR-008)"
+            )
     dir_.mkdir(parents=True, exist_ok=True)
     safe = claim_placeholder.lower().replace(" ", "-")
     safe = re.sub(r"[^a-z0-9-]+", "", safe)[:48] or "untitled"

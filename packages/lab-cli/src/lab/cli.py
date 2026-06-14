@@ -461,13 +461,21 @@ app.add_typer(finding_app, name="finding")
 def finding_new(
     slug: str = typer.Argument(..., help="F-NNN slug (e.g. F-042)"),
     claim: str = typer.Argument("<one-line claim>", help="Short claim text"),
+    run: str = typer.Option(
+        None, "--run", help="source run_id; must be a 'verified' run (ADR-008)"
+    ),
 ) -> None:
     """Scaffold a new findings markdown file from the template."""
     try:
-        path = new_finding(slug, claim)
+        path = new_finding(slug, claim, source_run_id=run)
     except (ValueError, FileExistsError) as exc:
         console.print(f"[red]{exc}")
         raise typer.Exit(code=1) from exc
+    if run is None:
+        console.print(
+            "[yellow]warning:[/] no --run given; this finding is unlinked/exploratory "
+            "and is not eligible for verified promotion (ADR-008)."
+        )
     console.print(f"[green]created[/] {path}")
 
 

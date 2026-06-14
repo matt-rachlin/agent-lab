@@ -167,3 +167,23 @@ def summary_bfcl_emission(experiment_slug: str) -> list[dict[str, object]]:
         """
     )
     return fetchall_as_dicts(rel)
+
+
+def summary_trust_levels(experiment_slug: str) -> list[dict[str, object]]:
+    """Per-experiment count of runs by ADR-008 trust_level (+ legacy flag), so the
+    report can state the trust posture and never present a number without its level."""
+    con = open_db()
+    rel = con.sql(
+        f"""
+        SELECT
+            r.trust_level                                       AS trust_level,
+            COUNT(*)                                            AS n,
+            SUM(CASE WHEN r.legacy THEN 1 ELSE 0 END)           AS legacy_n
+        FROM lab.public.experiment_runs r
+        JOIN lab.public.experiments e ON e.experiment_id = r.experiment_id
+        WHERE e.slug = '{experiment_slug}'
+        GROUP BY r.trust_level
+        ORDER BY r.trust_level
+        """
+    )
+    return fetchall_as_dicts(rel)
