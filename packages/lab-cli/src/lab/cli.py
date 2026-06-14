@@ -373,6 +373,68 @@ def analyze_report(
 
 
 # ---------------------------------------------------------------------------
+# scout — research-scout recommendation queue (ADR-010)
+# ---------------------------------------------------------------------------
+
+scout_app = typer.Typer(help="Research scout: context + recommendation queue")
+app.add_typer(scout_app, name="scout")
+
+
+@scout_app.command("context")
+def scout_context_cmd() -> None:
+    """Emit the scout's grounding (charter + profile + doc titles + dedup list)."""
+    from lab.scout import context_bundle
+
+    sys.stdout.write(context_bundle())
+
+
+@scout_app.command("add")
+def scout_add_cmd(
+    source_url: str = typer.Argument(..., help="Source URL (dedup key)"),
+    title: str = typer.Option(..., "--title"),
+    category: str = typer.Option(
+        ..., "--category", help="model|architecture|software|paper|method|benchmark"
+    ),
+    why: str = typer.Option(..., "--why", help="why relevant to us"),
+    confidence: str = typer.Option("medium", "--confidence", help="low|medium|high"),
+) -> None:
+    """Add a cited recommendation (deduped on source_url)."""
+    from lab.scout import add_recommendation
+
+    result = add_recommendation(
+        source_url=source_url,
+        title=title,
+        category=category,
+        why_relevant=why,
+        confidence=confidence,
+    )
+    console.print(f"[{'green' if result == 'added' else 'yellow'}]{result}[/] {source_url}")
+
+
+@scout_app.command("list")
+def scout_list_cmd(
+    status: str = typer.Option(None, "--status", help="new|triaged|actioned|rejected"),
+) -> None:
+    """List the recommendation queue."""
+    from lab.scout import list_recommendations
+
+    rows = list_recommendations(status)
+    if not rows:
+        console.print("(no recommendations)")
+        return
+    table = Table("status", "conf", "category", "title", "source")
+    for r in rows:
+        table.add_row(
+            str(r["status"]),
+            str(r["confidence"]),
+            str(r["category"]),
+            str(r["title"])[:48],
+            str(r["source_url"])[:48],
+        )
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
 # exp — experiment plan pre-registration
 # ---------------------------------------------------------------------------
 

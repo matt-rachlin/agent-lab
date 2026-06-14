@@ -48,3 +48,13 @@ deploys). The experiment-loop agent is deprioritised, not cancelled (complementa
 ## Considered alternatives
 - Scheduled daemon — deferred (on-demand chosen; simpler, no autonomous runtime).
 - Free-form summaries — rejected (structured, cited, categorised recs are triageable).
+
+## Running a scan (the repeatable loop)
+The `lab scout` command provides the durable scaffolding; a search-capable agent drives the scan:
+1. `lab scout context` — emits grounding (charter + lab-profile + ADR/finding titles + the dedup list).
+2. A search-capable agent (Claude Code, with web tools) reads that, scans the sources
+   (arXiv / HuggingFace / GitHub / web), and for each relevant, **verifiable** finding runs
+   `lab scout add <url> --title … --category … --why … --confidence …`
+   (deduped on `source_url`; cite a real fetched source — no uncited claims, ADR-008 ethos).
+3. Triage: `lab scout list [--status new]`; advance `status` (new→triaged→actioned/rejected) as processed.
+On-demand by design; a `/scout` skill can wrap step 2.
