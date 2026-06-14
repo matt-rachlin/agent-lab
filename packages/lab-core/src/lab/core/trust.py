@@ -158,6 +158,33 @@ def baseline_sanity(value: float, lo: float | None, hi: float | None) -> list[st
     return out
 
 
+def contamination_signal(
+    acc_original: float, acc_perturbed: float, *, max_drop: float = 0.15
+) -> list[str]:
+    """Advanced validity check: perturbation-based contamination probe. A large
+    drop from original tasks to semantically-equivalent perturbed variants
+    suggests memorisation, not capability. Reuses the verifier variant arm; needs
+    no external canary corpus."""
+    drop = acc_original - acc_perturbed
+    if drop > max_drop:
+        return [
+            f"contamination: accuracy drops {drop:.2f} on perturbed variants "
+            f"({acc_original:.2f} -> {acc_perturbed:.2f}); possible memorisation"
+        ]
+    return []
+
+
+def judge_integrity(judge_gold_agreement: float | None, *, min_agreement: float = 0.8) -> list[str]:
+    """Advanced validity check: an LLM-judge score is admissible only if the judge
+    agrees with gold labels above a calibration floor (cf. F-015). No calibration
+    record -> the judge is uncalibrated and its score does not count."""
+    if judge_gold_agreement is None:
+        return ["judge: no calibration record; judged score not admissible (F-015)"]
+    if judge_gold_agreement < min_agreement:
+        return [f"judge: gold agreement {judge_gold_agreement:.2f} below floor {min_agreement:.2f}"]
+    return []
+
+
 def bfcl_validity(
     *,
     request_tools: list[dict[str, Any]] | None,

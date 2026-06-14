@@ -4,7 +4,9 @@ from lab.core.trust import (
     _row_hash,
     baseline_sanity,
     bfcl_validity,
+    contamination_signal,
     decode_integrity,
+    judge_integrity,
     single_turn_validity,
 )
 
@@ -71,3 +73,14 @@ def test_baseline_sanity_both_directions():
     assert baseline_sanity(0.99, 0.4, 0.95)  # above ceiling
     assert baseline_sanity(0.7, 0.4, 0.95) == []
     assert baseline_sanity(0.7, None, None) == []
+
+
+def test_contamination_signal_flags_big_drop():
+    assert contamination_signal(0.9, 0.5)
+    assert contamination_signal(0.9, 0.85) == []
+
+
+def test_judge_integrity_requires_calibration():
+    assert judge_integrity(None)
+    assert judge_integrity(0.6)
+    assert judge_integrity(0.9) == []
