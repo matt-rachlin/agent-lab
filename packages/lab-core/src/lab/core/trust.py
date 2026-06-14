@@ -72,6 +72,10 @@ def record_transition(
     """Append a hash-chained transition and advance the run's trust_level."""
     if to_level not in TRUST_LEVELS:
         raise ValueError(f"unknown trust level {to_level!r}")
+    if to_level == "finding" and not is_human and signature is None:
+        raise ValueError(
+            "promotion to 'finding' requires human approval (is_human=True) or a signature (ADR-008)"
+        )
     own = conn is None
     conn = conn or psycopg.connect(get_settings().pg_dsn)
     try:
