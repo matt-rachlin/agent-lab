@@ -21,6 +21,7 @@ Status = Literal["pass", "fail", "incomplete"]
 # D1 — axis suite membership (exact versioned IDs)
 CAPABILITY_SUITES = (
     "bfcl-v3-ast",
+    "harbor",
     "pbs-agent-hard-v0.1",
     "pbs-agent-brutal-v0.1",
     "pbs-agent-rag-v0.2",

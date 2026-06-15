@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from lab.eval.external.harbor import (
+from lab.eval.external.harbor_suite import (
     SUITE_NAME,
     discover_task_dirs,
     harbor_dir_to_task,

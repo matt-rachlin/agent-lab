@@ -191,8 +191,8 @@ def data_add_benchmark(
         return
 
     if name in {"harbor", "terminal-bench"}:
-        from lab.eval.external.harbor import SUITE_NAME as HARBOR_SUITE
-        from lab.eval.external.harbor import load_harbor_tasks
+        from lab.eval.external.harbor_suite import SUITE_NAME as HARBOR_SUITE
+        from lab.eval.external.harbor_suite import load_harbor_tasks
 
         console.print("[bold]harbor[/] loading Terminal-Bench task corpus")
         try:
@@ -890,6 +890,41 @@ def eval_apply(
             f"[red]{r.n_failed}[/]" if r.n_failed else "0",
         )
     console.print(table)
+
+
+@eval_app.command("ingest-harbor")
+def eval_ingest_harbor(
+    results_path: Path = typer.Argument(..., help="Path to Harbor verifier output (JSON Lines)"),
+    run_id: str = typer.Option(..., "--run-id", help="experiment_runs.run_id to attach results to"),
+    suite: str = typer.Option("harbor", "--suite", help="Task suite name (default: harbor)"),
+    trust: str = typer.Option(
+        "unverified",
+        "--trust",
+        help="Trust level recorded in raw JSONB (e.g. unverified, verified)",
+    ),
+) -> None:
+    """Read a Harbor verifier output file and write one row per task to eval_results.
+
+    The input file must be JSON Lines with at least:
+      {"task": "<slug>", "passed": <bool>, "score": <float>}
+
+    The run_id must already exist in experiment_runs. Tasks not found in the
+    tasks table are skipped (warning logged).
+    """
+    from lab.eval.external.harbor_ingest import ingest_harbor_run
+
+    if not results_path.exists():
+        console.print(f"[red]error[/] results file not found: {results_path}")
+        raise typer.Exit(code=2)
+
+    counts = ingest_harbor_run(results_path, run_id=run_id, suite=suite, trust_level=trust)
+    console.print(
+        f"[green]harbor ingest done[/] "
+        f"rows_written={counts['rows_written']} "
+        f"passed={counts['passed']} "
+        f"failed={counts['failed']} "
+        f"skipped_unknown_task={counts['skipped_unknown_task']}"
+    )
 
 
 # ---------------------------------------------------------------------------
