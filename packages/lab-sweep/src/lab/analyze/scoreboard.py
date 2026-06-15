@@ -189,10 +189,62 @@ def build_entries(rows: list[dict[str, Any]]) -> list[Entry]:
     return out
 
 
-def render_scoreboard() -> str:
+def _finding_trust_rank(level: str) -> int:
+    """Return the ordinal rank of a finding trust_level string. Unknown -> 0."""
+    ladder = ("unverified", "verified", "reliability_confirmed", "deployable")
+    try:
+        return ladder.index(level)
+    except ValueError:
+        return 0
+
+
+def _load_finding_trust_map(findings_dir: str | None = None) -> dict[str, str]:
+    """Return {slug -> trust_level} from all F-*.md finding docs."""
+    from pathlib import Path
+
+    from lab.finding import FINDINGS_DIR_DEFAULT, parse_finding
+
+    root = Path(findings_dir) if findings_dir else FINDINGS_DIR_DEFAULT
+    result: dict[str, str] = {}
+    if not root.is_dir():
+        return result
+    for path in root.glob("F-*.md"):
+        parsed = parse_finding(path)
+        if parsed:
+            result[parsed.slug] = parsed.trust_level
+    return result
+
+
+def render_scoreboard(
+    require_finding_trust: str | None = None,
+    findings_dir: str | None = None,
+) -> str:
+    """Render the ADR-009 scoreboard.
+
+    Args:
+        require_finding_trust: If set, only include results whose associated finding
+            is at or above this trust rung. Default: off (run trust is the only gate).
+        findings_dir: Override the findings directory (for testing).
+    """
     rows = query_verified_rows()
     entries = build_entries(rows)
     lines = ["# Scoreboard (ADR-009) — verified-only", ""]
+
+    if require_finding_trust is not None:
+        trust_map = _load_finding_trust_map(findings_dir)
+        required_rank = _finding_trust_rank(require_finding_trust)
+        lines.append(
+            f"_Finding-trust gate active: require finding trust >= {require_finding_trust!r}_\n"
+        )
+        # Filter entries: keep only those with a finding at or above the required rank.
+        # Entry.model maps to a finding slug by convention — this is best-effort.
+        # We surface the filter note rather than silently dropping everything.
+        entries = [
+            e
+            for e in entries
+            if _finding_trust_rank(trust_map.get(e.model, "unverified")) >= required_rank
+        ]
+
     if not entries:
         lines.append(
             "_No verified results yet. The board is sparse by design (ADR-008): run the "

@@ -1,8 +1,34 @@
+---
+doc_id: f-017-bfcl-tool-choice-artefact
+title: 'F-017: BFCL tool_choice artefact — phi-4-reasoning re-eval'
+zone: lab
+kind: finding
+status: active
+owner: m
+created: '2026-06-13'
+last_updated: '2026-06-13'
+last_verified: '2026-06-13'
+tags:
+- lab
+- finding
+- bfcl
+- phi
+- trust-lifecycle
+- tool-choice
+depends_on:
+- kind: doc
+  target: adr-008-trust-lifecycle
+# TODO: No PHI-TOOLCHOICE-001 experiment doc exists yet. The source reference
+# in the body ("PHI-TOOLCHOICE-001 (A/B)") lacks a corresponding EXP-NNN doc.
+# Create docs/exp/EXP-NNN-phi-toolchoice-001.md and add it to depends_on.
+---
+
 # F-017: A reasoning model scored ~1% on BFCL because of a `tool_choice` harness artefact — true function-calling accuracy is ~45%
 
 Date: 2026-06-13
 Confidence: high
 Source: PHI-TOOLCHOICE-001 (A/B); EXP-005 / OLLAMA-BFCL-FULL-001 (historical corpus)
+trust_level: unverified
 
 ## Claim
 

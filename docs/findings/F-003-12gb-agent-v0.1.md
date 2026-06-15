@@ -189,3 +189,4 @@ uv run python scripts/analyze_exp001.py
 - Auto-verdict script: [`scripts/analyze_exp001.py`](../../scripts/analyze_exp001.py)
 - Judge script: [`scripts/judge_exp001.py`](../../scripts/judge_exp001.py)
 - Postmortem: [`docs/postmortems/EXP-001.md`](../postmortems/EXP-001.md)
+trust_level: unverified

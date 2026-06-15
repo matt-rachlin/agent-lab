@@ -1,17 +1,16 @@
 ---
-doc_id: f-005-exp-002-verdicts-tmp
+doc_id: report-exp-002-verdicts
 title: EXP-002 verdicts — 480 cells (480 done, 0 error)
 zone: lab
-kind: finding
-status: draft
+kind: guide
+status: active
 owner: m
 created: '2026-05-26'
 last_updated: '2026-05-26'
 last_verified: '2026-05-26'
 tags:
 - lab
-- finding
-- findings
+- report
 ---
 # EXP-002 verdicts — 480 cells (480 done, 0 error)
 

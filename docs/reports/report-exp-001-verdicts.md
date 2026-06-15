@@ -1,17 +1,16 @@
 ---
-doc_id: f-003-exp-001-verdicts-tmp
+doc_id: report-exp-001-verdicts
 title: EXP-001 verdicts — 144 cells, computed automatically
 zone: lab
-kind: finding
-status: draft
+kind: guide
+status: active
 owner: m
 created: '2026-05-25'
 last_updated: '2026-05-25'
 last_verified: '2026-05-25'
 tags:
 - lab
-- finding
-- findings
+- report
 ---
 # EXP-001 verdicts — 144 cells, computed automatically
 

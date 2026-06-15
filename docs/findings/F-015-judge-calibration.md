@@ -97,3 +97,4 @@ litellm proxy's Ollama Cloud lanes.
 - Public writeup candidate: "We measured LLM judges against 240
   machine-verified agent runs" — few teams own the ground truth to do
   this.
+trust_level: unverified

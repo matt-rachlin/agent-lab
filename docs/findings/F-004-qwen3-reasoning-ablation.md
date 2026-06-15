@@ -127,3 +127,4 @@ uv run python scripts/analyze_exp001b.py
 - Analyzer: [`scripts/analyze_exp001b.py`](../../scripts/analyze_exp001b.py)
 - Parent finding: [F-003](F-003-12gb-agent-v0.1.md)
 - Postmortem: [`docs/postmortems/EXP-001b.md`](../postmortems/EXP-001b.md)
+trust_level: unverified

@@ -95,3 +95,4 @@ Pre-registered verdicts:
 - gemma4-12b remains the local champion with the cleanest reliability
   profile (highest pass^8, modest spread); its true weakness at N=8 is
   `code` (0.766), not shell.
+trust_level: unverified

@@ -18,6 +18,7 @@ tags:
 Date: 2026-05-25
 Confidence: high
 Source: EXP SWEEP-SMOKE-001
+trust_level: unverified
 
 ## Claim
 

@@ -18,6 +18,7 @@ tags:
 Date: 2026-05-25
 Confidence: high
 Source: EXP RELIABILITY-001 (120 runs: 3 models × 4 tasks × 8 seeds × 1 config)
+trust_level: unverified
 
 ## Claim
 
