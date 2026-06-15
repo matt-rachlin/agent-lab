@@ -28,7 +28,7 @@ tags:
 
 Date created: 2026-06-11
 Status: planned
-Pre-registered: <commit SHA filled by `lab exp register` at registration time>
+Pre-registered: c6d6e1f  (registered by `lab exp register` at file-creation time; backfilled 2026-06-14)
 
 ## Question
 

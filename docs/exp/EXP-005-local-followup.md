@@ -30,7 +30,7 @@ tags:
 
 Date created: 2026-05-28
 Status: planned
-Pre-registered: <commit SHA filled by `lab exp register` at registration time>
+Pre-registered: 5c1d3c6  (registered by `lab exp register` at file-creation time; backfilled 2026-06-14)
 Parent docs: [EXP-005 pre-reg](/data/lab/code/docs/exp/EXP-005-external-benchmarks.md);
 [F-011 (cloud + dense local) finding](/data/lab/code/docs/findings/F-011-bfcl-v3-external-benchmark.md);
 [F-010 PBS-Agent baselines](/data/lab/code/docs/findings/F-010-qwen3-30b-moe-re-anchored-not-promoted-H2-H4-fail.md).

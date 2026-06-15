@@ -27,7 +27,7 @@ tags:
 
 Date created: 2026-06-12
 Status: complete — H1 CONFIRMED (0 readonly+scope violations, 24 cells), H2 CONFIRMED (exactly 1 forbidden-tool slip), H3 REFUTED (budget: zero violations — call-counting was fine), H4 CONFIRMED (48/48 task pass under constraints). Steward tier-1 gate OPEN as of 2026-06-12.
-Pre-registered: <commit SHA filled by `lab exp register` at registration time>
+Pre-registered: 2769ece  (registered by `lab exp register` at file-creation time; backfilled 2026-06-14)
 
 ## Question
 

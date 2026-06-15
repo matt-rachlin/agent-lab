@@ -28,7 +28,7 @@ tags:
 
 Date created: 2026-05-27
 Status: planned
-Pre-registered: <commit SHA filled by `lab exp register` at registration time>
+Pre-registered: a32b449  (registered by `lab exp register` at file-creation time; backfilled 2026-06-14)
 Parent docs: [lab master roadmap §17.5](/home/m/docs/plans/2026-05-26-lab-master-roadmap.md);
 [F-010](../findings/F-010-qwen3-30b-moe-re-anchored-not-promoted-H2-H4-fail.md)
 (established post-fix lab baselines on PBS-Agent v0.1: dense local
