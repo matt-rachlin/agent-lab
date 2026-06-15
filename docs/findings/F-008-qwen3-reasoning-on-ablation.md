@@ -4,10 +4,10 @@ title: 'F-008: qwen3-14b-q4 reasoning-ON ablation on PBS-Agent v0.1 — pre-regi
   verdict (placeholder)'
 zone: lab
 kind: finding
-status: draft
+status: archived
 owner: m
 created: '2026-05-27'
-last_updated: '2026-05-27'
+last_updated: '2026-06-14'
 last_verified: '2026-05-27'
 depends_on:
 - kind: doc
@@ -32,6 +32,10 @@ tags:
 - reasoning
 - ablation
 ---
+
+## Retracted (2026-06-14)
+
+This finding was opened as a placeholder for EXP-002b ablation results that never materialized. The reasoning-ON / reasoning-OFF question was independently answered by F-004 and F-013 (prompt robustness is a model property, not a reasoning-mode property). Retracted per perfect-order audit recommendation; preserved for history.
 
 # F-008: qwen3-14b-q4 reasoning-ON ablation on PBS-Agent v0.1
 
@@ -106,4 +110,4 @@ moves from single-turn to multi-turn tool-use.
 ## Verified
 
 (To be filled after analyze script runs.)
-trust_level: unverified
+trust_level: retracted

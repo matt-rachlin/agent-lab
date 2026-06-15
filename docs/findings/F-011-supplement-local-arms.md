@@ -38,6 +38,10 @@ tags:
 - confidence-high
 ---
 
+## Status (2026-06-14)
+
+The EXP-005-local-followup sweep was deprioritized in favour of the EXP-009/010/011 multiseed reliability work. This pre-registration structure stands; all data placeholders below are honest stubs, not fabricated numbers. The sweep could still be run as a follow-up — the YAML config (`conf/sweep/EXP-005-local-followup.yaml`) remains committed and ready.
+
 # F-011 supplement: BFCL v3 — 3 dropped local models added
 
 This supplement extends F-011 (cloud + dense local on BFCL v3 AST) with

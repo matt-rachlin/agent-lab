@@ -18,9 +18,8 @@ tags:
 depends_on:
 - kind: doc
   target: adr-008-trust-lifecycle
-# TODO: No PHI-TOOLCHOICE-001 experiment doc exists yet. The source reference
-# in the body ("PHI-TOOLCHOICE-001 (A/B)") lacks a corresponding EXP-NNN doc.
-# Create docs/exp/EXP-NNN-phi-toolchoice-001.md and add it to depends_on.
+- kind: doc
+  target: exp-phi-toolchoice-001-bfcl-toolchoice-rerun
 ---
 
 # F-017: A reasoning model scored ~1% on BFCL because of a `tool_choice` harness artefact — true function-calling accuracy is ~45%
