@@ -147,7 +147,7 @@ def _load_one(path: Path) -> PromptMeta:
     fm_version = meta.get("version")
     if fm_version is not None and int(fm_version) != version:
         raise ValueError(
-            f"{path}: frontmatter version={fm_version} disagrees with " f"doc_id suffix v{version}"
+            f"{path}: frontmatter version={fm_version} disagrees with doc_id suffix v{version}"
         )
     title = str(meta.get("title") or prompt_id)
     tags_raw = meta.get("tags") or []
@@ -243,7 +243,7 @@ class PromptRegistry:
         versions = idx.get(base_id)
         if not versions:
             raise PromptNotFoundError(
-                f"no prompt registered with id {prompt_id!r} " f"(searched under {self._root})"
+                f"no prompt registered with id {prompt_id!r} (searched under {self._root})"
             )
         if target_version is None:
             chosen = max(versions)

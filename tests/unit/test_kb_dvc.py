@@ -43,9 +43,9 @@ def test_bash_kb_pointer_files_exist_and_have_expected_shape() -> None:
         assert len(data["outs"]) == 1, f"{path}: exactly one out expected"
         out = data["outs"][0]
         assert out["hash"] == "md5", f"{path}: hash type pinned to md5"
-        assert out["md5"].endswith(
-            ".dir"
-        ), f"{path}: directory output md5 must end in .dir (got {out['md5']!r})"
+        assert out["md5"].endswith(".dir"), (
+            f"{path}: directory output md5 must end in .dir (got {out['md5']!r})"
+        )
         assert isinstance(out["size"], int)
         assert out["size"] > 0
         assert isinstance(out["nfiles"], int)
@@ -72,9 +72,9 @@ def test_dvc_config_points_at_minio_endpoint() -> None:
 
     cfg = (REPO_ROOT / ".dvc" / "config").read_text()
     assert "url = s3://lab-dvc" in cfg, "remote URL must be s3://lab-dvc"
-    assert (
-        "endpointurl = http://localhost:9000" in cfg
-    ), "endpoint must be the local MinIO; creds live in .dvc/config.local"
+    assert "endpointurl = http://localhost:9000" in cfg, (
+        "endpoint must be the local MinIO; creds live in .dvc/config.local"
+    )
     # Belt-and-braces: secrets MUST NOT be in the committed config.
     assert "secret_access_key" not in cfg
     assert "access_key_id" not in cfg

@@ -68,8 +68,7 @@ def _resolve_test_file(prompt_id: str, root: Path) -> Path:
         if candidate.exists():
             return candidate
     raise FileNotFoundError(
-        f"no test file for prompt {prompt_id!r}; searched: "
-        f"{', '.join(str(c) for c in candidates)}"
+        f"no test file for prompt {prompt_id!r}; searched: {', '.join(str(c) for c in candidates)}"
     )
 
 

@@ -228,7 +228,7 @@ def test_prompts_test_supports_n_repetitions(tmp_path: Path) -> None:
     _write_test_file(
         tests_root,
         prompt_id="foo_v1",
-        tests_yaml=('  - name: "t1"\n' '    input: "ping"\n' "    expected_tool_calls: []\n"),
+        tests_yaml=('  - name: "t1"\n    input: "ping"\n    expected_tool_calls: []\n'),
     )
 
     call_count = {"n": 0}

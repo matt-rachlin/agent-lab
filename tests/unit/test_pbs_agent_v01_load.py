@@ -72,9 +72,9 @@ def test_every_referenced_tool_exists() -> None:
     for task in _all_tasks():
         for spec in task.tools or []:
             name = spec.get("name")
-            assert (
-                name in TOOL_SERVERS
-            ), f"{task.slug} references unknown tool {name!r}; known: {sorted(TOOL_SERVERS)}"
+            assert name in TOOL_SERVERS, (
+                f"{task.slug} references unknown tool {name!r}; known: {sorted(TOOL_SERVERS)}"
+            )
 
 
 def test_every_tool_is_touched_by_some_task() -> None:
@@ -124,9 +124,9 @@ def test_success_predicate_shape() -> None:
             assert isinstance(subs, list), f"{task.slug} all_of predicate needs 'predicates' list"
             assert subs, f"{task.slug} all_of predicate 'predicates' list is empty"
             for idx, sub in enumerate(subs):
-                assert isinstance(
-                    sub, dict
-                ), f"{task.slug} all_of sub-predicate {idx} is not a dict"
+                assert isinstance(sub, dict), (
+                    f"{task.slug} all_of sub-predicate {idx} is not a dict"
+                )
                 assert sub.get("type") in leaf_types, (
                     f"{task.slug} all_of sub-predicate {idx} type {sub.get('type')!r} "
                     f"not in {leaf_types}"
@@ -161,9 +161,9 @@ def test_tool_call_rubrics_have_target_tool() -> None:
             assert task.rubric.target_tool, f"{task.slug} tool_call rubric missing target_tool"
             # target_tool must be in the task's allowed tools list
             allowed = {spec.get("name") for spec in (task.tools or [])}
-            assert (
-                task.rubric.target_tool in allowed
-            ), f"{task.slug} target_tool {task.rubric.target_tool!r} not in tools={allowed}"
+            assert task.rubric.target_tool in allowed, (
+                f"{task.slug} target_tool {task.rubric.target_tool!r} not in tools={allowed}"
+            )
 
 
 def test_http_tasks_use_fixture_dir() -> None:
@@ -175,17 +175,17 @@ def test_http_tasks_use_fixture_dir() -> None:
             continue
         sb = task.sandbox or {}
         env = sb.get("env") or {}
-        assert env.get(
-            "LAB_HTTP_FIXTURE_DIR"
-        ), f"{task.slug} uses http_fetch but no LAB_HTTP_FIXTURE_DIR in sandbox.env"
+        assert env.get("LAB_HTTP_FIXTURE_DIR"), (
+            f"{task.slug} uses http_fetch but no LAB_HTTP_FIXTURE_DIR in sandbox.env"
+        )
         # Must also have the http allow-list and a network list.
-        assert env.get(
-            "LAB_HTTP_ALLOWLIST"
-        ), f"{task.slug} uses http_fetch but no LAB_HTTP_ALLOWLIST in sandbox.env"
+        assert env.get("LAB_HTTP_ALLOWLIST"), (
+            f"{task.slug} uses http_fetch but no LAB_HTTP_ALLOWLIST in sandbox.env"
+        )
         network = sb.get("network")
-        assert isinstance(
-            network, list
-        ), f"{task.slug} uses http_fetch but sandbox.network is not a list"
+        assert isinstance(network, list), (
+            f"{task.slug} uses http_fetch but sandbox.network is not a list"
+        )
         assert network, f"{task.slug} uses http_fetch but sandbox.network is empty"
 
 

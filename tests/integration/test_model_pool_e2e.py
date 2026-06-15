@@ -366,8 +366,7 @@ def test_preflight_fills_page_cache(small_gguf_path: Path) -> None:
     # MADV_RANDOM and may not have walked every page) but a meaningful
     # delta MUST be present.
     assert after_resident > cold_resident + 0.10, (
-        f"page cache did not warm: cold={cold_resident:.2%} "
-        f"after_preflight={after_resident:.2%}"
+        f"page cache did not warm: cold={cold_resident:.2%} after_preflight={after_resident:.2%}"
     )
 
 
