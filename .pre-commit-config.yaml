@@ -110,6 +110,10 @@ repos:
         entry: scripts/docs-lint-precommit.sh
         language: system
         types: [markdown]
+        # Slash-command definitions under .claude/commands/ aren't lab docs and
+        # don't fit the doc-meta schema. _archive/ trees are historical and
+        # excluded from current-state validation.
+        exclude: '^(\.claude/commands/|.*/_archive/|.*\.tmp\.md$)'
         stages: [pre-commit, manual]
 
   # G2: pre-push gate — blocks push if strategic docs or sweep configs are

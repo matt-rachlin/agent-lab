@@ -1,6 +1,6 @@
 """Stage 0b #8 — trust transitions + BFCL validity gate (ADR-008)."""
 
-from lab.core.trust import (
+from lab.platform.trust import (
     _row_hash,
     baseline_sanity,
     bfcl_validity,

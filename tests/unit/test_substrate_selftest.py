@@ -7,8 +7,8 @@ the bug it was built from is Goodhart; this proves defense-in-depth (validity
 gate + adversarial verifier).
 """
 
-from lab.core.trust import bfcl_validity
-from lab.core.verifier import BatteryResult, verdict
+from lab.platform.trust import bfcl_validity
+from lab.platform.verifier import BatteryResult, verdict
 
 
 def _battery(**over: object) -> BatteryResult:

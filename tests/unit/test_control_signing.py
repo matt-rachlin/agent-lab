@@ -1,9 +1,8 @@
 """Stage 0b #10 — Ed25519 signing + the finding human-gate (ADR-008)."""
 
 import pytest
-
-from lab.core.signing import generate_keypair, sign, verify
-from lab.core.trust import record_transition
+from lab.platform.signing import generate_keypair, sign, verify
+from lab.platform.trust import record_transition
 
 
 def test_signing_roundtrip_and_tamper_detection():

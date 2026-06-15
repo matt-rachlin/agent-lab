@@ -1,5 +1,5 @@
 """Scout driver (ADR-011) — now a thin caller of the Lab Agent Runtime
-(ADR-012, lab.core.agent_runtime). The bounded tool-loop, tool dispatch, audit,
+(ADR-012, lab.platform.agent_runtime). The bounded tool-loop, tool dispatch, audit,
 and the side-effect authorization gate all live in the shared runtime; this module
 supplies only the scout's system prompt, tools, and rec-count stop condition.
 Proves the runtime end-to-end (the scout is its first caller)."""
@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab.core.agent_runtime import run_agent
+from lab.platform.agent_runtime import run_agent
+
 from lab.core.settings import get_settings
 from lab.scout import context_bundle
 from lab.scout_tools import build_tools

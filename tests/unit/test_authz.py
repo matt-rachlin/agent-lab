@@ -7,8 +7,8 @@ from collections.abc import Callable
 from typing import Any
 from unittest.mock import patch
 
-from lab.core.agent_runtime import AgentResult, Tool
-from lab.core.authz import (
+from lab.platform.agent_runtime import AgentResult, Tool
+from lab.platform.authz import (
     ApprovalCallback,
     Authorizer,
     AuthzPolicy,
@@ -162,7 +162,7 @@ def _run(
     allow: set[str] | None = None,
     approver: ApprovalCallback | None = None,
 ) -> AgentResult:
-    from lab.core import agent_runtime
+    from lab.platform import agent_runtime
 
     kwargs: dict[str, Any] = {}
     if allow is not None:

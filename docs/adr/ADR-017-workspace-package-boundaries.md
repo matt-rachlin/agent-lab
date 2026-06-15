@@ -3,7 +3,7 @@ doc_id: adr-017-workspace-package-boundaries
 title: 'ADR-017: Workspace partition and package boundaries'
 zone: lab
 kind: adr
-status: draft
+status: active
 owner: m
 created: '2026-06-14'
 last_updated: '2026-06-14'
@@ -12,7 +12,7 @@ tags: [lab, adr, architecture, packages, workspace]
 ---
 # ADR-017: Workspace partition and package boundaries
 
-Status: proposed
+Status: accepted
 Date: 2026-06-14
 Deciders: Matt Rachlin
 

@@ -1,7 +1,7 @@
 """NS-2 Code Maintainer v0 (charter NS-2, ADR-012 / ADR-013) — the lab's first
 WRITE-path Lab Agent Runtime caller.
 
-A thin caller of the Lab Agent Runtime (lab.core.agent_runtime.run_agent),
+A thin caller of the Lab Agent Runtime (lab.platform.agent_runtime.run_agent),
 mirroring the analyst (lab.analyst) and synthesizer (lab.synthesizer) thin-caller
 pattern: it supplies a system prompt, a tool list, an authorizer, and a return
 shape, and delegates the bounded tool-use loop, the audit, and the ADR-013
@@ -47,8 +47,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab.core.agent_runtime import run_agent
-from lab.core.authz import AuthzPolicy
+from lab.platform.agent_runtime import run_agent
+from lab.platform.authz import AuthzPolicy
+
 from lab.core.settings import get_settings
 from lab.maintainer_tools import (
     MAINTAINER_ACTOR,

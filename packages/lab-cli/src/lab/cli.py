@@ -991,7 +991,7 @@ def agent_run(
         False,
         "--pipeline-plan-only",
         help=(
-            "Print the lab.core.model_pool PipelineModelPlan JSON that "
+            "Print the lab.platform.model_pool PipelineModelPlan JSON that "
             "would be declared for this task+model (Phase 19c) and exit "
             "without loading anything."
         ),
@@ -1080,7 +1080,7 @@ def agent_run(
     # short-circuit. Strict-True keeps tests that pass nothing here
     # working unchanged.
     if pipeline_plan_only is True:
-        from lab.core.model_pool import plan_for_cell
+        from lab.platform.model_pool import plan_for_cell
 
         plan = plan_for_cell(
             pipeline_id=f"adhoc-{lab_task.slug}",

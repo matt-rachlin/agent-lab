@@ -20,9 +20,9 @@ Symlinked as `~/lab/code/`. This is the code repo for the lab; see
 `~/lab/CLAUDE.md` for the lab zone identity. The session-start hook for
 this directory is configured in `~/system/configs/claude/workspaces.json`.
 
-## Workspace layout (Phase 15.1)
+## Workspace layout (Phase 15.1 + P3.A1)
 
-Source is split into 8 uv workspace member packages, all under the
+Source is split into 9 uv workspace member packages, all under the
 `lab.*` PEP 420 namespace:
 
 ```
@@ -31,6 +31,9 @@ Source is split into 8 uv workspace member packages, all under the
 ├── packages/
 │   ├── lab-core/           # lab.core.*     settings, manifest, notify, gpu_lease,
 │   │                       #                llm, minio_io, daily_log + SQL migrations
+│   ├── lab-platform/       # lab.platform.* agent_runtime, authz, composition,
+│   │                       #                control, signing, trust, verifier,
+│   │                       #                model_pool (ADR-016/017, P3.A1)
 │   ├── lab-rag/            # lab.rag.*      chunker, embedder, LanceDB index,
 │   │                       #                fetchers, rerank (client/server), cache,
 │   │                       #                hype, expand
@@ -49,8 +52,9 @@ Source is split into 8 uv workspace member packages, all under the
 └── apps/eval-dashboard/    # Streamlit dashboard (Phase 15.3)
 ```
 
-Dependency order (least-to-most): lab-core → lab-rag → lab-agent → lab-eval
-→ lab-inspect → lab-sweep / lab-observability → lab-cli.
+Dependency order (least-to-most): lab-core → lab-platform → lab-rag → lab-agent
+→ lab-eval → lab-inspect → lab-sweep / lab-observability → lab-cli.
+`lab-platform` may import `lab-core` and `lab-observability` (legal per ADR-017).
 
 ## Gates / verification
 

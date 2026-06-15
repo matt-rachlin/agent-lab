@@ -9,6 +9,7 @@ authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 
 dependencies = [
     "lab-core",
+    "lab-platform",
     "lab-eval",
     "lab-inspect",
     "lab-observability",
@@ -23,6 +24,7 @@ dependencies = [
 
 [tool.uv.sources]
 lab-core = { workspace = true }
+lab-platform = { workspace = true }
 lab-eval = { workspace = true }
 lab-inspect = { workspace = true }
 lab-observability = { workspace = true }

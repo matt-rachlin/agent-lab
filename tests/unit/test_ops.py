@@ -31,8 +31,9 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import patch
 
-from lab.core.agent_runtime import AgentResult, run_agent
-from lab.core.authz import AuthzPolicy, default_authorizer
+from lab.platform.agent_runtime import AgentResult, run_agent
+from lab.platform.authz import AuthzPolicy, default_authorizer
+
 from lab.ops import approve_class, diagnose
 from lab.ops_tools import CommandResult, OpsTools
 
@@ -91,7 +92,7 @@ def _drive(
     **agent_kwargs: Any,
 ) -> AgentResult:
     """Run the REAL run_agent with a scripted model over ot's tools."""
-    from lab.core import agent_runtime
+    from lab.platform import agent_runtime
 
     with (
         patch.object(agent_runtime, "call_litellm_chat", _scripted_litellm(tool_calls)),

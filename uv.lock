@@ -17,6 +17,7 @@ members = [
     "lab-eval",
     "lab-inspect",
     "lab-observability",
+    "lab-platform",
     "lab-rag",
     "lab-sweep",
 ]
@@ -2581,6 +2582,7 @@ dependencies = [
     { name = "lab-eval" },
     { name = "lab-inspect" },
     { name = "lab-observability" },
+    { name = "lab-platform" },
     { name = "lab-rag" },
     { name = "lab-sweep" },
     { name = "lancedb" },
@@ -2676,6 +2678,7 @@ requires-dist = [
     { name = "lab-eval", editable = "packages/lab-eval" },
     { name = "lab-inspect", editable = "packages/lab-inspect" },
     { name = "lab-observability", editable = "packages/lab-observability" },
+    { name = "lab-platform", editable = "packages/lab-platform" },
     { name = "lab-rag", editable = "packages/lab-rag" },
     { name = "lab-sweep", editable = "packages/lab-sweep" },
     { name = "lancedb", specifier = ">=0.18.0" },
@@ -2769,6 +2772,7 @@ dependencies = [
     { name = "lab-eval" },
     { name = "lab-inspect" },
     { name = "lab-observability" },
+    { name = "lab-platform" },
     { name = "lab-rag" },
     { name = "lab-sweep" },
     { name = "rich" },
@@ -2783,6 +2787,7 @@ requires-dist = [
     { name = "lab-eval", editable = "packages/lab-eval" },
     { name = "lab-inspect", editable = "packages/lab-inspect" },
     { name = "lab-observability", editable = "packages/lab-observability" },
+    { name = "lab-platform", editable = "packages/lab-platform" },
     { name = "lab-rag", editable = "packages/lab-rag" },
     { name = "lab-sweep", editable = "packages/lab-sweep" },
     { name = "rich", specifier = ">=13.9.0" },
@@ -2836,6 +2841,7 @@ version = "0.0.1"
 source = { editable = "packages/lab-eval" }
 dependencies = [
     { name = "lab-core" },
+    { name = "lab-platform" },
     { name = "numpy" },
     { name = "scipy" },
 ]
@@ -2843,6 +2849,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "lab-core", editable = "packages/lab-core" },
+    { name = "lab-platform", editable = "packages/lab-platform" },
     { name = "numpy", specifier = ">=2.1.0" },
     { name = "scipy", specifier = ">=1.14.0" },
 ]
@@ -2857,6 +2864,7 @@ dependencies = [
     { name = "lab-core" },
     { name = "lab-eval" },
     { name = "lab-observability" },
+    { name = "lab-platform" },
     { name = "lab-rag" },
 ]
 
@@ -2867,6 +2875,7 @@ requires-dist = [
     { name = "lab-core", editable = "packages/lab-core" },
     { name = "lab-eval", editable = "packages/lab-eval" },
     { name = "lab-observability", editable = "packages/lab-observability" },
+    { name = "lab-platform", editable = "packages/lab-platform" },
     { name = "lab-rag", editable = "packages/lab-rag" },
 ]
 
@@ -2891,6 +2900,29 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.27.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.27.0" },
     { name = "structlog", specifier = ">=24.4.0" },
+]
+
+[[package]]
+name = "lab-platform"
+version = "0.0.1"
+source = { editable = "packages/lab-platform" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "httpx" },
+    { name = "lab-core" },
+    { name = "lab-observability" },
+    { name = "psycopg", extra = ["binary", "pool"] },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=43.0.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "lab-core", editable = "packages/lab-core" },
+    { name = "lab-observability", editable = "packages/lab-observability" },
+    { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.2.0" },
+    { name = "pydantic", specifier = ">=2.9.0" },
 ]
 
 [[package]]
@@ -2939,6 +2971,7 @@ dependencies = [
     { name = "lab-eval" },
     { name = "lab-inspect" },
     { name = "lab-observability" },
+    { name = "lab-platform" },
     { name = "mlflow" },
     { name = "numpy" },
     { name = "omegaconf" },
@@ -2954,6 +2987,7 @@ requires-dist = [
     { name = "lab-eval", editable = "packages/lab-eval" },
     { name = "lab-inspect", editable = "packages/lab-inspect" },
     { name = "lab-observability", editable = "packages/lab-observability" },
+    { name = "lab-platform", editable = "packages/lab-platform" },
     { name = "mlflow", specifier = ">=2.18.0" },
     { name = "numpy", specifier = ">=2.1.0" },
     { name = "omegaconf", specifier = ">=2.3.0" },

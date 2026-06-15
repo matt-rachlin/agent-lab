@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`lab.core.model_pool`.
+"""Unit tests for :mod:`lab.platform.model_pool`.
 
 The model_pool is a degrade-gracefully optimization layer. Tests focus on:
 
@@ -20,9 +20,8 @@ from typing import Any
 
 import httpx
 import pytest
-
-from lab.core import model_pool
-from lab.core.model_pool import (
+from lab.platform import model_pool
+from lab.platform.model_pool import (
     ModelPool,
     PipelineModelPlan,
     PipelineStep,

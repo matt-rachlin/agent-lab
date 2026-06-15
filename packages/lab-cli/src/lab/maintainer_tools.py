@@ -31,7 +31,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from lab.core.agent_runtime import Tool
+from lab.platform.agent_runtime import Tool
 
 #: The actor identity the maintainer runs under (must match the authz grant key).
 MAINTAINER_ACTOR = "maintainer"

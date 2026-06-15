@@ -4,7 +4,7 @@ recommendations like the scout (ADR-011).
 
 It mirrors the scout's thin-caller pattern (`lab.scout_scan`): it supplies a
 system prompt, a tool list, and a return shape, and delegates the bounded
-tool-use loop, audit, and side-effect gate to `lab.core.agent_runtime.run_agent`.
+tool-use loop, audit, and side-effect gate to `lab.platform.agent_runtime.run_agent`.
 
 Tools: the scout's SEARCH/FETCH impls only (web_search, arxiv_search,
 github_search, fetch_url — all side_effect="external_read"), imported from
@@ -29,7 +29,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab.core.agent_runtime import Tool, run_agent
+from lab.platform.agent_runtime import Tool, run_agent
+
 from lab.core.settings import get_settings
 from lab.scout_tools import arxiv_search, fetch_url, github_search, web_search
 

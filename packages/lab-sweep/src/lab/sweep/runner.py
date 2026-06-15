@@ -15,6 +15,7 @@ from types import FrameType
 from typing import Any
 
 import psycopg
+from lab.platform.model_pool import ModelPool, plan_for_cell
 from psycopg.types.json import Json
 from rich.console import Console
 from rich.progress import (
@@ -30,7 +31,6 @@ from rich.progress import (
 from lab.core.gpu_lease import force_release, gpu_lease
 from lab.core.gpu_lease import status as gpu_lease_status
 from lab.core.manifest import capture as capture_manifest
-from lab.core.model_pool import ModelPool, plan_for_cell
 from lab.core.settings import get_settings
 from lab.observability.log import bind_run_context, clear_run_context, get_logger
 from lab.observability.tracing import current_span_attrs, span
@@ -979,7 +979,7 @@ def _execute_single_turn(
 def _advance_single_turn_validity(*, cell: Cell, config: RunConfig, result: CellResult) -> None:
     """Stage 0b #8 validity gate (single-turn path): advance raw -> validity_passed
     when the request was recorded and the model produced output. Fail-safe."""
-    from lab.core.trust import record_transition, single_turn_validity
+    from lab.platform.trust import record_transition, single_turn_validity
 
     try:
         rep = single_turn_validity(
@@ -1010,7 +1010,7 @@ def _advance_bfcl_validity(
     """Stage 0b #8 validity gate: advance a BFCL cell raw -> validity_passed when
     the measurement is sound (request fidelity + preconditions; cf. F-017).
     Fail-safe — a gate error must never crash a sweep."""
-    from lab.core.trust import bfcl_validity, record_transition
+    from lab.platform.trust import bfcl_validity, record_transition
 
     try:
         rep = bfcl_validity(

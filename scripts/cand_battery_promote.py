@@ -14,10 +14,10 @@ import sys
 from dataclasses import asdict
 
 import psycopg
+from lab.platform.trust import record_transition
+from lab.platform.verifier import BatteryConfig, BatteryResult, verdict
 
 from lab.core.settings import get_settings
-from lab.core.trust import record_transition
-from lab.core.verifier import BatteryConfig, BatteryResult, verdict
 from lab.eval.bfcl_battery import _tool_choice_for, run_bfcl_battery
 
 DRY = "--dry" in sys.argv

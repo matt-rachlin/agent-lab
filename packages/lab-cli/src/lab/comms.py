@@ -1,6 +1,6 @@
 """NS-4 Comms/Digest v0 (ADR-012 LAR + ADR-013 authz) — gated SEND vertical.
 
-A thin caller of the Lab Agent Runtime (``lab.core.agent_runtime.run_agent``),
+A thin caller of the Lab Agent Runtime (``lab.platform.agent_runtime.run_agent``),
 mirroring the analyst/scout verticals, that adds the lab's first **send/push**
 path. Two entrypoints:
 
@@ -14,8 +14,8 @@ THE KEY PROPERTY (NS-4's eval signal / anti-footgun guarantee)
 **No irreversible action (``email_send``, ``ntfy_push``) fires without an explicit
 approval; the default is fail-closed deny.** This is enforced by the runtime, not
 by this module: irreversible tools resolve to ``require_approval`` under the
-ADR-013 default policy (``lab.core.authz.default_authorizer``), and an unwired
-``approver`` defaults to ``lab.core.authz.deny_approver`` (returns False). So:
+ADR-013 default policy (``lab.platform.authz.default_authorizer``), and an unwired
+``approver`` defaults to ``lab.platform.authz.deny_approver`` (returns False). So:
 
     default authz + no approver         -> irreversible proposed, NEVER executed
     default authz + approver -> True     -> irreversible executed (gate opens)
@@ -41,9 +41,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from lab.platform.agent_runtime import run_agent
+from lab.platform.authz import ApprovalCallback, Authorizer, default_authorizer
+
 from lab.comms_tools import CommsTools
-from lab.core.agent_runtime import run_agent
-from lab.core.authz import ApprovalCallback, Authorizer, default_authorizer
 from lab.core.settings import get_settings
 
 #: scout statuses that count as "open" (still need attention) — not actioned/

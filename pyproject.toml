@@ -8,9 +8,10 @@ license = { text = "MIT" }
 authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 
 dependencies = [
-    # Phase 15.1: workspace members. Each lives under packages/lab-*/src/lab/<name>
+    # Phase 15.1 + P3.A1: workspace members. Each lives under packages/lab-*/src/lab/<name>
     # and contributes to the `lab.*` PEP 420 namespace package.
     "lab-core",
+    "lab-platform",
     "lab-rag",
     "lab-agent",
     "lab-eval",
@@ -125,6 +126,7 @@ members = ["packages/lab-*"]
 
 [tool.uv.sources]
 lab-core = { workspace = true }
+lab-platform = { workspace = true }
 lab-rag = { workspace = true }
 lab-agent = { workspace = true }
 lab-eval = { workspace = true }
@@ -172,6 +174,7 @@ exclude = ["**/__pycache__", "**/.venv"]
 # any of them.
 extraPaths = [
     "packages/lab-core/src",
+    "packages/lab-platform/src",
     "packages/lab-rag/src",
     "packages/lab-agent/src",
     "packages/lab-eval/src",
@@ -188,9 +191,10 @@ venvPath = "."
 venv = ".venv"
 
 [tool.coverage.run]
-# Phase 15.1: lab is now split across packages/lab-*/src/lab.
+# Phase 15.1 + P3.A1: lab is now split across packages/lab-*/src/lab.
 source = [
     "packages/lab-core/src/lab",
+    "packages/lab-platform/src/lab",
     "packages/lab-rag/src/lab",
     "packages/lab-agent/src/lab",
     "packages/lab-eval/src/lab",
