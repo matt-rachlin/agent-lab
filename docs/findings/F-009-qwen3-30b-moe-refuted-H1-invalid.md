@@ -493,4 +493,8 @@ uv run python scripts/analyze_exp006.py
 - Parent findings: [F-005](F-005-12gb-agent-v0.2-tool-use.md)
 - Follow-ons filed: EXP-006b (refreshed H1 anchor), EXP-006c (MoE reasoning
   ablation, conditional), EXP-006d (MoE tool-emission template fix).
-trust_level: unverified
+trust_level: reliability_confirmed
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)
+- 2026-06-14: verified -> reliability_confirmed (by Matt Rachlin)

@@ -444,4 +444,7 @@ uv run python scripts/analyze_exp003b.py
 - Results: `analysis/EXP-003a/`, `analysis/EXP-003b/`
 - Runner change: `tool_filter: exclude_kb_query` in
   `src/lab/sweep/runner.py::_execute_agent_cell` (commit `fddc1c7`)
-trust_level: unverified
+trust_level: verified
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)

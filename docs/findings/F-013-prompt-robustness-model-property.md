@@ -88,4 +88,7 @@ rerun then reproduced it at scale.
   under v2 and, where a model underperforms expectations, runs the
   narrate-vs-act replay check before concluding capability deficit.
 - Public writeup: `docs/writeups/local-coding-agent-benchmark.md`.
-trust_level: unverified
+trust_level: verified
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)
