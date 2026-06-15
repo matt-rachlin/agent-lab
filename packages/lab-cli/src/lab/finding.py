@@ -12,6 +12,7 @@ Required fields parsed from the document:
 from __future__ import annotations
 
 import re
+import subprocess
 from dataclasses import dataclass
 from datetime import date as Date
 from pathlib import Path
@@ -265,5 +266,10 @@ def new_finding(
             slug=slug, claim_placeholder=claim_placeholder, today=_date.today().isoformat()
         ),
         encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", "-N", str(out)],
+        cwd=out.parent,
+        check=False,
     )
     return out

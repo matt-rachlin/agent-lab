@@ -39,3 +39,12 @@ site/
 !.claude/
 !.claude/commands/
 !.claude/commands/*.md
+
+# Backups (must not enter the tree; use git stash or branches)
+.env.bak*
+*.bak-*
+**/*.py.bak
+**/*.yaml.bak*
+
+# Unsloth trainer compile cache (transient, regenerated)
+unsloth_compiled_cache/

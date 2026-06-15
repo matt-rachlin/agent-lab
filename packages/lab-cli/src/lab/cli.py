@@ -600,10 +600,9 @@ def exp_register(
     except ValueError as exc:
         console.print(f"[red]registration failed[/]: {exc}")
         raise typer.Exit(code=1) from exc
-    console.print(
-        f"[green]registered[/] {v.slug} (sha={v.git_sha[:12] if v.git_sha else '?'}…) "
-        f"from {v.plan_path}"
-    )
+    sha_short = v.git_sha[:12] if v.git_sha else "?"
+    console.print(f"[green]registered[/] {v.slug} at {sha_short}… from {v.plan_path}")
+    console.print("commit to seal pre-registration.")
 
 
 @exp_app.command("list")

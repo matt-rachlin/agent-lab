@@ -8,8 +8,12 @@ default:
 
 # --- bootstrap / setup ---
 
-# Install all dependencies (creates .venv)
-bootstrap:
+# Install pre-commit hooks (pre-commit + pre-push hook types)
+pre-commit-install:
+    pre-commit install --hook-type pre-commit --hook-type pre-push
+
+# Install all dependencies (creates .venv) and wire pre-commit hooks
+bootstrap: pre-commit-install
     uv sync --all-extras
 
 # Create the Postgres `lab` database
@@ -87,6 +91,17 @@ rerank-restart:
     systemctl --user restart rerank.service
     @sleep 1 && curl -sS http://127.0.0.1:8401/healthz
 
+# --- daily-log timer (G6) ---
+
+# Enable the daily-log auto-roll timer (runs at 23:50, commits non-empty daily log).
+# Unit files live in ~/.config/systemd/user/ (written by DevOps wiring).
+# Run once to install; the timer persists across reboots.
+install-daily-log-timer:
+    systemctl --user daemon-reload
+    systemctl --user enable --now lab-daily-log-roll.timer
+    @echo "lab-daily-log-roll.timer enabled"
+    @systemctl --user status lab-daily-log-roll.timer --no-pager || true
+
 # --- backup ---
 
 # Nightly snapshot: 3 PG dumps + 2 MinIO bucket mirrors + git bundle, to /mnt/backup/lab
@@ -160,6 +175,58 @@ test-int:
 # 2nd-opinion gate alongside mypy.
 check: lint fmt-check types pyright test
     @echo "all clean"
+
+# --- session-start hygiene (G5) ---
+
+# Print a 1-line-per-bucket summary of repo hygiene. Run at session start.
+dirty:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
+    STRATEGIC_MD=$(git ls-files --others --exclude-standard \
+        docs/adr/ docs/exp/ docs/findings/ docs/log/ docs/writeups/ docs/protocols/ \
+        2>/dev/null | { grep '\.md$' || true; } | wc -l | tr -d ' ')
+    SWEEP_YAML=$(git ls-files --others --exclude-standard conf/sweep/ \
+        2>/dev/null | { grep '\.yaml$' || true; } | wc -l | tr -d ' ')
+    IN_TREE_BAKS=$(git ls-files packages/ scripts/ conf/ tools/ tests/ \
+        2>/dev/null | { grep '\.bak' || true; } | wc -l | tr -d ' ')
+    if git ls-files --others --exclude-standard 2>/dev/null \
+            | grep -qE '(^\.env\.bak|unsloth_compiled_cache/)'; then
+        SHOULD_IGNORE=yes
+    else
+        SHOULD_IGNORE=no
+    fi
+    MODIFIED=$(git status --porcelain 2>/dev/null | { grep -E '^[^?]' || true; } | wc -l | tr -d ' ')
+    AHEAD=0
+    if git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
+        AHEAD=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
+    fi
+    echo "strategic docs uncommitted (docs/{adr,exp,findings,log,writeups,protocols}/*.md): $STRATEGIC_MD"
+    echo "sweep configs uncommitted (conf/sweep/*.yaml): $SWEEP_YAML"
+    echo "in-tree backups (banned, must be removed): $IN_TREE_BAKS"
+    echo "should-be-ignored present (.env.bak*, unsloth_compiled_cache/): $SHOULD_IGNORE"
+    echo "modified tracked files: $MODIFIED"
+    echo "branch ahead of origin/$BRANCH: $AHEAD commits"
+
+# List actual paths for each non-zero dirty bucket.
+dirty-detail:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=== untracked strategic .md ==="
+    git ls-files --others --exclude-standard \
+        docs/adr/ docs/exp/ docs/findings/ docs/log/ docs/writeups/ docs/protocols/ \
+        2>/dev/null | { grep '\.md$' || true; } || echo "  (none)"
+    echo "=== untracked sweep .yaml ==="
+    git ls-files --others --exclude-standard conf/sweep/ \
+        2>/dev/null | { grep '\.yaml$' || true; } || echo "  (none)"
+    echo "=== in-tree .bak* (packages/scripts/conf/tools/tests) ==="
+    git ls-files packages/ scripts/ conf/ tools/ tests/ \
+        2>/dev/null | { grep '\.bak' || true; } || echo "  (none)"
+    echo "=== should-be-ignored present ==="
+    git ls-files --others --exclude-standard \
+        2>/dev/null | { grep -E '(^\.env\.bak|unsloth_compiled_cache/)' || true; } || echo "  (none)"
+    echo "=== modified tracked files ==="
+    git status --porcelain 2>/dev/null | { grep -E '^[^?]' || true; } || echo "  (none)"
 
 # --- benchmarks (Phase 13.3) ---
 
