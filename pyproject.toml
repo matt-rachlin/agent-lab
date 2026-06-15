@@ -67,6 +67,7 @@ dependencies = [
     # /data/lab/services/compose.yml.
     "structlog>=24.4.0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
+    "jobs-status",
 ]
 
 [project.optional-dependencies]
@@ -131,6 +132,7 @@ lab-inspect = { workspace = true }
 lab-sweep = { workspace = true }
 lab-observability = { workspace = true }
 lab-cli = { workspace = true }
+jobs-status = { path = "../../../home/m/code/experimental/jobs-status" }
 
 [build-system]
 requires = ["hatchling"]

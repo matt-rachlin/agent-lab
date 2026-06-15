@@ -47,6 +47,7 @@ from statistics import median
 from typing import Any
 
 import psycopg
+from jobs_status import Job
 from psycopg.rows import dict_row
 
 from lab.core.llm import call_litellm_chat
@@ -569,16 +570,24 @@ def main() -> None:
         raise SystemExit(f"no scored cells for {args.slug}")
     print(f"{args.slug}: {len(episodes)} scored episodes; fetching traces...")
 
-    flags = fetch_traces(episodes)
-    for ep in episodes:
-        flags.extend(classify_episode(ep))
-    flags.extend(classify_cohort(episodes))
+    n_phases = 3 if args.llm_audit else 2
+    with Job(f"trajectory-audit {args.slug} ({len(episodes)} episodes)") as job:
+        bar = job.bar("phases", total=n_phases)
 
-    audits: list[dict[str, Any]] = []
-    if args.llm_audit:
-        audits = llm_audit(flags, args.max_llm_audits)
+        flags = fetch_traces(episodes)
+        for ep in episodes:
+            flags.extend(classify_episode(ep))
+        flags.extend(classify_cohort(episodes))
+        bar.advance(1, message=f"traces+classify: {len(flags)} flags")
 
-    write_outputs(args.slug, out_dir, episodes, flags, audits)
+        audits: list[dict[str, Any]] = []
+        if args.llm_audit:
+            audits = llm_audit(flags, args.max_llm_audits)
+            bar.advance(1, message=f"llm-audit: {len(audits)} verdicts")
+
+        write_outputs(args.slug, out_dir, episodes, flags, audits)
+        bar.advance(1, message="outputs written")
+        job.log(f"done: {len(episodes)} episodes, {len(flags)} flags, {len(audits)} audits")
     sys.exit(0)
 
 

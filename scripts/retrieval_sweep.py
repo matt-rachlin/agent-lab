@@ -29,6 +29,7 @@ from typing import Any
 
 import lancedb
 import yaml
+from jobs_status import Job
 from ollama import Client
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -1175,6 +1176,10 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
         if c["name"] in rpc_cell_names:
             last_rpc_idx = ci
 
+    _sweep_job = Job(f"retrieval-sweep {slug} ({len(cells_cfg)} cells)")
+    _sweep_job.__enter__()
+    _sweep_bar = _sweep_job.bar("cells", total=len(cells_cfg))
+
     for cell_idx, cell in enumerate(cells_cfg):
         name = cell["name"]
         fusion = cell["fusion"]
@@ -1409,6 +1414,7 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
             f"ndcg={mean_ndcg:.3f}  gold_in_pool={gold_in_pool_count}/{len(queries)}  "
             f"errors={cell_errors}  wall={wall:.1f}s"
         )
+        _sweep_bar.advance(1, message=f"{name} recall@5={mean_r5:.3f}")
 
         # Kill criterion: per-cell rerank error rate > 5% over its 50 calls.
         if do_rerank and cell_errors > max(1, int(0.05 * len(queries))):
@@ -1737,8 +1743,11 @@ def run_per_cell_sweep(cfg: dict[str, Any]) -> int:
     # Honor kill criterion overall: > 5% of all rerank calls failing.
     if rerank_call_count and (rerank_err_count / rerank_call_count) > 0.05:
         console.print("[red]KILL criterion tripped: rerank error rate > 5% overall[/]")
+        _sweep_job.__exit__(None, None, None)
         return 3
 
+    _sweep_job.log(f"done cells={len(cells_cfg)} queries={len(queries)}")
+    _sweep_job.__exit__(None, None, None)
     return 0
 
 
@@ -1769,68 +1778,85 @@ def main(config_path: str) -> int:
     console.print(f"[bold]EXP-003a[/] starting on KB={kb_name} ({kb_dir})")
     t0 = time.time()
 
-    # Step 1: queries
-    queries = generate_or_load_queries(cache_path, kb_dir, n_target, question_model)
-    if len(queries) < 25:
-        console.print(f"[red]KILL[/] only {len(queries)} valid queries (< 25 threshold)")
-        return 2
-    console.print(f"[green]queries[/] {len(queries)} ready  ({time.time() - t0:.0f}s)")
+    with Job(f"retrieval-sweep {kb_name}") as job:
+        # 5 coarse phases: queries, kb-load, embed, pilot, full-sweep
+        bar = job.bar("phases", total=5)
 
-    # Step 2: open KB once
-    db = lancedb.connect(str(kb_dir / "index"))
-    tbl = db.open_table(TABLE_NAME)
-    all_rows = tbl.to_arrow().to_pylist()
-    console.print(f"[dim]KB table loaded: {len(all_rows)} rows")
+        # Step 1: queries
+        queries = generate_or_load_queries(cache_path, kb_dir, n_target, question_model)
+        if len(queries) < 25:
+            console.print(f"[red]KILL[/] only {len(queries)} valid queries (< 25 threshold)")
+            return 2
+        bar.advance(1, message=f"queries: {len(queries)}")
+        console.print(f"[green]queries[/] {len(queries)} ready  ({time.time() - t0:.0f}s)")
 
-    # Step 3: embed all queries once (cached for all 20 cells)
-    console.print("[bold]embedding[/] queries (once, reused across cells)…")
-    t_emb = time.time()
-    texts = [q.question for q in queries]
-    res = embed_texts(texts, model=DEFAULT_EMBED_MODEL, batch_size=8)
-    if len(res.vectors) != len(queries):
-        console.print(f"[red]KILL[/] embedding count mismatch {len(res.vectors)} vs {len(queries)}")
-        return 2
-    for q, v in zip(queries, res.vectors, strict=True):
-        q.qvec = v
-    console.print(f"[green]embeddings[/] {len(queries)} done ({time.time() - t_emb:.0f}s)")
+        # Step 2: open KB once
+        db = lancedb.connect(str(kb_dir / "index"))
+        tbl = db.open_table(TABLE_NAME)
+        all_rows = tbl.to_arrow().to_pylist()
+        bar.advance(1, message=f"kb: {len(all_rows)} rows")
+        console.print(f"[dim]KB table loaded: {len(all_rows)} rows")
 
-    # Step 4: PILOT
-    pilot_queries = queries[:pilot_n_queries]
-    pilot_alphas = sorted({c["alpha"] for c in pilot_cells})
-    pilot_ks = sorted({c["k"] for c in pilot_cells})
-    console.print(
-        f"[bold yellow]PILOT[/] {len(pilot_queries)} queries × "
-        f"{len(pilot_alphas)} alphas × {len(pilot_ks)} ks"
-    )
-    pilot_metrics, pilot_rows = run_cells(pilot_queries, tbl, all_rows, pilot_alphas, pilot_ks)
-    pilot_csv = out_raw.parent / "pilot_raw.csv"
-    write_raw_csv(pilot_rows, pilot_csv)
-    console.print(f"[green]pilot[/] CSV written to {pilot_csv}")
-    for m in pilot_metrics:
-        if m.recall <= 0.0 and m.n_errors == 0:
+        # Step 3: embed all queries once (cached for all 20 cells)
+        console.print("[bold]embedding[/] queries (once, reused across cells)…")
+        t_emb = time.time()
+        texts = [q.question for q in queries]
+        res = embed_texts(texts, model=DEFAULT_EMBED_MODEL, batch_size=8)
+        if len(res.vectors) != len(queries):
             console.print(
-                f"[yellow]pilot warning[/] alpha={m.alpha} k={m.k} "
-                f"recall=0 across {m.n_queries} queries — sanity-check origin alignment"
+                f"[red]KILL[/] embedding count mismatch {len(res.vectors)} vs {len(queries)}"
             )
+            return 2
+        for q, v in zip(queries, res.vectors, strict=True):
+            q.qvec = v
+        bar.advance(1, message=f"embed: {len(queries)} ({time.time() - t_emb:.0f}s)")
+        console.print(f"[green]embeddings[/] {len(queries)} done ({time.time() - t_emb:.0f}s)")
 
-    # Step 5: FULL SWEEP
-    console.print(f"[bold green]FULL SWEEP[/] {len(ALL_ALPHAS)} alphas × {len(ALL_KS)} ks")
-    full_metrics, full_rows = run_cells(queries, tbl, all_rows, ALL_ALPHAS, ALL_KS)
+        # Step 4: PILOT
+        pilot_queries = queries[:pilot_n_queries]
+        pilot_alphas = sorted({c["alpha"] for c in pilot_cells})
+        pilot_ks = sorted({c["k"] for c in pilot_cells})
+        console.print(
+            f"[bold yellow]PILOT[/] {len(pilot_queries)} queries × "
+            f"{len(pilot_alphas)} alphas × {len(pilot_ks)} ks"
+        )
+        pilot_metrics, pilot_rows = run_cells(pilot_queries, tbl, all_rows, pilot_alphas, pilot_ks)
+        pilot_csv = out_raw.parent / "pilot_raw.csv"
+        write_raw_csv(pilot_rows, pilot_csv)
+        bar.advance(1, message="pilot done")
+        console.print(f"[green]pilot[/] CSV written to {pilot_csv}")
+        for m in pilot_metrics:
+            if m.recall <= 0.0 and m.n_errors == 0:
+                console.print(
+                    f"[yellow]pilot warning[/] alpha={m.alpha} k={m.k} "
+                    f"recall=0 across {m.n_queries} queries — sanity-check origin alignment"
+                )
 
-    write_raw_csv(full_rows, out_raw)
-    write_best_configs(full_metrics, out_best)
-    write_summary_md(full_metrics, out_summary)
-    verdicts = compute_verdicts(full_metrics)
-    write_verdicts_md(verdicts, out_verdicts)
+        # Step 5: FULL SWEEP
+        n_cells = len(ALL_ALPHAS) * len(ALL_KS)
+        console.print(f"[bold green]FULL SWEEP[/] {len(ALL_ALPHAS)} alphas × {len(ALL_KS)} ks")
+        full_metrics, full_rows = run_cells(queries, tbl, all_rows, ALL_ALPHAS, ALL_KS)
 
-    total_errors = sum(m.n_errors for m in full_metrics)
-    console.print(
-        f"\n[bold]DONE[/] wall={(time.time() - t0):.0f}s  cells={len(full_metrics)}  "
-        f"errors={total_errors}  verdicts: "
-        f"H1={verdicts['H1']['verdict']}  "
-        f"H2={verdicts['H2']['verdict']}  "
-        f"H3={verdicts['H3']['verdict']}"
-    )
+        write_raw_csv(full_rows, out_raw)
+        write_best_configs(full_metrics, out_best)
+        write_summary_md(full_metrics, out_summary)
+        verdicts = compute_verdicts(full_metrics)
+        write_verdicts_md(verdicts, out_verdicts)
+
+        total_errors = sum(m.n_errors for m in full_metrics)
+        bar.advance(1, message=f"full sweep: {n_cells} cells, {total_errors} errors")
+        job.log(
+            f"done wall={time.time() - t0:.0f}s cells={len(full_metrics)} errors={total_errors} "
+            f"H1={verdicts['H1']['verdict']} H2={verdicts['H2']['verdict']} "
+            f"H3={verdicts['H3']['verdict']}"
+        )
+        console.print(
+            f"\n[bold]DONE[/] wall={(time.time() - t0):.0f}s  cells={len(full_metrics)}  "
+            f"errors={total_errors}  verdicts: "
+            f"H1={verdicts['H1']['verdict']}  "
+            f"H2={verdicts['H2']['verdict']}  "
+            f"H3={verdicts['H3']['verdict']}"
+        )
     return 0
 
 
