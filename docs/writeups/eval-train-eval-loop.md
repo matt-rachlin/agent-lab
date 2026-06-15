@@ -30,13 +30,15 @@ Before training I wrote down what would count as success, so I couldn't move the
 
 | Eval | Relationship to training data | What it tests |
 |---|---|---|
-| **BFCL v3** (1,000 tasks) | Clean — academic benchmark, never in training | Single-turn function-calling format generalization |
-| **Brutal suite** (24 tasks × 3 seeds) | **Clean held-out** — *built after the dataset was frozen* | Hard multi-turn agentic tasks; zero contamination possible |
-| **Hard suite** (32 tasks × 3 seeds) | **Disclosed contamination** — its own successful trajectories are in the training mix | Memorization-inclusive gain; reported, never headline |
+| **BFCL v3** (1,000 tasks) | Clean rows, format-overlapping — no BFCL row is in training, but 11,341 of the 20,000 training records (56.7%) use the same OpenAI tool-call envelope BFCL grades (xLAM 3,780 + Hermes-FC 3,780 + ToolACE 3,781). Distribution overlap not formally quantified. | Single-turn function-calling format generalization |
+| **Brutal suite** (24 tasks × 3 seeds) | **Clean held-out** — *built after the dataset was frozen*; 0/24 brutal task slugs appear in either training file. | Hard multi-turn agentic tasks; zero task-level contamination |
+| **Hard suite** (32 tasks × 3 seeds) | **100% task-level overlap.** Every one of the 32 hard tasks has 4–11 successful trajectories in the training mix (220 trajectories = 33.4% of the lab-trajectories slice). Reported but bounded by memorization. | Memorization-inclusive gain; reported, never headline |
 
-The brutal suite is the one that matters most. I built it *after* I'd already frozen the fine-tuning dataset, specifically so there was a test the model could not have memorized. The hard suite is the opposite — I knowingly trained on successful trajectories from it, so any gain there is inflated by memorization and I'm flagging it as such rather than hiding it.
+The brutal suite is the one that matters most. I built it *after* I'd already frozen the fine-tuning dataset, specifically so there was a test the model could not have memorized. The hard suite is the opposite — I knowingly trained on successful trajectories from it (every task, 4–11 demonstrations each), so any gain there is inflated by memorization and I'm flagging it as such rather than hiding it.
 
 Targets, written down in advance: BFCL ≥ +5pp, brutal ≥ +2 tasks, hard ≥ +10pp, and — the one tied directly to last post's finding — **zero tool-calling protocol failures** (no text-emitted calls, no narration) on the fine-tuned model.
+
+Seeds: BFCL ran at N=1 seed (pre-registered as single-deterministic for the 1000-task suite); brutal and hard at N=3. The lab's reliability discipline (ADR-004) calls for N≥8 with bootstrap CIs on results that gate downstream decisions, so the point estimates below are useful *signals* but the formal arms-N≥8 confirmation pass is queued separately.
 
 ---
 
@@ -44,13 +46,13 @@ Targets, written down in advance: BFCL ≥ +5pp, brutal ≥ +2 tasks, hard ≥ +
 
 | Eval | base Qwen3-4B | fine-tuned | Δ | target | verdict |
 |---|---|---|---|---|---|
-| **BFCL v3 (clean)** | 64.7% | **83.7%** | **+19.0pp** | ≥+5pp | ✅ |
-| **Brutal (clean held-out)** | 2.8% | **25.0%** | **+22.2pp (~9×)** | ≥+2 tasks | ✅ |
-| **Hard (disclosed contam.)** | 17.7% | **44.8%** | **+27.1pp** | ≥+10pp | ✅ |
+| **BFCL v3 (clean rows, distribution-overlapping)** | 64.7% | **83.7%** | **+19.0pp** (N=1) | ≥+5pp | ✅ |
+| **Brutal (clean held-out)** | 2.8% (2/72) | **25.0%** (18/72) | **+22.2pp** (N=3) | ≥+2 tasks | ✅ |
+| **Hard (100% task-overlap, 220 trajectories in training)** | 17.7% | **44.8%** | **+27.1pp** (N=3) | ≥+10pp | ✅ |
 
-The brutal result is the headline I trust most. The base 4B essentially *cannot* do these multi-turn agentic tasks — it solved 2 of 72 trials. After fine-tuning on its bigger sibling's-and-its-own clean trajectories, it solved 18 of 72. That's a 9× improvement on a suite it provably never saw, where the only thing that changed was the weights.
+The brutal result is the headline I trust most. The base 4B essentially *cannot* do these multi-turn agentic tasks — it solved 2 of 72 trials. After fine-tuning on its bigger sibling's-and-its-own clean trajectories, it solved 18 of 72. That's a large gain on a suite it provably never saw at the task level, where the only thing that changed was the weights. I'm reporting absolute counts (2/72 → 18/72) rather than the multiplicative ratio, because at a 2/72 baseline the "9×" framing reads more confident than three seeds support.
 
-BFCL confirms it generalizes to a totally different, academic single-turn format too: +19 points. And the contaminated hard suite, for what it's worth (memorization included), nearly tripled.
+BFCL confirms it generalizes to a different format too: +19 points on the academic single-turn benchmark. The caveat to that number is in the table — the BFCL *rows* are not in training, but more than half the training mix uses the same function-call envelope (xLAM/Hermes-FC/ToolACE), so "held-out format" applies at the task level, not the distribution level. A perturbed-twin contamination check on a BFCL sample is queued as the cleanest way to bound this. And the contaminated hard suite, for what it's worth (memorization included), nearly tripled — but every one of those 32 tasks has 4–11 successful demonstrations in the training set, so that delta is bounded above by memorization, not generalization.
 
 ### The unadvertised win: it got *faster*
 
