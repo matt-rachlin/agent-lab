@@ -1,0 +1,20 @@
+experiment:
+  slug: SANITY-NEMOTRON-OLLAMA
+  title: "Sanity: nemotron 9B + 4B via Ollama on 40-task BFCL slice (does parallel pass now?)"
+  hypothesis: "Ollama renderer/parser handles parallel tool calls, so parallel/parallel_multiple categories score >0 (vs 0 on the llama-server path)."
+  plan_path: docs/exp/SANITY-NEMOTRON-OLLAMA.md
+tasks:
+  suite: bfcl-v3-ast
+  slugs: [simple_0,simple_1,simple_10,simple_100,simple_101,simple_102,simple_103,simple_104,simple_105,simple_106,multiple_0,multiple_1,multiple_10,multiple_100,multiple_101,multiple_102,multiple_103,multiple_104,multiple_105,multiple_106,parallel_0,parallel_1,parallel_10,parallel_100,parallel_101,parallel_102,parallel_103,parallel_104,parallel_105,parallel_106,parallel_multiple_0,parallel_multiple_1,parallel_multiple_10,parallel_multiple_100,parallel_multiple_101,parallel_multiple_102,parallel_multiple_103,parallel_multiple_104,parallel_multiple_105,parallel_multiple_106]
+models:
+  - nemotron-3-nano-4b
+  - nemotron-nano-9b-v2-ollama
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 600
