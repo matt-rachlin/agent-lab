@@ -1,0 +1,26 @@
+model,task,seed,flag,detail
+qwen3-4b,longhaul-orders-etl-staged,2,narration,0 structured tool calls across episode
+qwen3-4b,longhaul-orders-etl-staged,3,narration,0 structured tool calls across episode
+qwen3-4b,recovery-buggy-script,1,narration,0 structured tool calls across episode
+qwen3-4b,recovery-buggy-script,2,narration,0 structured tool calls across episode
+qwen3-4b,recovery-buggy-script,3,narration,0 structured tool calls across episode
+qwen3-4b,recovery-truncated-json,2,narration,0 structured tool calls across episode
+qwen3-4b,recovery-truncated-json,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,debug-job-state-machine,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,debug-job-state-machine,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,debug-job-state-machine,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,longhaul-orders-etl-staged,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,recovery-decoy-metrics,1,error_loop,4 consecutive all-error turns
+qwen3-4b-ft-toolcall-q4-latest,recovery-moved-records,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,recovery-truncated-json,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,recovery-truncated-json,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,spec-invoice-window,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,spec-invoice-window,2,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,spec-invoice-window,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,spec-tournament-podium,1,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,spec-tournament-podium,2,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,spec-tournament-podium,3,narration,0 structured tool calls across episode
+qwen3-4b,recovery-mixed-units,2,thrash,"5 calls vs passing median 2 (>1.5x), still failed"
+qwen3-4b,recovery-mixed-units,3,thrash,"9 calls vs passing median 2 (>1.5x), still failed"
+qwen3-4b,recovery-moved-records,2,thrash,"8 calls vs passing median 5 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,recovery-moved-records,1,thrash,"14 calls vs passing median 5 (>1.5x), still failed"

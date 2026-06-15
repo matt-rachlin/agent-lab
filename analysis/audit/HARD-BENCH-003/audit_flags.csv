@@ -1,0 +1,99 @@
+model,task,seed,flag,detail
+devstral-24b,code-sample-variance-fix,2,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,code-sample-variance-fix,3,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,code-sample-variance-fix,4,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,code-sample-variance-fix,5,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,code-sample-variance-fix,6,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,code-sample-variance-fix,8,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,code-topo-sort,1,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,2,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,3,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,4,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,5,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,6,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,7,narration,0 structured tool calls across episode
+devstral-24b,code-topo-sort,8,narration,0 structured tool calls across episode
+devstral-24b,multi-config-driven-transform,1,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,multi-config-driven-transform,3,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,multi-config-driven-transform,5,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,multi-config-driven-transform,6,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,shell-multifile-dedup-latest,2,narration,0 structured tool calls across episode
+devstral-24b,shell-multifile-dedup-latest,3,narration,0 structured tool calls across episode
+devstral-24b,shell-multifile-dedup-latest,4,narration,0 structured tool calls across episode
+devstral-24b,shell-multifile-dedup-latest,5,narration,0 structured tool calls across episode
+devstral-24b,shell-multifile-dedup-latest,6,narration,0 structured tool calls across episode
+devstral-24b,shell-multifile-dedup-latest,7,narration,0 structured tool calls across episode
+devstral-24b,shell-multifile-dedup-latest,8,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,1,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,2,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,3,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,4,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,5,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,6,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,7,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,8,narration,0 structured tool calls across episode
+gemma4-12b,code-interval-merge-fix,1,budget_exhausted,terminated_reason=max_turns_reached
+gemma4-12b,shell-top-error-sources,1,narration,0 structured tool calls across episode
+gemma4-12b,shell-top-error-sources,2,narration,0 structured tool calls across episode
+gemma4-12b,shell-top-error-sources,4,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-dijkstra-multifile,6,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,code-expr-parser-fix,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,2,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,3,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,4,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,5,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,6,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,7,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-expr-parser-fix,8,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,2,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,3,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,4,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,5,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,6,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,7,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,8,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,2,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,3,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,4,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,5,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,6,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,7,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,8,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,2,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,3,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,4,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,5,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,6,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,7,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,8,narration,0 structured tool calls across episode
+qwen3-coder-30b,data-log-parse-p95-latency,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,shell-multifile-dedup-latest,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,shell-multifile-dedup-latest,3,budget_exhausted,terminated_reason=max_turns_reached
+gemma4-12b,code-interval-merge-fix,1,thrash,"8 calls vs passing median 4 (>1.5x), still failed"
+devstral-24b,code-sample-variance-fix,2,thrash,"12 calls vs passing median 7 (>1.5x), still failed"
+devstral-24b,code-sample-variance-fix,3,thrash,"12 calls vs passing median 7 (>1.5x), still failed"
+devstral-24b,code-sample-variance-fix,4,thrash,"12 calls vs passing median 7 (>1.5x), still failed"
+devstral-24b,code-sample-variance-fix,5,thrash,"12 calls vs passing median 7 (>1.5x), still failed"
+devstral-24b,code-sample-variance-fix,6,thrash,"12 calls vs passing median 7 (>1.5x), still failed"
+devstral-24b,code-sample-variance-fix,8,thrash,"12 calls vs passing median 7 (>1.5x), still failed"
+qwen3-coder-30b,data-duplicate-transaction-count,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,data-json-flatten-top-spender,2,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-json-flatten-top-spender,3,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-json-flatten-top-spender,4,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-json-flatten-top-spender,5,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-json-flatten-top-spender,6,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-json-flatten-top-spender,7,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-json-flatten-top-spender,8,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+qwen3-coder-30b,data-json-flatten-top-spender,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,data-log-parse-p95-latency,1,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,multi-config-driven-transform,1,thrash,"12 calls vs passing median 4 (>1.5x), still failed"
+devstral-24b,multi-config-driven-transform,3,thrash,"12 calls vs passing median 4 (>1.5x), still failed"
+devstral-24b,multi-config-driven-transform,5,thrash,"12 calls vs passing median 4 (>1.5x), still failed"
+devstral-24b,multi-config-driven-transform,6,thrash,"12 calls vs passing median 4 (>1.5x), still failed"
+devstral-24b,multi-grep-weighted-todo,3,thrash,"8 calls vs passing median 4 (>1.5x), still failed"
+devstral-24b,multi-grep-weighted-todo,7,thrash,"8 calls vs passing median 4 (>1.5x), still failed"
+qwen3-coder-30b,shell-sensitive-config-keys,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+gemma4-12b,shell-tsv-dedup-median-by-dept,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them

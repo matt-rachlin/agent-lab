@@ -1,0 +1,24 @@
+model,task,seed,flag,detail
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,2,error_loop,4 consecutive all-error turns
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,3,error_loop,4 consecutive all-error turns
+qwen3-4b-ft-toolcall-q4-latest,code-fibonacci-bug-fix,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-fibonacci-bug-fix,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-lru-cache-trace,1,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,code-lru-cache-trace,2,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,code-lru-cache-trace,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,data-duplicate-transaction-count,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,data-duplicate-transaction-count,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,data-multi-file-weighted-score,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,data-payment-reconciliation,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,multi-config-driven-transform,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,shell-top-error-sources,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,shell-top-error-sources,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-fibonacci-bug-fix,2,thrash,"10 calls vs passing median 5 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,code-fibonacci-bug-fix,3,thrash,"10 calls vs passing median 5 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,data-duplicate-transaction-count,2,thrash,"8 calls vs passing median 3 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,data-duplicate-transaction-count,3,thrash,"8 calls vs passing median 3 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,data-multi-file-weighted-score,2,thrash,"14 calls vs passing median 4 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,multi-config-driven-transform,2,thrash,"12 calls vs passing median 3 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,shell-fragment-reassembly,1,thrash,"9 calls vs passing median 1 (>1.5x), still failed"

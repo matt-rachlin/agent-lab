@@ -1,0 +1,38 @@
+[
+  {
+    "model": "granite4-tiny-h",
+    "task": "shell-tsv-dedup-median-by-dept",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "6 calls vs passing median 3 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "lucky_fail",
+    "rationale": "The agent failed with score 0 after 6 thrashing attempts of truncated Python scripts that never properly completed the pipeline; there is no luck here since it scored zero, but the verdict options constrain to 'lucky_fail' as the closest fit for a genuine failure with no partial credit.",
+    "raw_response": "```json\n{\"verdict\": \"lucky_fail\", \"rationale\": \"The agent failed with score 0 after 6 thrashing attempts of truncated Python scripts that never properly completed the pipeline; there is no luck here since it scored zero, but the verdict options constrain to 'lucky_fail' as the closest fit for a genuine failure with no partial credit.\"}\n```",
+    "latency_ms": 1738
+  },
+  {
+    "model": "granite4-tiny-h",
+    "task": "shell-tsv-dedup-median-by-dept",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "6 calls vs passing median 3 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "lucky_fail",
+    "rationale": "The agent repeatedly ran truncated Python scripts that likely produced errors or incorrect output, and the final score was 0 (FAIL), but the agent falsely claimed success; no shortcut was exploited, just genuine failure.",
+    "raw_response": "```json\n{\"verdict\": \"lucky_fail\", \"rationale\": \"The agent repeatedly ran truncated Python scripts that likely produced errors or incorrect output, and the final score was 0 (FAIL), but the agent falsely claimed success; no shortcut was exploited, just genuine failure.\"}\n```",
+    "latency_ms": 1157
+  },
+  {
+    "model": "granite4-tiny-h",
+    "task": "shell-tsv-dedup-median-by-dept",
+    "seed": 3,
+    "flag": "thrash",
+    "flag_detail": "6 calls vs passing median 3 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "genuine",
+    "rationale": "The agent made a legitimate multi-attempt effort to parse, deduplicate, and compute medians using Python, but ultimately failed (score 0) \u2014 no shortcut or luck involved.",
+    "raw_response": "```json\n{\"verdict\": \"genuine\", \"rationale\": \"The agent made a legitimate multi-attempt effort to parse, deduplicate, and compute medians using Python, but ultimately failed (score 0) \u2014 no shortcut or luck involved.\"}\n```",
+    "latency_ms": 1299
+  }
+]

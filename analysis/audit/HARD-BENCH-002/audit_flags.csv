@@ -1,0 +1,30 @@
+model,task,seed,flag,detail
+devstral-24b,code-topo-sort,1,narration,0 structured tool calls across episode
+devstral-24b,data-json-flatten-top-spender,1,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,multi-etl-log-user-join,1,budget_exhausted,terminated_reason=max_turns_reached
+devstral-24b,shell-multifile-dedup-latest,1,narration,0 structured tool calls across episode
+devstral-24b,shell-top-error-sources,1,narration,0 structured tool calls across episode
+gemma4-12b,shell-fragment-reassembly,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,code-expr-parser-fix,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-fibonacci-bug-fix,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-interval-merge-fix,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,code-topo-sort,1,narration,0 structured tool calls across episode
+qwen3-coder-30b,shell-fragment-reassembly,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,shell-multifile-dedup-latest,1,budget_exhausted,terminated_reason=max_turns_reached
+gemma4-12b,code-dijkstra-multifile,1,suspicious_pass,passed with 3 calls; other passers' min is 8
+devstral-24b,code-fibonacci-bug-fix,1,suspicious_pass,passed with 5 calls; other passers' min is 8
+devstral-24b,code-lru-cache-trace,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+qwen3-coder-30b,data-csv-join-revenue-by-region,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+gemma4-12b,data-duplicate-transaction-count,1,suspicious_pass,passed with 3 calls; other passers' min is 6
+qwen3-coder-30b,data-duplicate-transaction-count,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,data-json-flatten-top-spender,1,thrash,"8 calls vs passing median 3 (>1.5x), still failed"
+devstral-24b,data-jsonl-session-median-duration,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+qwen3-coder-30b,data-log-parse-p95-latency,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,data-multi-file-weighted-score,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,multi-etl-log-user-join,1,thrash,"13 calls vs passing median 4.5 (>1.5x), still failed"
+gemma4-12b,multi-http-catalog-pricing,1,suspicious_pass,passed with 9 calls; other passers' min is 14
+qwen3-coder-30b,multi-http-catalog-pricing,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+qwen3-coder-30b,shell-access-log-slow-error-endpoints,1,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+gemma4-12b,shell-multifile-dedup-latest,1,suspicious_pass,passed with 6 calls; other passers' min is 10
+qwen3-coder-30b,shell-sensitive-config-keys,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,shell-tsv-dedup-median-by-dept,1,suspicious_pass,passed with 2 calls; other passers' min is 5

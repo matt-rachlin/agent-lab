@@ -1,0 +1,23 @@
+model,task,seed,flag,detail
+gpt-oss-20b-local,code-dijkstra-multifile,1,narration,0 structured tool calls across episode
+gpt-oss-20b-local,code-dijkstra-multifile,2,narration,0 structured tool calls across episode
+gpt-oss-20b-local,code-dijkstra-multifile,3,narration,0 structured tool calls across episode
+gpt-oss-20b-local,code-expr-parser-fix,1,narration,0 structured tool calls across episode
+gpt-oss-20b-local,code-expr-parser-fix,2,narration,0 structured tool calls across episode
+gpt-oss-20b-local,code-expr-parser-fix,3,narration,0 structured tool calls across episode
+gpt-oss-20b-local,code-fibonacci-bug-fix,1,narration,0 structured tool calls across episode
+gpt-oss-20b-local,shell-fragment-reassembly,1,budget_exhausted,terminated_reason=max_turns_reached
+gpt-oss-20b-local,shell-fragment-reassembly,2,budget_exhausted,terminated_reason=max_turns_reached
+gpt-oss-20b-local,shell-fragment-reassembly,3,budget_exhausted,terminated_reason=max_turns_reached
+granite4-tiny-h,shell-fragment-reassembly,1,budget_exhausted,terminated_reason=max_turns_reached
+granite4-tiny-h,shell-fragment-reassembly,1,error_loop,3 consecutive all-error turns
+granite4-tiny-h,shell-fragment-reassembly,2,budget_exhausted,terminated_reason=max_turns_reached
+granite4-tiny-h,shell-fragment-reassembly,2,error_loop,3 consecutive all-error turns
+granite4-tiny-h,shell-fragment-reassembly,3,budget_exhausted,terminated_reason=max_turns_reached
+granite4-tiny-h,shell-fragment-reassembly,3,error_loop,3 consecutive all-error turns
+granite4-tiny-h,shell-top-error-sources,1,narration,0 structured tool calls across episode
+granite4-tiny-h,shell-top-error-sources,2,narration,0 structured tool calls across episode
+granite4-tiny-h,shell-top-error-sources,3,narration,0 structured tool calls across episode
+granite4-tiny-h,shell-tsv-dedup-median-by-dept,1,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+granite4-tiny-h,shell-tsv-dedup-median-by-dept,2,thrash,"6 calls vs passing median 3 (>1.5x), still failed"
+granite4-tiny-h,shell-tsv-dedup-median-by-dept,3,thrash,"6 calls vs passing median 3 (>1.5x), still failed"

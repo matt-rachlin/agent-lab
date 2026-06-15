@@ -1,0 +1,55 @@
+model,task,seed,flag,detail
+qwen3-4b,code-expr-parser-fix,1,narration,0 structured tool calls across episode
+qwen3-4b,code-lru-cache-trace,1,narration,0 structured tool calls across episode
+qwen3-4b,code-lru-cache-trace,2,narration,0 structured tool calls across episode
+qwen3-4b,code-lru-cache-trace,3,narration,0 structured tool calls across episode
+qwen3-4b,code-topo-sort,1,narration,0 structured tool calls across episode
+qwen3-4b,code-topo-sort,2,narration,0 structured tool calls across episode
+qwen3-4b,code-topo-sort,3,narration,0 structured tool calls across episode
+qwen3-4b,data-csv-join-revenue-by-region,1,budget_exhausted,terminated_reason=budget_exhausted
+qwen3-4b,data-csv-join-revenue-by-region,2,budget_exhausted,terminated_reason=budget_exhausted
+qwen3-4b,data-csv-join-revenue-by-region,3,budget_exhausted,terminated_reason=budget_exhausted
+qwen3-4b,data-jsonl-session-median-duration,1,narration,0 structured tool calls across episode
+qwen3-4b,data-jsonl-session-median-duration,2,narration,0 structured tool calls across episode
+qwen3-4b,data-multi-file-weighted-score,1,narration,0 structured tool calls across episode
+qwen3-4b,data-multi-file-weighted-score,2,narration,0 structured tool calls across episode
+qwen3-4b,data-multi-file-weighted-score,3,narration,0 structured tool calls across episode
+qwen3-4b,shell-dept-salary-sum,1,narration,0 structured tool calls across episode
+qwen3-4b,shell-dept-salary-sum,2,narration,0 structured tool calls across episode
+qwen3-4b,shell-dept-salary-sum,3,narration,0 structured tool calls across episode
+qwen3-4b,shell-fragment-reassembly,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b,shell-fragment-reassembly,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b,shell-multifile-dedup-latest,1,narration,0 structured tool calls across episode
+qwen3-4b,shell-multifile-dedup-latest,2,narration,0 structured tool calls across episode
+qwen3-4b,shell-multifile-dedup-latest,3,narration,0 structured tool calls across episode
+qwen3-4b,shell-top-error-sources,1,narration,0 structured tool calls across episode
+qwen3-4b,shell-top-error-sources,2,narration,0 structured tool calls across episode
+qwen3-4b,shell-top-error-sources,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,1,error_loop,3 consecutive all-error turns
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,code-expr-parser-fix,3,error_loop,4 consecutive all-error turns
+qwen3-4b-ft-toolcall-q4-latest,data-json-flatten-top-spender,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,data-log-parse-p95-latency,2,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,data-log-parse-p95-latency,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,data-payment-reconciliation,1,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,data-payment-reconciliation,2,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,data-payment-reconciliation,3,narration,0 structured tool calls across episode
+qwen3-4b-ft-toolcall-q4-latest,multi-config-driven-transform,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,shell-top-error-sources,2,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b-ft-toolcall-q4-latest,shell-top-error-sources,3,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-4b,code-interval-merge-fix,3,thrash,"12 calls vs passing median 4 (>1.5x), still failed"
+qwen3-4b,data-inventory-turnover,2,thrash,"2 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,data-inventory-turnover,3,thrash,"2 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,data-json-flatten-top-spender,1,thrash,"3 calls vs passing median 1.5 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,data-json-flatten-top-spender,1,thrash,"8 calls vs passing median 1.5 (>1.5x), still failed"
+qwen3-4b,data-log-parse-p95-latency,1,thrash,"9 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,data-log-parse-p95-latency,2,thrash,"2 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,data-log-parse-p95-latency,3,thrash,"2 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,data-multi-file-weighted-score,3,suspicious_pass,passed with 2 calls; other passers' min is 5
+qwen3-4b-ft-toolcall-q4-latest,multi-config-driven-transform,2,thrash,"12 calls vs passing median 3 (>1.5x), still failed"
+qwen3-4b,shell-fragment-reassembly,1,thrash,"13 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,shell-fragment-reassembly,2,thrash,"8 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,shell-fragment-reassembly,3,thrash,"12 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b-ft-toolcall-q4-latest,shell-fragment-reassembly,1,thrash,"9 calls vs passing median 1 (>1.5x), still failed"
+qwen3-4b,shell-sensitive-config-keys,2,thrash,"6 calls vs passing median 2 (>1.5x), still failed"

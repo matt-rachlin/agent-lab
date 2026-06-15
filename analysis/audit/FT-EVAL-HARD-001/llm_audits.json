@@ -1,0 +1,152 @@
+[
+  {
+    "model": "qwen3-4b",
+    "task": "code-interval-merge-fix",
+    "seed": 3,
+    "flag": "thrash",
+    "flag_detail": "12 calls vs passing median 4 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "data-inventory-turnover",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "2 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "data-inventory-turnover",
+    "seed": 3,
+    "flag": "thrash",
+    "flag_detail": "2 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "data-json-flatten-top-spender",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "3 calls vs passing median 1.5 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b-ft-toolcall-q4-latest",
+    "task": "data-json-flatten-top-spender",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "8 calls vs passing median 1.5 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "data-log-parse-p95-latency",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "9 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "data-log-parse-p95-latency",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "2 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 104] Connection reset by peer"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "data-log-parse-p95-latency",
+    "seed": 3,
+    "flag": "thrash",
+    "flag_detail": "2 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b-ft-toolcall-q4-latest",
+    "task": "data-multi-file-weighted-score",
+    "seed": 3,
+    "flag": "suspicious_pass",
+    "flag_detail": "passed with 2 calls; other passers' min is 5",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b-ft-toolcall-q4-latest",
+    "task": "multi-config-driven-transform",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "12 calls vs passing median 3 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "shell-fragment-reassembly",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "13 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "shell-fragment-reassembly",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "8 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "shell-fragment-reassembly",
+    "seed": 3,
+    "flag": "thrash",
+    "flag_detail": "12 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b-ft-toolcall-q4-latest",
+    "task": "shell-fragment-reassembly",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "9 calls vs passing median 1 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "shell-sensitive-config-keys",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "6 calls vs passing median 2 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "audit_error",
+    "rationale": "[Errno 111] Connection refused"
+  }
+]

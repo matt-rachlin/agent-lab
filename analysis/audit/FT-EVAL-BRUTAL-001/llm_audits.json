@@ -1,0 +1,50 @@
+[
+  {
+    "model": "qwen3-4b",
+    "task": "recovery-mixed-units",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "5 calls vs passing median 2 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "lucky_fail",
+    "rationale": "The agent computed the total via python_eval but never wrote the required three lines to /workspace/out.txt, resulting in a score of 0. It thrashed with redundant file reads and failed to complete the task.",
+    "raw_response": "{\"verdict\": \"lucky_fail\", \"rationale\": \"The agent computed the total via python_eval but never wrote the required three lines to /workspace/out.txt, resulting in a score of 0. It thrashed with redundant file reads and failed to complete the task.\"}",
+    "latency_ms": 7846
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "recovery-mixed-units",
+    "seed": 3,
+    "flag": "thrash",
+    "flag_detail": "9 calls vs passing median 2 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "lucky_fail",
+    "rationale": "The agent made a legitimate attempt to compute the total but failed for multiple reasons: it wrote to /workspace/result.txt instead of the required /workspace/out.txt, and it wrote only '509.54' instead of the required three-line format (total_usd=..., cents_rows=..., dollars_rows=...). The final score was 0, so there was no lucky partial credit either\u2014just a plain failure.",
+    "raw_response": "{\"verdict\": \"lucky_fail\", \"rationale\": \"The agent made a legitimate attempt to compute the total but failed for multiple reasons: it wrote to /workspace/result.txt instead of the required /workspace/out.txt, and it wrote only '509.54' instead of the required three-line format (total_usd=..., cents_rows=..., dollars_rows=...). The final score was 0, so there was no lucky partial credit either\u2014just a plain failure.\"}",
+    "latency_ms": 15148
+  },
+  {
+    "model": "qwen3-4b",
+    "task": "recovery-moved-records",
+    "seed": 2,
+    "flag": "thrash",
+    "flag_detail": "8 calls vs passing median 5 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "lucky_fail",
+    "rationale": "The agent identified the correct authoritative file (archive/regional_records_v2.csv with 12 data rows) but never wrote the required output to /workspace/out.txt, resulting in a score of 0. This is a genuine failure, not a shortcut or lucky outcome.",
+    "raw_response": "{\"verdict\": \"lucky_fail\", \"rationale\": \"The agent identified the correct authoritative file (archive/regional_records_v2.csv with 12 data rows) but never wrote the required output to /workspace/out.txt, resulting in a score of 0. This is a genuine failure, not a shortcut or lucky outcome.\"}",
+    "latency_ms": 5020
+  },
+  {
+    "model": "qwen3-4b-ft-toolcall-q4-latest",
+    "task": "recovery-moved-records",
+    "seed": 1,
+    "flag": "thrash",
+    "flag_detail": "14 calls vs passing median 5 (>1.5x), still failed",
+    "audit_model": "glm-5.1-cloud",
+    "verdict": "lucky_fail",
+    "rationale": "The agent failed entirely, stuck in a repetitive loop calling fs_grep with the same parameters 14 times without ever locating the CSV file, computing the sum, or writing the output. The score was 0 (FAIL), so there was no luck-out on partial credit either\u2014this is simply a failure.",
+    "raw_response": "{\"verdict\": \"lucky_fail\", \"rationale\": \"The agent failed entirely, stuck in a repetitive loop calling fs_grep with the same parameters 14 times without ever locating the CSV file, computing the sum, or writing the output. The score was 0 (FAIL), so there was no luck-out on partial credit either\u2014this is simply a failure.\"}",
+    "latency_ms": 2565
+  }
+]

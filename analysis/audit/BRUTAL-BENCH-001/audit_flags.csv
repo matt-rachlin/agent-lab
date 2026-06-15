@@ -1,0 +1,17 @@
+model,task,seed,flag,detail
+devstral-24b,longhaul-fx-invoice-rounding,1,narration,0 structured tool calls across episode
+devstral-24b,recovery-mixed-units,1,narration,0 structured tool calls across episode
+devstral-24b,spec-invoice-window,1,narration,0 structured tool calls across episode
+devstral-24b,spec-shift-payroll,1,narration,0 structured tool calls across episode
+devstral-24b,spec-tournament-podium,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,longhaul-orders-etl-staged,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,longhaul-sensor-alerts-staged,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,longhaul-vendor-ledger-pagination,1,budget_exhausted,terminated_reason=max_turns_reached
+qwen3-coder-30b,longhaul-sensor-alerts-staged,1,thrash,"16 calls vs passing median 9 (>1.5x), still failed"
+qwen3-coder-30b,recovery-buggy-script,1,suspicious_pass,passed with 5 calls; other passers' min is 8
+qwen3-coder-30b,recovery-dirty-csv,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+qwen3-coder-30b,recovery-mixed-units,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+gemma4-12b,spec-shift-payroll,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+qwen3-coder-30b,spec-stock-audit,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
+devstral-24b,spec-tournament-podium,1,thrash,"10 calls vs passing median 2.5 (>1.5x), still failed"
+gemma4-12b,spec-tournament-podium,1,suspicious_pass,passed with zero fs_write/shell_exec calls; every other passer used them
