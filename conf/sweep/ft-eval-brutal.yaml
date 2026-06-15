@@ -1,5 +1,5 @@
 # EXP-013 eval arm 2/3: brutal suite (clean held-out — postdates the dataset)
-# base vs fine-tuned Qwen3-4B. __BASE__/__FT__ substituted by autopilot.
+# base vs fine-tuned Qwen3-4B. qwen3-4b/qwen3-4b-ft-toolcall-q4-latest substituted by autopilot.
 experiment:
   slug: FT-EVAL-BRUTAL-001
   title: "EXP-013 eval: pbs-agent-brutal-v0.1 — Qwen3-4B base vs ft-toolcall"
@@ -7,8 +7,8 @@ experiment:
 tasks:
   suite: pbs-agent-brutal-v0.1
 models:
-  - __BASE__
-  - __FT__
+  - qwen3-4b
+  - qwen3-4b-ft-toolcall-q4-latest
 configs:
   - name: react-4096
     temperature: 0.0
@@ -16,10 +16,10 @@ configs:
     max_tokens: 4096
     scaffold: react
 model_defaults:
-  __BASE__:
+  qwen3-4b:
     extra:
       think: false
-  __FT__:
+  qwen3-4b-ft-toolcall-q4-latest:
     extra:
       think: false
 seeds: [1, 2, 3]

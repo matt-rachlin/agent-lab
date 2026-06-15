@@ -1,0 +1,24 @@
+# EXP-013b cap probe: brutal suite, ft arm only, per-turn output cap 4096 -> 16384.
+# Separates "narration = eval-config artifact (cap too low for verbose model)"
+# from "narration = genuine model behavior". think:false (unchanged from EXP-013).
+experiment:
+  slug: FT-EVAL-BRUTAL-CAP16K-001
+  title: "EXP-013b cap probe: pbs-agent-brutal-v0.1, ft arm, 16k output cap"
+  hypothesis: "H4-probe: a 16384 per-turn output cap reduces zero-tool-call (narration) episodes vs the 4096 cap, holding the model fixed."
+tasks:
+  suite: pbs-agent-brutal-v0.1
+models:
+  - qwen3-4b-ft-toolcall-q4-latest
+configs:
+  - name: react-16384
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 16384
+    scaffold: react
+model_defaults:
+  qwen3-4b-ft-toolcall-q4-latest:
+    extra:
+      think: false
+seeds: [1, 2, 3]
+max_concurrency: 1
+request_timeout_sec: 1800

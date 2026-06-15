@@ -1,7 +1,7 @@
 # EXP-013 eval arm 1/3: BFCL v3 AST (clean held-out) — base vs fine-tuned
 # Qwen3-4B, both q4_k_m via ollama, think:false per lab tool-use convention
 # (F-009/F-010; the FT data contains no <think> blocks).
-# __BASE__/__FT__ are substituted by /data/lab/ft/post_train_setup.py.
+# qwen3-4b/qwen3-4b-ft-toolcall-q4-latest are substituted by /data/lab/ft/post_train_setup.py.
 experiment:
   slug: FT-EVAL-BFCL-001
   title: "EXP-013 eval: BFCL v3 AST — Qwen3-4B base vs ft-toolcall"
@@ -9,8 +9,8 @@ experiment:
 tasks:
   suite: bfcl-v3-ast
 models:
-  - __BASE__
-  - __FT__
+  - qwen3-4b
+  - qwen3-4b-ft-toolcall-q4-latest
 configs:
   - name: greedy-1024
     temperature: 0.0
@@ -18,10 +18,10 @@ configs:
     max_tokens: 1024
     scaffold: single_turn
 model_defaults:
-  __BASE__:
+  qwen3-4b:
     extra:
       think: false
-  __FT__:
+  qwen3-4b-ft-toolcall-q4-latest:
     extra:
       think: false
 seeds: [1]
