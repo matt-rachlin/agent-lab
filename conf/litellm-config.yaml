@@ -295,3 +295,11 @@ router_settings:
   allowed_fails_policy:
     InternalServerErrorAllowedFails: 3
     TimeoutErrorAllowedFails: 3
+    # SGLang Phase 1 Stage B: the qwen3-4b-awq arm is a SINGLE deployment with
+    # no fallback peer, so a transient upstream 429 (KV pressure on a hot
+    # continuous-batching burst) must NOT cooldown the deployment — that turns
+    # one 429 into a 60s blackout that cascades the whole concurrent sweep
+    # (observed: 501/512 cells failed). High threshold = rely on retries
+    # (RateLimitErrorRetries above) + SGLang's own queue to absorb bursts;
+    # the deployment only cools down on a genuine sustained rate-limit storm.
+    RateLimitErrorAllowedFails: 1000

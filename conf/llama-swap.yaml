@@ -236,17 +236,24 @@ models:
   # gotcha). A pre-start `rm -f` guard removes any orphaned host-net container
   # still holding the port before exec'ing the server. `cmdStop` stops the
   # named container on swap/TTL (SIGKILL of the foreground PID alone would
-  # leak the container). mem-fraction 0.55 is the measured-first ceiling that
-  # leaves headroom for the ~2.6 GB hidden CUDA context; `--tool-call-parser
-  # qwen` is the verified parser for this image (qwen, not qwen3/qwen25/coder).
-  # Assigned to the exclusive `sglang-awq` group below.
+  # leak the container). `--tool-call-parser qwen` is the verified parser for
+  # this image (qwen, not qwen3/qwen25/coder).
+  # mem-fraction 0.70 (Stage B): the measured-first 0.55 starved SGLang's KV
+  # cache under the concurrent resident-batch path — c16 exhausted the pool and
+  # SGLang emitted a 429 that LiteLLM's router amplified into a 60s deployment
+  # cooldown (501/512 cells failed). 0.70 gives KV for ~32 concurrent BFCL
+  # requests and still coexists with the ~2.6 GB rerank when it loads
+  # (0.70*12=8.4 + 2.6 = 11 GB < 12; BFCL sweeps don't fire reranks anyway).
+  # `--max-running-requests 32` bounds admission to the c32 ceiling so a burst
+  # QUEUES instead of overcommitting KV. Assigned to exclusive `sglang-awq`.
   "qwen3-4b-awq":
     cmd: |
       podman --root /data/lab/containers/storage --runroot /data/lab/containers/run
       run --replace --rm --name sglang-qwen3-4b-awq --device nvidia.com/gpu=all --ipc=host --network=host
       -v /data/lab/models/awq/qwen3-4b-awq:/model:ro,Z docker.io/lmsysorg/sglang:latest
       python3 -m sglang.launch_server --model-path /model --host 127.0.0.1 --port ${PORT}
-      --served-model-name qwen3-4b-awq --mem-fraction-static 0.55 --attention-backend flashinfer --tool-call-parser qwen
+      --served-model-name qwen3-4b-awq --mem-fraction-static 0.70 --max-running-requests 32
+      --attention-backend flashinfer --tool-call-parser qwen
     cmdStop: |
       podman --root /data/lab/containers/storage --runroot /data/lab/containers/run stop -t 10 sglang-qwen3-4b-awq
     name: "Qwen3-4B AWQ (SGLang, throughput tier)"

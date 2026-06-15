@@ -3,9 +3,12 @@
 # comparable to the qwen3-14b / gemma4 / qwen3-4b cohort).
 #
 # SGLang Phase 1 arm. single-turn ONLY (B2: the -awq arm is kept off the agent
-# path until validated). max_concurrency stays at 1 here — the concurrent
-# dispatch + per-batch lease land in the runner stage (G1/M1/M2), NOT in this
-# config (corrects ADR-015 §4, which assumed config-only concurrency).
+# path until validated). max_concurrency:16 engages the Stage B resident-batch
+# throughput path (G1 concurrent dispatch + M1 one lease per batch + M2 sweep-
+# scoped SGLang lifecycle) — SGLang stays resident and continuous-batches the
+# cells. enable_thinking:false is the SGLang-native equivalent of the cohort's
+# `think:false`: qwen3 thinking-mode otherwise over-emits tool calls and the BFCL
+# AST grader scores wrong_count (verified: thinking-on 2/6 vs off 6/6 on probe).
 experiment:
   slug: CAND-BFCL-QWEN3-4B-AWQ-001
   title: "Candidate capability: qwen3-4b-awq (SGLang) BFCL v3 (N=16)"
@@ -21,6 +24,9 @@ configs:
     top_p: 1.0
     max_tokens: 4096
     scaffold: single_turn
+    extra:
+      chat_template_kwargs:
+        enable_thinking: false
 seeds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
-max_concurrency: 1
+max_concurrency: 16
 request_timeout_sec: 600
