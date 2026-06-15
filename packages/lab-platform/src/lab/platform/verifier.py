@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 
-from lab.core.trust import record_transition
+from lab.platform.trust import record_transition
 
 
 @dataclass

@@ -9,6 +9,7 @@ authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 
 dependencies = [
     "lab-core",
+    "lab-platform",
     "lab-rag",
     "lab-agent",
     "lab-eval",
@@ -22,6 +23,7 @@ dependencies = [
 
 [tool.uv.sources]
 lab-core = { workspace = true }
+lab-platform = { workspace = true }
 lab-rag = { workspace = true }
 lab-agent = { workspace = true }
 lab-eval = { workspace = true }

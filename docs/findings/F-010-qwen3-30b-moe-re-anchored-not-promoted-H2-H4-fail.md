@@ -370,3 +370,7 @@ could resolve H2 either way without changing the surface.
 - [`analysis/EXP-006b/gap_closure.csv`](../../analysis/EXP-006b/gap_closure.csv)
 - [`analysis/EXP-006b/tokens_summary.csv`](../../analysis/EXP-006b/tokens_summary.csv)
 - Analyzer: [`scripts/analyze_exp006b.py`](../../scripts/analyze_exp006b.py)
+trust_level: verified
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)

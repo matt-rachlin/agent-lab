@@ -574,7 +574,7 @@ def main() -> None:
     out.append("")
 
     report = "\n".join(out)
-    tmp_path = Path("/data/lab/code/docs/findings/F-005-EXP-002-verdicts.tmp.md")
+    tmp_path = Path("/data/lab/code/docs/reports/report-exp-002-verdicts.md")
     tmp_path.write_text(report)
 
     analysis_dir = Path("/data/lab/code/analysis/EXP-002")

@@ -29,7 +29,7 @@ tags:
 
    Verify pull-time digest matches Ollama Hub. Capture the tag exactly (`name:variant[-quant]`) — this is the source of truth.
 
-2. **Add to `conf/litellm-config.yaml`** with a stable `model_name`:
+2. **Add to `conf/serving/litellm-config.yaml`** with a stable `model_name`:
 
    ```yaml
    - model_name: <canonical-id>          # e.g. qwen3-14b-q4
@@ -82,7 +82,7 @@ Cloud models are proxied transparently by the local Ollama daemon via the user's
    ollama run <model>:cloud "hello"
    ```
 
-2. **Add to `conf/litellm-config.yaml`** with a `-cloud` suffix on the model_name:
+2. **Add to `conf/serving/litellm-config.yaml`** with a `-cloud` suffix on the model_name:
 
    ```yaml
    - model_name: <canonical-id>-cloud      # e.g. gpt-oss-120b-cloud

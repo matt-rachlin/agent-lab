@@ -98,3 +98,7 @@ leaderboards.
 - Model selection for agent work must screen on tool-loop fidelity
   first; coding-leaderboard rank is not a proxy.
 - Public writeup: `docs/writeups/local-coding-agent-benchmark.md`.
+trust_level: verified
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)

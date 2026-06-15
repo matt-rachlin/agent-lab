@@ -484,3 +484,7 @@ sweep). Cache the queries.jsonl to make re-runs cheap.
 - Results: `analysis/EXP-004c/`
 - Query cache: `analysis/EXP-004c/queries.jsonl` (199 queries: 50
   reused from EXP-003a + 149 newly generated)
+trust_level: verified
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)

@@ -33,11 +33,11 @@ from inspect_ai.model import (
 )
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from inspect_ai.tool import Tool
+from lab.platform.model_pool import ModelPool, PipelineModelPlan, PipelineStep
 
 from lab.agent.sandbox import Sandbox
 from lab.agent.tool_pool import ToolPool
 from lab.core.llm import call_litellm_chat
-from lab.core.model_pool import ModelPool, PipelineModelPlan, PipelineStep
 from lab.core.settings import get_settings
 from lab.inspect_bridge.tools import discover_tool_schemas
 from lab.observability.log import get_logger

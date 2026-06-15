@@ -35,7 +35,7 @@
 #   scripts/ceiling-sweep-wrapper.sh .venv/bin/lab agent run --suite pbs-agent-v0.1 --task fs-read-and-copy --model llama-3.3-70b-q4-local --allow-slow-models
 #
 # After the wrapper has freed VRAM, you can also bump the
-# `--n-gpu-layers` value in conf/llama-swap.yaml from 14 → 21 for the
+# `--n-gpu-layers` value in conf/serving/llama-swap.yaml from 14 → 21 for the
 # duration of this sweep (Phase 19e measured ngl=21 OOMs at 8.5 GB free;
 # with the rerank server's 2.6 GB freed, the budget rises to ~11 GB and
 # ngl=21 fits — see Phase 19e tuning notes in the runbook).

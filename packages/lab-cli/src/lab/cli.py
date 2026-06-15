@@ -23,7 +23,7 @@ from lab.experiment import (
     register_plan,
     validate_plan,
 )
-from lab.finding import list_findings, new_finding
+from lab.finding import TrustLevel, backfill_trust, list_findings, new_finding, promote_finding
 from lab.finding import sync as sync_findings
 from lab.observability.log import configure_logging as _configure_logging
 from lab.observability.quota import alert_if_high as quota_alert
@@ -191,8 +191,8 @@ def data_add_benchmark(
         return
 
     if name in {"harbor", "terminal-bench"}:
-        from lab.eval.external.harbor import SUITE_NAME as HARBOR_SUITE
-        from lab.eval.external.harbor import load_harbor_tasks
+        from lab.eval.external.harbor_suite import SUITE_NAME as HARBOR_SUITE
+        from lab.eval.external.harbor_suite import load_harbor_tasks
 
         console.print("[bold]harbor[/] loading Terminal-Bench task corpus")
         try:
@@ -446,12 +446,38 @@ app.add_typer(analyze_app, name="analyze")
 
 
 @analyze_app.command("scoreboard")
-def analyze_scoreboard() -> None:
+def analyze_scoreboard(
+    require_finding_trust: str | None = typer.Option(
+        None,
+        "--require-finding-trust",
+        help=(
+            "Stricter gate: only include entries whose associated finding doc is at or "
+            "above this trust level. Valid values: verified, reliability_confirmed, "
+            "deployable. Default: off (run trust_level='verified' is the only gate)."
+        ),
+    ),
+) -> None:
     """Multi-axis scoreboard over verified results (ADR-009): capability/
-    reliability/safety gate, safety veto, cost reported. Sparse until baselines."""
-    from lab.analyze.scoreboard import render_scoreboard
+    reliability/safety gate, safety veto, cost reported. Sparse until baselines.
 
-    sys.stdout.write(render_scoreboard())
+    By default, gates on run trust_level='verified'. Pass --require-finding-trust
+    to additionally gate on the finding-doc trust_level (a stricter requirement).
+    """
+    from lab.analyze.scoreboard import render_scoreboard
+    from lab.finding import TRUST_RUNGS
+
+    finding_trust_level: TrustLevel | None = None
+    if require_finding_trust is not None:
+        valid_levels = set(TRUST_RUNGS) - {"unverified"}
+        if require_finding_trust not in valid_levels:
+            console.print(
+                f"[red]invalid finding trust level[/] {require_finding_trust!r}. "
+                f"Valid: {', '.join(sorted(valid_levels))}"
+            )
+            raise typer.Exit(code=2)
+        finding_trust_level = require_finding_trust
+
+    sys.stdout.write(render_scoreboard(require_finding_trust=finding_trust_level))
 
 
 @analyze_app.command("report")
@@ -600,10 +626,9 @@ def exp_register(
     except ValueError as exc:
         console.print(f"[red]registration failed[/]: {exc}")
         raise typer.Exit(code=1) from exc
-    console.print(
-        f"[green]registered[/] {v.slug} (sha={v.git_sha[:12] if v.git_sha else '?'}…) "
-        f"from {v.plan_path}"
-    )
+    sha_short = v.git_sha[:12] if v.git_sha else "?"
+    console.print(f"[green]registered[/] {v.slug} at {sha_short}… from {v.plan_path}")
+    console.print("commit to seal pre-registration.")
 
 
 @exp_app.command("list")
@@ -644,8 +669,17 @@ def exp_show(slug: str = typer.Argument(..., help="Experiment slug")) -> None:
 # finding — registry mirror of docs/findings/
 # ---------------------------------------------------------------------------
 
-finding_app = typer.Typer(help="Findings: new, sync, list")
+finding_app = typer.Typer(help="Findings: new, sync, list, promote")
 app.add_typer(finding_app, name="finding")
+
+# Trust-level color map for TTY output.
+_TRUST_COLORS: dict[str, str] = {
+    "unverified": "yellow",
+    "verified": "green",
+    "reliability_confirmed": "bright_green",
+    "deployable": "cyan",
+    "retracted": "red",
+}
 
 
 @finding_app.command("new")
@@ -679,21 +713,63 @@ def finding_sync() -> None:
 
 @finding_app.command("list")
 def finding_list() -> None:
-    """List all findings in the lab DB."""
+    """List all findings in the lab DB with trust_level column."""
     rows = list_findings()
     if not rows:
         console.print("(no findings yet)")
         return
-    table = Table("Slug", "Confidence", "Source EXP", "Status", "Claim")
+    tty = console.is_terminal
+    table = Table("Slug", "Trust", "Confidence", "Source EXP", "Status", "Claim")
     for r in rows:
+        trust = str(r.get("trust_level") or "unverified")
+        if tty:
+            color = _TRUST_COLORS.get(trust, "white")
+            trust_cell = f"[{color}]{trust}[/{color}]"
+        else:
+            trust_cell = trust
         table.add_row(
             str(r["slug"]),
+            trust_cell,
             str(r["confidence"]),
             str(r.get("source_exp_slug") or ""),
             str(r["status"]),
             str(r["claim"])[:70],
         )
     console.print(table)
+
+
+@finding_app.command("promote")
+def finding_promote(
+    slug: str = typer.Argument(..., help="Finding slug, e.g. F-005"),
+    level: str = typer.Argument(..., help="Target trust level"),
+    force: bool = typer.Option(False, "--force", help="Allow skipping rungs (use with caution)"),
+) -> None:
+    """Promote a finding to the next trust level (ADR-008).
+
+    Valid levels: unverified -> verified -> reliability_confirmed -> deployable.
+    retracted is reachable from any rung (terminal).
+
+    Refuses to skip rungs without --force. Requires depends_on evidence link
+    in frontmatter for levels beyond unverified.
+    """
+    valid: set[str] = {"unverified", "verified", "reliability_confirmed", "deployable", "retracted"}
+    if level not in valid:
+        console.print(f"[red]unknown level[/] {level!r}. Valid: {', '.join(sorted(valid))}")
+        raise typer.Exit(code=2)
+    target: TrustLevel = level  # type: ignore[assignment]
+    try:
+        path = promote_finding(slug, target, force=force)
+    except (ValueError, FileNotFoundError) as exc:
+        console.print(f"[red]promote failed[/]: {exc}")
+        raise typer.Exit(code=1) from exc
+    console.print(f"[green]promoted[/] {slug} -> {level} in {path}")
+
+
+@finding_app.command("backfill-trust")
+def finding_backfill_trust() -> None:
+    """Set trust_level: unverified on all finding docs that lack the field."""
+    updated, already_set = backfill_trust()
+    console.print(f"backfill complete: {updated} updated, {already_set} already had trust_level")
 
 
 # ---------------------------------------------------------------------------
@@ -816,6 +892,41 @@ def eval_apply(
     console.print(table)
 
 
+@eval_app.command("ingest-harbor")
+def eval_ingest_harbor(
+    results_path: Path = typer.Argument(..., help="Path to Harbor verifier output (JSON Lines)"),
+    run_id: str = typer.Option(..., "--run-id", help="experiment_runs.run_id to attach results to"),
+    suite: str = typer.Option("harbor", "--suite", help="Task suite name (default: harbor)"),
+    trust: str = typer.Option(
+        "unverified",
+        "--trust",
+        help="Trust level recorded in raw JSONB (e.g. unverified, verified)",
+    ),
+) -> None:
+    """Read a Harbor verifier output file and write one row per task to eval_results.
+
+    The input file must be JSON Lines with at least:
+      {"task": "<slug>", "passed": <bool>, "score": <float>}
+
+    The run_id must already exist in experiment_runs. Tasks not found in the
+    tasks table are skipped (warning logged).
+    """
+    from lab.eval.external.harbor_ingest import ingest_harbor_run
+
+    if not results_path.exists():
+        console.print(f"[red]error[/] results file not found: {results_path}")
+        raise typer.Exit(code=2)
+
+    counts = ingest_harbor_run(results_path, run_id=run_id, suite=suite, trust_level=trust)
+    console.print(
+        f"[green]harbor ingest done[/] "
+        f"rows_written={counts['rows_written']} "
+        f"passed={counts['passed']} "
+        f"failed={counts['failed']} "
+        f"skipped_unknown_task={counts['skipped_unknown_task']}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # manifest / models — wrappers for parity with `uv run python -m lab.manifest`
 # ---------------------------------------------------------------------------
@@ -915,7 +1026,7 @@ def agent_run(
         False,
         "--pipeline-plan-only",
         help=(
-            "Print the lab.core.model_pool PipelineModelPlan JSON that "
+            "Print the lab.platform.model_pool PipelineModelPlan JSON that "
             "would be declared for this task+model (Phase 19c) and exit "
             "without loading anything."
         ),
@@ -1004,7 +1115,7 @@ def agent_run(
     # short-circuit. Strict-True keeps tests that pass nothing here
     # working unchanged.
     if pipeline_plan_only is True:
-        from lab.core.model_pool import plan_for_cell
+        from lab.platform.model_pool import plan_for_cell
 
         plan = plan_for_cell(
             pipeline_id=f"adhoc-{lab_task.slug}",

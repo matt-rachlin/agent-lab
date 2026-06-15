@@ -88,7 +88,7 @@ def test_missing_config_file_is_silent(tmp_path: Path) -> None:
 
 def test_real_repo_config_has_keep_alive() -> None:
     """The repo's checked-in proxy config should pass preflight."""
-    cfg = Path("/data/lab/code/conf/litellm-config.yaml")
+    cfg = Path("/data/lab/code/conf/serving/litellm-config.yaml")
     if not cfg.exists():
         pytest.skip("repo proxy config not present")
     check_litellm_keep_alive(cfg)

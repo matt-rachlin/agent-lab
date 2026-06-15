@@ -29,7 +29,7 @@ tags:
 
 Date created: 2026-06-11
 Status: complete — H1 INCONCLUSIVE, H2 REFUTED (qwen3), H3 REFUTED, H4-H5 CONFIRMED; see ../findings/F-016-multiseed-hard-suite.md
-Pre-registered: <commit SHA filled by `lab exp register` at registration time>
+Pre-registered: 4cf1871  (registered by `lab exp register` at file-creation time; backfilled 2026-06-14)
 Protocol: [reliability-sweep](../protocols/reliability-sweep.md) (ADR-004)
 
 ## Question

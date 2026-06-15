@@ -50,9 +50,9 @@ agent / sweep cell
 ## Files
 
 - Binary: `/usr/local/bin/llama-swap` (v217, installed 2026-05-27)
-- Config: `/data/lab/code/conf/llama-swap.yaml`
+- Config: `/data/lab/code/conf/serving/llama-swap.yaml`
 - Service: `/data/lab/services/llama-swap.service`
-- LiteLLM bridge: `conf/litellm-config.yaml` — the
+- LiteLLM bridge: `conf/serving/litellm-config.yaml` — the
   `qwen3-30b-a3b-moe` / `gpt-oss-20b-local` / `phi-4-reasoning-14b` rows
   point at `http://host.containers.internal:8080/v1`.
 
@@ -98,7 +98,7 @@ Deferred (model not yet pulled / GGUF not on disk):
   only xLAM-1 (`xLAM-7b-fc-r`) variants exist on the Hub
 
 When any of those GGUFs lands, add an entry under `models:` in
-`conf/llama-swap.yaml` and assign it to the appropriate group. The
+`conf/serving/llama-swap.yaml` and assign it to the appropriate group. The
 config has placeholder commentary inline.
 
 ## CRITICAL — client-side `keep_alive=0` discipline
@@ -159,7 +159,7 @@ curl -s -X POST http://localhost:8080/api/unload-all
 ## Adding a new model
 
 1. Pull the GGUF to `/data/models/gguf/<litellm_id>/`.
-2. Add a `models:` entry in `conf/llama-swap.yaml` — mirror the existing
+2. Add a `models:` entry in `conf/serving/llama-swap.yaml` — mirror the existing
    llama-server pattern, set `--model` to the GGUF path, choose
    `-ngl 99` (full GPU) or `-ot 'exps=CPU'` (MoE) or
    `--n-gpu-layers <N>` (hybrid) based on VRAM math.
@@ -167,7 +167,7 @@ curl -s -X POST http://localhost:8080/api/unload-all
    ungrouped if it competes for the same VRAM lane as existing big
    models (an ungrouped model can only run alone, which is correct for
    the `ceiling-llm` 70B case but wrong for everything else).
-4. Add the LiteLLM bridge row in `conf/litellm-config.yaml` pointing
+4. Add the LiteLLM bridge row in `conf/serving/litellm-config.yaml` pointing
    at `http://host.containers.internal:8080/v1`.
 5. `systemctl --user restart llama-swap` and verify the new model
    shows up in `/v1/models`.
@@ -192,7 +192,7 @@ to the tool call or emits a single one then runs out.
 Fix: launch the server with `--chat-template-kwargs '{"enable_thinking":false}'`
 so the rendered prompt suppresses the `<think>` block by default. This
 matches the dense `qwen3-14b-q4` arm which already runs with `think:false`
-via Ollama (see `conf/litellm-config.yaml`).
+via Ollama (see `conf/serving/litellm-config.yaml`).
 
 Smoke (F-009 repro task, `http-fetch-and-extract` / seed=1):
 
@@ -215,7 +215,7 @@ commit `66d65ec29` (b8183). We keep two parallel builds:
 - `build/`       — original Vulkan-only build (kept as fallback)
 - `build-cuda/`  — Phase 19d CUDA build, used by llama-swap
 
-llama-swap macros in `conf/llama-swap.yaml` point at `build-cuda/bin/llama-server`
+llama-swap macros in `conf/serving/llama-swap.yaml` point at `build-cuda/bin/llama-server`
 and set `LD_LIBRARY_PATH=/data/apps/_vendor/llama.cpp/build-cuda/bin` per
 model so the bundled `libggml-cuda.so.0` is found at runtime. We did NOT
 add `LD_LIBRARY_PATH` to the systemd unit; per-model `env:` blocks in
@@ -269,7 +269,7 @@ LD_LIBRARY_PATH=/data/apps/_vendor/llama.cpp/build-cuda/bin \
 ### LD_LIBRARY_PATH strategy
 
 llama-swap's systemd unit does NOT export `LD_LIBRARY_PATH` globally. Instead,
-each model entry in `conf/llama-swap.yaml` sets it in `env:` (already in
+each model entry in `conf/serving/llama-swap.yaml` sets it in `env:` (already in
 place pre-Phase-19d for the Vulkan build):
 
 ```yaml
@@ -445,7 +445,7 @@ itself, it can't evict processes it doesn't own. The wrapper is option
 (b) from the #73 design notes — option (a) (llama-swap eviction) is not
 expressible against an external server.
 
-When using the wrapper, edit `conf/llama-swap.yaml` to bump
+When using the wrapper, edit `conf/serving/llama-swap.yaml` to bump
 `--n-gpu-layers 14 → 16` for the 70B entry, restart llama-swap, then
 run the sweep. **The repo's checked-in value is 16** (the ceiling
 when rerank is evicted). If the rerank server is resident at the
@@ -569,7 +569,7 @@ the model.
 
 If llama-swap misbehaves, revert LiteLLM to direct Ollama for the
 Phase 19a models (they have Ollama tags too, just not currently exposed):
-edit `conf/litellm-config.yaml`, change the three new entries' `api_base`
+edit `conf/serving/litellm-config.yaml`, change the three new entries' `api_base`
 back to `http://host.containers.internal:11434` and `model:` back to the
 `ollama_chat/<tag>` form, then `systemctl --user stop llama-swap`.
 
@@ -587,7 +587,7 @@ HTTP 502 — unable to start process: upstream command exited prematurely but su
 ```
 
 A second attempt almost always succeeds because the process is now
-warm. The LiteLLM config in `conf/litellm-config.yaml` handles this
+warm. The LiteLLM config in `conf/serving/litellm-config.yaml` handles this
 with two complementary policies under `router_settings`:
 
 ```yaml

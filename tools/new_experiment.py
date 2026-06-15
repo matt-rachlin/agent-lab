@@ -24,6 +24,7 @@ NNN auto-assigns to max(existing EXP-NNN) + 1 across DB + filesystem.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -145,6 +146,7 @@ def _register_placeholder(slug: str, plan_path: Path, dsn: str) -> bool:
 def main(
     slug: str = typer.Argument(..., help="Short slug tail, e.g. 'retrieval-ablation'"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print plan, don't write"),
+    no_stage: bool = typer.Option(False, "--no-stage", help="Skip git add -N after creating files"),
     pg_dsn: str = typer.Option(
         "postgresql://m@/lab",
         "--pg-dsn",
@@ -205,6 +207,13 @@ def main(
 
     inserted = _register_placeholder(exp_slug, doc_path, pg_dsn)
 
+    if not no_stage:
+        subprocess.run(
+            ["git", "add", "-N", str(doc_path), str(sweep_path)],
+            cwd=REPO_ROOT,
+            check=False,
+        )
+
     console.print(f"[green]Created[/] {exp_slug} scaffolding:")
     console.print(f"  doc:   {doc_path.relative_to(REPO_ROOT)}")
     console.print(f"  sweep: {sweep_path.relative_to(REPO_ROOT)}")
@@ -213,6 +222,8 @@ def main(
         console.print(f"  db:    inserted placeholder row in experiments(slug={exp_slug!r})")
     else:
         console.print("  db:    row already exists or DB unreachable — skipped insert")
+    if not no_stage:
+        console.print("  git:   intent-to-add staged (git add -N)")
 
     console.print()
     console.print("[bold]Next steps[/]:")

@@ -1,0 +1,24 @@
+# D5 baseline: populate the scoreboard with a real verified data point.
+# qwen3-4b-ft-toolcall x BFCL (32-task balanced sample) x 16 seeds. Inline validity
+# gate -> validity_passed; promoted to verified post-hoc reusing the holds verdict
+# from the first verifier battery (same model/suite).
+experiment:
+  slug: D5-BASELINE-BFCL-001
+  title: "D5 baseline: qwen3-4b-ft-toolcall BFCL v3 (N=16)"
+  hypothesis: "Baseline pass: establish verified BFCL standing + tier thresholds from data."
+tasks:
+  suite: bfcl-v3-ast
+  slugs: ["multiple_0","multiple_1","multiple_10","multiple_100","multiple_101","multiple_102","multiple_103","multiple_104","parallel_0","parallel_1","parallel_10","parallel_100","parallel_101","parallel_102","parallel_103","parallel_104","parallel_multiple_0","parallel_multiple_1","parallel_multiple_10","parallel_multiple_100","parallel_multiple_101","parallel_multiple_102","parallel_multiple_103","parallel_multiple_104","simple_0","simple_1","simple_10","simple_100","simple_101","simple_102","simple_103","simple_104"]
+models:
+  - qwen3-4b-ft-toolcall-q4-latest
+configs:
+  - name: greedy
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: single_turn
+    extra:
+      think: false
+seeds: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+max_concurrency: 1
+request_timeout_sec: 600

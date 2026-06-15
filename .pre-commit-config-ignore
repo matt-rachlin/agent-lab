@@ -25,10 +25,7 @@ analysis/EXP-004a/raw.csv
 analysis/EXP-004c/per_cell.csv
 analysis/EXP-004c/raw.csv
 
-## ruff lint errors (real fixes warranted, out of Phase 13.1 scope):
-src/lab/rag/cache.py  # UP038 x2
-tests/integration/test_scorer_e2e.py  # UP038
-tests/unit/test_tool_http_fetch.py  # PT004
+## ruff lint errors: (none — A5.b/A5.c cleanup verified all files pass ruff 0.15.14)
 
 ## Sibling agent (Phase 13 batch B) — not yet committed at this time:
 tests/unit/test_new_experiment.py  # PT018 x2 (PT018 in sibling test file)

@@ -312,8 +312,7 @@ def main(
 
         if dry_run:
             console.print(
-                f"[bold]Would write[/] {card_path.relative_to(REPO_ROOT)} "
-                f"({len(new_text)} chars)"
+                f"[bold]Would write[/] {card_path.relative_to(REPO_ROOT)} ({len(new_text)} chars)"
             )
         else:
             card_path.write_text(new_text, encoding="utf-8")

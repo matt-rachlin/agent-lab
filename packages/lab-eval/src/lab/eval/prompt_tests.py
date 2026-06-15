@@ -205,7 +205,7 @@ def _check_tool_calls(expected: Sequence[str], actual: Sequence[str]) -> list[st
     """Return failure messages comparing expected vs actual tool-call names."""
     if list(expected) == list(actual):
         return []
-    return [f"tool-call mismatch: expected={list(expected)!r}, " f"actual={list(actual)!r}"]
+    return [f"tool-call mismatch: expected={list(expected)!r}, actual={list(actual)!r}"]
 
 
 def run_prompt_test(

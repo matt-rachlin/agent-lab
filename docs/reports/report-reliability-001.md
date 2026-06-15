@@ -1,8 +1,8 @@
 ---
-doc_id: f-002-reliability-001-report
+doc_id: report-reliability-001
 title: 'Sweep report: `RELIABILITY-001`'
 zone: lab
-kind: finding
+kind: guide
 status: active
 owner: m
 created: '2026-05-25'
@@ -10,8 +10,7 @@ last_updated: '2026-05-25'
 last_verified: '2026-05-25'
 tags:
 - lab
-- finding
-- findings
+- report
 ---
 # Sweep report: `RELIABILITY-001`
 

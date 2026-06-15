@@ -49,7 +49,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from lab.core.agent_runtime import Tool
+from lab.platform.agent_runtime import Tool
 
 #: The actor identity the ops agent runs under (matches the authz decision key).
 OPS_ACTOR = "ops"

@@ -8,8 +8,8 @@ experiment:
 tasks:
   suite: pbs-agent-hard-v0.1
 models:
-  - __BASE__
-  - __FT__
+  - qwen3-4b
+  - qwen3-4b-ft-toolcall-q4-latest
 configs:
   - name: react-4096
     temperature: 0.0
@@ -17,10 +17,10 @@ configs:
     max_tokens: 4096
     scaffold: react
 model_defaults:
-  __BASE__:
+  qwen3-4b:
     extra:
       think: false
-  __FT__:
+  qwen3-4b-ft-toolcall-q4-latest:
     extra:
       think: false
 seeds: [1, 2, 3]

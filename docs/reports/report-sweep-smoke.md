@@ -1,8 +1,8 @@
 ---
-doc_id: f-001-sweep-smoke-report
+doc_id: report-sweep-smoke
 title: 'Sweep report: `SWEEP-SMOKE-001`'
 zone: lab
-kind: finding
+kind: guide
 status: active
 owner: m
 created: '2026-05-25'
@@ -10,8 +10,7 @@ last_updated: '2026-05-25'
 last_verified: '2026-05-25'
 tags:
 - lab
-- finding
-- findings
+- report
 ---
 # Sweep report: `SWEEP-SMOKE-001`
 

@@ -3,7 +3,7 @@
 Deliberately an INDEPENDENT execution + grading path from the production sweep
 runner — re-grading through different code is itself a battery requirement. Runs
 the subject across seeds + prompt variants plus class-spanning anchors, and
-returns a BatteryResult for lab.core.verifier.verdict(). v0 thresholds are
+returns a BatteryResult for lab.platform.verifier.verdict(). v0 thresholds are
 documented inline and tunable.
 """
 
@@ -14,10 +14,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from lab.platform.verifier import BatteryResult
 
 from lab.core.llm import call_litellm_chat
 from lab.core.settings import get_settings
-from lab.core.verifier import BatteryResult
 from lab.eval.external.bfcl import grade_bfcl_response, load_bfcl_tasks
 
 _VARIANTS = [

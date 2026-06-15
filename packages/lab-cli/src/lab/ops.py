@@ -1,6 +1,6 @@
 """NS-5 Homelab Ops v0 (ADR-012 LAR + ADR-013 authz) — gated INFRA vertical.
 
-A thin caller of the Lab Agent Runtime (``lab.core.agent_runtime.run_agent``),
+A thin caller of the Lab Agent Runtime (``lab.platform.agent_runtime.run_agent``),
 mirroring the analyst / comms verticals, for the lab's HIGHEST blast-radius
 surface: an agent that inspects the *live* homelab (m-box, ~40 real user
 services) and proposes remediations such as a service restart.
@@ -19,7 +19,7 @@ module or the LLM:
   * the only MUTATING tool, ``ops_restart_service``, is ``side_effect=
     "irreversible"`` (a restart disrupts a live service and cannot be cleanly
     undone), so it resolves to ``require_approval`` and — with the default
-    fail-closed approver (``lab.core.authz.deny_approver``, returns False) — is
+    fail-closed approver (``lab.platform.authz.deny_approver``, returns False) — is
     DENIED before the impl is ever called.
 
 So:
@@ -38,8 +38,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab.core.agent_runtime import run_agent
-from lab.core.authz import ApprovalCallback, Authorizer, default_authorizer
+from lab.platform.agent_runtime import run_agent
+from lab.platform.authz import ApprovalCallback, Authorizer, default_authorizer
+
 from lab.core.settings import get_settings
 from lab.ops_tools import OPS_ACTOR, OpsTools
 

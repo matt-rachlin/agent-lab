@@ -1,6 +1,6 @@
 """NS-1 Analyst v0 (charter NS-1, ADR-012) — read tools + LAR wiring.
 
-A thin caller of the Lab Agent Runtime (ADR-012, lab.core.agent_runtime),
+A thin caller of the Lab Agent Runtime (ADR-012, lab.platform.agent_runtime),
 mirroring the scout (lab.scout_scan). The analyst is strictly READ-ONLY: it
 pulls experiment results out of Postgres through three SELECT-only tools, computes
 per-(model, evaluator) pass rates, flags the F-017 non-emission artefact (a cell
@@ -27,7 +27,8 @@ from collections.abc import Callable, Iterator
 from decimal import Decimal
 from typing import Any
 
-from lab.core.agent_runtime import Tool, run_agent
+from lab.platform.agent_runtime import Tool, run_agent
+
 from lab.core.settings import get_settings
 
 #: A cell at or below this mean score (with n>=1) is treated as an F-017 smell.

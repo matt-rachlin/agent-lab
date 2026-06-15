@@ -18,8 +18,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from lab.core.authz import ApprovalCallback, Authorizer, deny_approver
-from lab.core.control import record_action
+from lab.platform.authz import ApprovalCallback, Authorizer, deny_approver
+from lab.platform.control import record_action
+
 from lab.core.llm import call_litellm_chat
 from lab.core.settings import Settings
 

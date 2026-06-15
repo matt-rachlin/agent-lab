@@ -22,8 +22,8 @@ from typing import Any
 from urllib.parse import quote, urlparse
 
 import httpx
+from lab.platform.agent_runtime import Tool
 
-from lab.core.agent_runtime import Tool
 from lab.scout import add_recommendation
 
 _UA = "Mozilla/5.0 (compatible; lab-scout/0.2)"

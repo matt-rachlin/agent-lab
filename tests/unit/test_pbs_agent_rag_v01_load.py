@@ -77,9 +77,9 @@ def test_every_task_has_multi_turn_budget() -> None:
 
 def test_every_task_has_success_predicate() -> None:
     for t in _all_tasks():
-        assert isinstance(
-            t.success_predicate, dict
-        ), f"{t.slug}: success_predicate is {t.success_predicate!r}"
+        assert isinstance(t.success_predicate, dict), (
+            f"{t.slug}: success_predicate is {t.success_predicate!r}"
+        )
         assert t.success_predicate.get("type"), f"{t.slug}: success_predicate missing 'type'"
 
 
@@ -117,6 +117,6 @@ def test_retrieval_recall_task_has_k_parameter() -> None:
         pred = t.success_predicate
         if isinstance(pred, dict) and pred.get("type") == "retrieval_recall":
             assert "k" in pred, f"{t.slug}: retrieval_recall predicate missing 'k'"
-            assert (
-                int(pred["k"]) > 0
-            ), f"{t.slug}: retrieval_recall predicate has non-positive k={pred['k']}"
+            assert int(pred["k"]) > 0, (
+                f"{t.slug}: retrieval_recall predicate has non-positive k={pred['k']}"
+            )

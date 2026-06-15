@@ -29,7 +29,7 @@ tags:
 
 Date created: 2026-06-11
 Status: complete — all three hypotheses CONFIRMED; see ../findings/F-014-cloud-anchor-hard-suite.md
-Pre-registered: <commit SHA filled by `lab exp register` at registration time>
+Pre-registered: 53b17f6  (registered by `lab exp register` at file-creation time; backfilled 2026-06-14)
 
 ## Question
 

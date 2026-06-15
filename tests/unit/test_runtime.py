@@ -3,7 +3,7 @@ No network/DB: call_litellm_chat + record_action are monkeypatched."""
 
 import json
 
-from lab.core.agent_runtime import Tool, run_agent
+from lab.platform.agent_runtime import Tool, run_agent
 
 
 class _FakeSettings:
@@ -27,8 +27,10 @@ def _tc(name, args, cid="c1"):
 
 def _patch(monkeypatch, responses, audit):
     it = iter(responses)
-    monkeypatch.setattr("lab.core.agent_runtime.call_litellm_chat", lambda **kw: (next(it), 1))
-    monkeypatch.setattr("lab.core.agent_runtime.record_action", lambda **kw: audit.append(kw) or "")
+    monkeypatch.setattr("lab.platform.agent_runtime.call_litellm_chat", lambda **kw: (next(it), 1))
+    monkeypatch.setattr(
+        "lab.platform.agent_runtime.record_action", lambda **kw: audit.append(kw) or ""
+    )
 
 
 def _tool(name, impl, side_effect="read"):

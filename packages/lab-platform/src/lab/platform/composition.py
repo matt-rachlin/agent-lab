@@ -28,13 +28,14 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from lab.core.agent_runtime import (
+from lab.platform.agent_runtime import (
     DEFAULT_ALLOWED,
     AgentResult,
     SideEffect,
     Tool,
     run_agent,
 )
+
 from lab.core.settings import Settings
 
 #: ADR-013 side-effect classes ordered by escalating authority. The effective

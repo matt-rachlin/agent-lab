@@ -68,11 +68,5 @@ def get(name: str) -> FetcherFn:
 from lab.rag.fetchers import (  # noqa: F401, E402
     git,
     html_single,
-    html_sitemap,
-    html_spa,
     manpage,
-    pdf,
-    rfc,
-    stack_exchange,
-    webfetch,
 )

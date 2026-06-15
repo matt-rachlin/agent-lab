@@ -1,0 +1,18 @@
+experiment:
+  slug: FALLBACK-TEST
+  title: "Text-tool-call fallback: rescue qwen2.5-coder + 70B"
+tasks:
+  suite: pbs-agent-v0.1
+  slugs: ["http-fetch-and-count","code-find-and-fix-bug","fs-write-csv-summary"]
+models:
+  - qwen2.5-coder-32b-q4_k_m
+  - llama-3.3-70b-q4-local
+configs:
+  - name: react-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 1800

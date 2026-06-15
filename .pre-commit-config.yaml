@@ -1,23 +1,40 @@
 # Phase 13.1: pre-commit hooks
-# Install: `pre-commit install` (writes .git/hooks/pre-commit)
+# Install: `pre-commit install --hook-type pre-commit --hook-type pre-push`
+#   (or `just pre-commit-install` which does this automatically)
 # Run all: `pre-commit run --all-files`
 # Skip specific hook for one commit: SKIP=mypy git commit ...
+# Skip pre-push hook for one push: SKIP=pre-push-check git push
 #
 # A few pre-existing files are excluded from specific whitespace/lint
 # hooks (see .pre-commit-config-ignore for the residual list +
 # rationale). The Phase 13.1 ruff-format exclusion (49 legacy files)
 # was retired in the Phase 13.8 cleanup. New files must pass everything.
 
+# G2: install both pre-commit and pre-push hook types by default.
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
+  - repo: local
+    hooks:
+      - id: ban-in-tree-backups
+        name: ban in-tree backup files
+        entry: >-
+          bash -c
+          'matches=$(printf "%s\n" "$@" | grep -E "\.bak(-|$)" | grep -E "^(packages|scripts|conf|tools|tests)/");
+          if [ -n "$matches" ]; then
+          printf "ERROR in-tree backups disallowed (use git stash / branches):\n%s\n" "$matches";
+          exit 1; fi' --
+        language: system
+        types: [file]
+        pass_filenames: true
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: end-of-file-fixer
         # CSV exports in analysis/ are produced by pandas with CRLF; not a code
         # smell, just an export quirk. Exclude rather than churn the data.
-        # src/lab/rag/chunker.py has a legacy trailing newline; honoring the
-        # "no src/lab/ touches in Phase 13.1" scope rule until cleanup PR.
-        exclude: ^(analysis/.*\.csv|src/lab/rag/chunker\.py)$
+        exclude: ^analysis/.*\.csv$
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
         exclude: ^analysis/.*\.csv$
@@ -34,13 +51,10 @@ repos:
         exclude: ^analysis/.*\.csv$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.4
+    rev: v0.15.14
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-        # Three legacy lint errors (UP038, PT004) live in pre-Phase-13
-        # files; carry them in the ignore list until the cleanup PR.
-        exclude: ^(src/lab/rag/cache\.py|tests/integration/test_scorer_e2e\.py|tests/unit/test_tool_http_fetch\.py)$
       - id: ruff-format
         # Phase 13.8 cleanup: the 49-file legacy exclusion has been
         # retired. All files in the repo are now ruff-format clean
@@ -96,4 +110,20 @@ repos:
         entry: scripts/docs-lint-precommit.sh
         language: system
         types: [markdown]
+        # Slash-command definitions under .claude/commands/ aren't lab docs and
+        # don't fit the doc-meta schema. _archive/ trees are historical and
+        # excluded from current-state validation.
+        exclude: '^(\.claude/commands/|.*/_archive/|.*\.tmp\.md$)'
         stages: [pre-commit, manual]
+
+  # G2: pre-push gate — blocks push if strategic docs or sweep configs are
+  # untracked, if any EXP doc still has a placeholder SHA, or if .bak* files
+  # are tracked. Quick bash-only check; no LLM calls, no large scans.
+  - repo: local
+    hooks:
+      - id: pre-push-check
+        name: pre-push integrity gate
+        entry: scripts/pre-push-check.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

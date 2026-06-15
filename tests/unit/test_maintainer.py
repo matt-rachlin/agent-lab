@@ -24,7 +24,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from lab.core.authz import AuthzPolicy
+from lab.platform.authz import AuthzPolicy
+
 from lab.maintainer import maintain
 from lab.maintainer_tools import (
     MAINTAINER_ACTOR,

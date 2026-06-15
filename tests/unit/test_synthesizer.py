@@ -5,7 +5,8 @@ URL the model only *names* (never fetches) is excluded."""
 
 from typing import Any
 
-from lab.core.agent_runtime import AgentResult
+from lab.platform.agent_runtime import AgentResult
+
 from lab.synthesizer import _fetched_citations, search_tools, synthesize
 
 

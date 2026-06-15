@@ -1,0 +1,19 @@
+experiment:
+  slug: TRACE-CHECK
+  title: "Tracing validation — 1 gemma4 cell, real agent path"
+tasks:
+  suite: pbs-agent-v0.1
+  slugs: ["code-find-and-fix-bug"]
+models:
+  - gemma4-12b
+configs:
+  - name: react-think-4096
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 4096
+    scaffold: react
+    extra:
+      think: true
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 900

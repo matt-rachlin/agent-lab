@@ -55,12 +55,12 @@ def test_http_fetch_serves_from_fixture_dir_in_sandbox() -> None:
 
     assert isinstance(result, dict), f"http_fetch returned non-dict: {result!r}"
     assert result.get("status") == 200, f"expected 200, got {result.get('status')}"
-    assert (
-        result.get("headers", {}).get("x-lab-fixture") == "hit"
-    ), f"fixture mode did not engage: headers={result.get('headers')!r}"
-    assert "4242" in (
-        result.get("content") or ""
-    ), f"fixture body missing uptime: {result.get('content')!r}"
+    assert result.get("headers", {}).get("x-lab-fixture") == "hit", (
+        f"fixture mode did not engage: headers={result.get('headers')!r}"
+    )
+    assert "4242" in (result.get("content") or ""), (
+        f"fixture body missing uptime: {result.get('content')!r}"
+    )
 
 
 def test_http_fetch_fixture_miss_returns_404_no_live_traffic() -> None:

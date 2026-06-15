@@ -9,12 +9,14 @@ authors = [{ name = "Matt Rachlin", email = "mattrachlin@gmail.com" }]
 
 dependencies = [
     "lab-core",
+    "lab-platform",
     "scipy>=1.14.0",
     "numpy>=2.1.0",
 ]
 
 [tool.uv.sources]
 lab-core = { workspace = true }
+lab-platform = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

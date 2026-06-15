@@ -1,4 +1,4 @@
-"""Integration tests for :mod:`lab.core.model_pool` against a real llama-swap.
+"""Integration tests for :mod:`lab.platform.model_pool` against a real llama-swap.
 
 These tests exercise the page-cache pre-flight contract end-to-end:
 ``declare()`` should fill the OS page cache with the model's GGUF;
@@ -35,8 +35,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-
-from lab.core.model_pool import ModelPool, PipelineModelPlan, PipelineStep
+from lab.platform.model_pool import ModelPool, PipelineModelPlan, PipelineStep
 
 # --------------------------------------------------------------------------
 # Skip plumbing — these tests require a real llama-swap on the box
@@ -366,8 +365,7 @@ def test_preflight_fills_page_cache(small_gguf_path: Path) -> None:
     # MADV_RANDOM and may not have walked every page) but a meaningful
     # delta MUST be present.
     assert after_resident > cold_resident + 0.10, (
-        f"page cache did not warm: cold={cold_resident:.2%} "
-        f"after_preflight={after_resident:.2%}"
+        f"page cache did not warm: cold={cold_resident:.2%} after_preflight={after_resident:.2%}"
     )
 
 

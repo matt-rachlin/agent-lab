@@ -221,7 +221,7 @@ def main() -> None:
     out.append(f"\nTotal cells evaluated: **{n_total}** (target 144 = 6 models x 24 tasks)\n")
 
     report = "\n".join(out)
-    out_path = Path("/data/lab/code/docs/findings/F-003-EXP-001-verdicts.tmp.md")
+    out_path = Path("/data/lab/code/docs/reports/report-exp-001-verdicts.md")
     out_path.write_text(report)
     print(report)
     print(f"\n--- written to {out_path} ---")

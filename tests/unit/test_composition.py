@@ -8,9 +8,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
-from lab.core.agent_runtime import AgentResult, Tool
-from lab.core.composition import (
+from lab.platform.agent_runtime import AgentResult, Tool
+from lab.platform.composition import (
     PipelineResult,
     agent_as_tool,
     pipeline,
@@ -60,7 +59,7 @@ def test_agent_as_tool_impl_calls_run_agent(monkeypatch: pytest.MonkeyPatch) -> 
             tool_results=[{"name": "search", "args": {}, "result": {"hits": 3}}],
         )
 
-    monkeypatch.setattr("lab.core.composition.run_agent", fake_run_agent)
+    monkeypatch.setattr("lab.platform.composition.run_agent", fake_run_agent)
 
     tool = agent_as_tool(
         name="worker",
@@ -206,7 +205,7 @@ def test_pipeline_stage_error_records_failing_stage_and_stops() -> None:
 
 def test_pipeline_agent_as_tool_impl_as_stage(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "lab.core.composition.run_agent",
+        "lab.platform.composition.run_agent",
         lambda **_: _agent_result(content="synth"),
     )
     worker = agent_as_tool(

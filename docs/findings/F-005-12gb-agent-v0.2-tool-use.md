@@ -485,3 +485,7 @@ uv run python scripts/analyze_exp002.py
   [F-004](F-004-qwen3-reasoning-ablation.md) (qwen3 reasoning off)
 - Follow-on planned: **EXP-002b** (qwen3 reasoning-ON ablation, parallel
   to EXP-001b ↔ EXP-001)
+trust_level: verified
+
+## Promotion history
+- 2026-06-14: unverified -> verified (by Matt Rachlin)

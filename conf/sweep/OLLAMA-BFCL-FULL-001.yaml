@@ -1,0 +1,34 @@
+# Full 1000-task BFCL v3 AST via the Ollama path (parallel-tool-call capable),
+# so local models aren't capped by the llama-server --jinja single-call ceiling.
+# Same greedy-1024 / single_turn / seed-1 config as EXP-005 → directly comparable
+# to qwen3-14b-q4 (91.0%) and glm-5.1-cloud (92.5%).
+experiment:
+  slug: OLLAMA-BFCL-FULL-001
+  title: "BFCL v3 AST (full 1000) via Ollama: nemotron 9B + 4B + qwen3-30b — true parallel-capable numbers"
+  hypothesis: >-
+    Served via Ollama (which parses parallel tool calls), nemotron-nano-9b-v2 and
+    qwen3-30b-a3b clear the ~57% llama-server ceiling and land in the 85-92% band
+    next to qwen3-14b-q4 (0.910). nemotron-3-nano-4b trails on parallel categories.
+  plan_path: docs/exp/OLLAMA-BFCL-FULL-001.md
+tasks:
+  suite: bfcl-v3-ast
+  # full 1000 — no slugs filter
+models:
+  - nemotron-3-nano-4b
+  - nemotron-nano-9b-v2-ollama
+  - qwen3-30b-a3b-ollama
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+# qwen3-30b needs think:false or it narrates instead of calling (F-009). The
+# nemotrons run default (their Ollama renderer handles reasoning + tool calls).
+model_defaults:
+  qwen3-30b-a3b-ollama:
+    extra:
+      think: false
+seeds: [1]
+max_concurrency: 1
+request_timeout_sec: 600

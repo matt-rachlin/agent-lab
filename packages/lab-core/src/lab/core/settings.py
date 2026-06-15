@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     s3_access_key: str = Field(default="labadmin")
     s3_secret_key: str = Field(default="")
 
-    mlflow_url: str = Field(default="http://localhost:5000")
+    mlflow_url: str = Field(default="http://localhost:5050")
     litellm_url: str = Field(default="http://localhost:4000")
     litellm_key: str = Field(default="")
 

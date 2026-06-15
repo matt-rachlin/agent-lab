@@ -1,6 +1,6 @@
 """Stage 0b #9 — adversarial verifier verdict logic (ADR-008)."""
 
-from lab.core.verifier import BatteryResult, verdict
+from lab.platform.verifier import BatteryResult, verdict
 
 
 def _full(**over: object) -> BatteryResult:

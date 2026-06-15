@@ -3,8 +3,8 @@
 NS-4 is the first real consumer of the ADR-013 SEND / approval path. The whole
 point of this slice is the **anti-footgun guarantee**: no *irreversible* action
 (``email_send``, ``ntfy_push``) may fire without an explicit approval, and the
-runtime default is **fail-closed deny** (see ``lab.core.authz.deny_approver`` and
-``lab.core.agent_runtime.run_agent``'s approval handling).
+runtime default is **fail-closed deny** (see ``lab.platform.authz.deny_approver`` and
+``lab.platform.agent_runtime.run_agent``'s approval handling).
 
 Side-effect classes (ADR-013 §2), as wired onto the Tool ABI:
 
@@ -49,7 +49,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from lab.core.agent_runtime import Tool
+from lab.platform.agent_runtime import Tool
 
 # --------------------------------------------------------------------------- #
 # The phone-push transport seam (real-ish, but injectable so tests never push). #

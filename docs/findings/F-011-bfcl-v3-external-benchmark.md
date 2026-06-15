@@ -415,3 +415,4 @@ Per the pre-reg (docs/exp/EXP-005-external-benchmarks.md):
 - BFCL adapter: `packages/lab-eval/src/lab/eval/external/bfcl.py`
 - BFCL cell executor: `packages/lab-sweep/src/lab/sweep/runner.py::_execute_bfcl_cell`
 - Analyzer: `scripts/analyze_exp005.py`
+trust_level: unverified

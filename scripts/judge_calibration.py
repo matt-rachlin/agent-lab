@@ -55,6 +55,7 @@ from typing import Any
 
 import httpx
 import psycopg
+from jobs_status import Job
 from psycopg.rows import dict_row
 
 from lab.core.llm import call_litellm_chat
@@ -692,26 +693,30 @@ def main() -> None:
     print(f"cache: {len(cache)} judged pairs; {len(todo)} calls to make")
 
     done_count = 0
-    if todo:
-        with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-            futures = {
-                pool.submit(judge_episode, settings, key, judge, ep): (ep, judge)
-                for ep, judge in todo
-            }
-            for fut in as_completed(futures):
-                ep, judge = futures[fut]
-                j = fut.result()
-                done_count += 1
-                if j.final:
-                    append_cache(cache_path, lock, j)
-                    cache[(ep.run_id, judge)] = j
-                print(
-                    f"[{done_count}/{len(todo)}] {judge} <- {ep.model}/{ep.task}/s{ep.seed} "
-                    f"-> {j.verdict}"
-                    + (f" ({j.confidence})" if j.confidence is not None else "")
-                    + (f" [{j.rationale[:80]}]" if j.verdict == "error" else ""),
-                    flush=True,
-                )
+    with Job(f"judge-calibration n={len(todo)} judges={len(judges)}") as job:
+        bar = job.bar("judgments", total=max(len(todo), 1))
+        if todo:
+            with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+                futures = {
+                    pool.submit(judge_episode, settings, key, judge, ep): (ep, judge)
+                    for ep, judge in todo
+                }
+                for fut in as_completed(futures):
+                    ep, judge = futures[fut]
+                    j = fut.result()
+                    done_count += 1
+                    if j.final:
+                        append_cache(cache_path, lock, j)
+                        cache[(ep.run_id, judge)] = j
+                    bar.advance(1, message=f"{judge}/{ep.task} -> {j.verdict}")
+                    print(
+                        f"[{done_count}/{len(todo)}] {judge} <- {ep.model}/{ep.task}/s{ep.seed} "
+                        f"-> {j.verdict}"
+                        + (f" ({j.confidence})" if j.confidence is not None else "")
+                        + (f" [{j.rationale[:80]}]" if j.verdict == "error" else ""),
+                        flush=True,
+                    )
+        job.log(f"judging complete: {done_count} new, {len(cache)} total in cache")
 
     # ---- assemble pairs -------------------------------------------------------
     pairs_by_judge: dict[str, list[tuple[Episode, Judgment]]] = {j: [] for j in judges}

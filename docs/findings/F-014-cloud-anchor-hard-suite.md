@@ -89,3 +89,4 @@ All three pre-registered hypotheses **CONFIRMED**:
   directional; EXP-009 (N=8, running) tightens the local side.
 - Cloud arms ran via Ollama Cloud through the local daemon; provider-
   side quantization/serving details are not observable from here.
+trust_level: unverified

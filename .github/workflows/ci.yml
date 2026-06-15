@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "chore/**"
+      - "fix/**"
+      - "exp/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv + Python 3.12
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: ruff lint
+        run: uv run ruff check packages/ scripts/ tests/
+
+      - name: ruff format check
+        run: uv run ruff format --check packages/ scripts/ tests/
+
+      - name: mypy --strict
+        run: uv run mypy --strict packages
+
+      - name: pyright
+        run: uv run pyright packages
+
+      - name: pytest unit
+        env:
+          LAB_OFFLINE_TESTS: "1"
+        run: uv run pytest tests/unit -q
+
+      - name: pre-commit (docs-lint + ban-in-tree-backups)
+        run: |
+          pip install pre-commit --quiet
+          pre-commit run --all-files --show-diff-on-failure \
+            --hook-stage pre-commit
+
+      - name: no placeholder SHAs in committed EXP docs
+        run: |
+          ! grep -RnE '<commit SHA filled by lab exp register at registration time>' docs/exp/ \
+            && echo "OK: no placeholder SHAs found" \
+            || (echo "BLOCKED: EXP docs contain placeholder SHA — run 'lab exp register <slug>'"; exit 1)

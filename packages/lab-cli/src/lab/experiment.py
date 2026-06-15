@@ -134,6 +134,39 @@ def validate_plan(plan_path: Path) -> PlanValidation:
     )
 
 
+_SHA_PLACEHOLDER_RE = re.compile(
+    r"<commit SHA filled by `?lab exp register`? at registration time>"
+)
+
+
+def _fill_sha_placeholder(plan_path: Path) -> str | None:
+    """If the plan doc contains the pre-registration SHA placeholder, substitute HEAD SHA.
+
+    Returns the substituted SHA on success, None if no placeholder was found.
+    Writes the file in-place and runs ``git add -N`` so the change is intent-staged.
+    """
+    text = plan_path.read_text(encoding="utf-8")
+    if not _SHA_PLACEHOLDER_RE.search(text):
+        return None
+    try:
+        head_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=plan_path.parent,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    new_text = _SHA_PLACEHOLDER_RE.sub(head_sha, text)
+    plan_path.write_text(new_text, encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "-N", str(plan_path)],
+        cwd=plan_path.parent,
+        check=False,
+    )
+    return head_sha
+
+
 def register_plan(
     plan_path: Path,
     *,
@@ -142,6 +175,9 @@ def register_plan(
     note: str | None = None,
 ) -> PlanValidation:
     """Register an experiment plan. Raises ValueError if validation fails (unless allow_dirty)."""
+    # Fill the SHA placeholder before validation so git_state picks up the right SHA.
+    _fill_sha_placeholder(plan_path)
+
     v = validate_plan(plan_path)
     if v.missing_sections:
         raise ValueError(f"plan missing required sections: {v.missing_sections}")
