@@ -1,0 +1,35 @@
+# EXP-013 R1 — BFCL N=8 confirmation pass.
+# Original ft-eval-bfcl.yaml ran at seeds [1] per pre-reg ("single deterministic
+# pass for BFCL"). Wave-2 contamination audit flagged that the +19pp BFCL
+# headline cannot ride a single greedy seed before public citation. ADR-004
+# requires N≥8 with bootstrap CIs.
+#
+# Same suite + same models + same greedy-1024 config as ft-eval-bfcl.yaml.
+# Only `seeds` changes. Greedy + temperature 0 means seed-to-seed variance
+# is driven by serving non-determinism (batching, KV cache, llama.cpp
+# parallelism) — capturing that is exactly the discipline the audit asked for.
+experiment:
+  slug: FT-EVAL-BFCL-001-N8
+  title: "EXP-013 R1 BFCL N=8 confirmation: Qwen3-4B base vs ft-toolcall"
+  hypothesis: "H1 confirmation at N=8: ft >= base + 5pp on bfcl_ast_match overall with bootstrap CI not crossing zero."
+tasks:
+  suite: bfcl-v3-ast
+models:
+  - qwen3-4b
+  - qwen3-4b-ft-toolcall-q4-latest
+configs:
+  - name: greedy-1024
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1024
+    scaffold: single_turn
+model_defaults:
+  qwen3-4b:
+    extra:
+      think: false
+  qwen3-4b-ft-toolcall-q4-latest:
+    extra:
+      think: false
+seeds: [1, 2, 3, 4, 5, 6, 7, 8]
+max_concurrency: 1
+request_timeout_sec: 600

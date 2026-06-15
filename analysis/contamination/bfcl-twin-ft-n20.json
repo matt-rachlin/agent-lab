@@ -1,0 +1,151 @@
+{
+  "model": "qwen3-4b-ft-toolcall-q4-latest",
+  "n": 20,
+  "orig_pass": 19,
+  "twin_pass": 15,
+  "orig_pass_rate": 0.95,
+  "twin_pass_rate": 0.75,
+  "gap_pp": 20.0,
+  "rows": [
+    {
+      "slug": "multiple_0",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 10
+    },
+    {
+      "slug": "multiple_1",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 9
+    },
+    {
+      "slug": "multiple_10",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 8
+    },
+    {
+      "slug": "multiple_100",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 8
+    },
+    {
+      "slug": "multiple_101",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": false,
+      "rename_count": 7
+    },
+    {
+      "slug": "multiple_102",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": false,
+      "rename_count": 11
+    },
+    {
+      "slug": "multiple_103",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 13
+    },
+    {
+      "slug": "multiple_104",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": false,
+      "rename_count": 14
+    },
+    {
+      "slug": "multiple_105",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 12
+    },
+    {
+      "slug": "multiple_106",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 17
+    },
+    {
+      "slug": "multiple_107",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 8
+    },
+    {
+      "slug": "multiple_108",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 9
+    },
+    {
+      "slug": "multiple_109",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 11
+    },
+    {
+      "slug": "multiple_11",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 9
+    },
+    {
+      "slug": "multiple_110",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": false,
+      "rename_count": 7
+    },
+    {
+      "slug": "multiple_111",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 8
+    },
+    {
+      "slug": "multiple_112",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 6
+    },
+    {
+      "slug": "multiple_113",
+      "category": "multiple",
+      "orig_pass": false,
+      "twin_pass": false,
+      "rename_count": 14
+    },
+    {
+      "slug": "multiple_114",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 12
+    },
+    {
+      "slug": "multiple_115",
+      "category": "multiple",
+      "orig_pass": true,
+      "twin_pass": true,
+      "rename_count": 17
+    }
+  ]
+}
