@@ -6,7 +6,7 @@ Skips cleanly when:
 
 When reachable, asserts:
   * ``GET /v1/models`` returns HTTP 200 with an OpenAI-shaped payload.
-  * Every model listed in ``conf/llama-swap.yaml`` is present in the
+  * Every model listed in ``conf/serving/llama-swap.yaml`` is present in the
     response (catches drift between the config and the live service).
 """
 
@@ -37,7 +37,7 @@ def _service_up(url: str) -> bool:
 
 
 def _expected_model_ids() -> set[str]:
-    """Parse conf/llama-swap.yaml and return the set of declared model IDs."""
+    """Parse conf/serving/llama-swap.yaml and return the set of declared model IDs."""
     config_path = Path(__file__).resolve().parents[2] / "conf" / "llama-swap.yaml"
     with config_path.open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -68,6 +68,6 @@ def test_llama_swap_health_or_skip() -> None:
     expected = _expected_model_ids()
     missing = expected - advertised
     assert not missing, (
-        f"llama-swap is missing models declared in conf/llama-swap.yaml: {sorted(missing)}; "
+        f"llama-swap is missing models declared in conf/serving/llama-swap.yaml: {sorted(missing)}; "
         f"advertised={sorted(advertised)}"
     )

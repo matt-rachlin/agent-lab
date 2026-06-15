@@ -55,8 +55,8 @@ config — no client code is aware of which engine serves a request.
 
 ### Canonical config artifacts
 
-- `conf/litellm-config.yaml` — all model_list entries and litellm_settings.
-- `conf/llama-swap.yaml` — model groups, VRAM exclusive groups, TTL eviction.
+- `conf/serving/litellm-config.yaml` — all model_list entries and litellm_settings.
+- `conf/serving/llama-swap.yaml` — model groups, VRAM exclusive groups, TTL eviction.
 
 Both files are versioned in the repo. Backup copies (`*.bak-YYYYMMDD-*`) in
 `conf/` are scratch; the un-suffixed files are always authoritative.
@@ -67,7 +67,7 @@ container restart coordinated with the Phase 1 integration).
 
 ### Retry / fallback policy
 
-Defined in `conf/litellm-config.yaml` under `litellm_settings.fallbacks` and
+Defined in `conf/serving/litellm-config.yaml` under `litellm_settings.fallbacks` and
 `router_settings`. Key invariant: never fall back across size regimes (a
 qwen3-4b call must not silently fall back to a 120B cloud model and produce
 a misleadingly high score). Fallbacks are defined only within the cloud tier.
@@ -84,7 +84,7 @@ GPU lease via Valkey, unchanged.
 - Easier: full routing picture is in one ADR; config ownership is clear; ADR-015
   integration has an explicit home.
 - Harder: four engines means four failure modes; llama-swap cold-load 502 race
-  (documented in `conf/litellm-config.yaml` comments, Phase 19e #74) is a known
+  (documented in `conf/serving/litellm-config.yaml` comments, Phase 19e #74) is a known
   fragile seam.
 - Risks: SGLang container shares the same 12 GB VRAM as other engines; scheduling
   conflicts must be managed by llama-swap exclusive groups. Desktop background

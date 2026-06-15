@@ -19,7 +19,7 @@ class PreflightError(RuntimeError):
 
 # Discovery order; first existing path wins.
 _DEFAULT_CONFIG_PATHS = (
-    Path("/data/lab/code/conf/litellm-config.yaml"),
+    Path("/data/lab/code/conf/serving/litellm-config.yaml"),
     Path("/data/lab/code/conf/litellm/config.yaml"),
     Path("/data/lab/services/litellm-config.yaml"),
 )
