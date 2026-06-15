@@ -64,11 +64,18 @@ Greedy decoding at temperature 0 should be deterministic. In practice, the lab's
 
 These are real sources of variance that an N=1 pass hides. ADR-004's N≥8 + bootstrap CI is the discipline that captures them.
 
-## Pass conditions
+## Success / failure criteria
 
-- **H1 CONFIRMED** if Δ_overall ≥ +5pp AND the 1000-bootstrap-resample 95% CI excludes 0.
-- **H1 SOFT** if Δ_overall ≥ +5pp but the CI crosses 0.
+- **H1 CONFIRMED** if Δ_overall ≥ +5pp AND the 1000-bootstrap-resample 95% CI of (ft − base) excludes 0.
+- **H1 SOFT** if Δ_overall ≥ +5pp but the CI crosses 0 — the point estimate stands, the statistical separation does not. Public writeup must declare the CI explicitly.
 - **H1 REFUTED** if Δ_overall < +5pp.
+
+## Kill criteria
+
+- **Per-arm pass rate drops below the EXP-013 N=1 baseline by > 10pp**: stop, investigate serving-stack regression (recent llama-swap rebind, sglang digest pin, conf/serving move). The N=8 confirmation must not include serving-side drift.
+- **Wall-clock > 14 hours** (1.5× the expected ~9h budget): kill, investigate per-cell latency. Greedy single-turn should not run that long.
+- **GPU lease contention causes thrash for > 1 hour**: pause, drain other GPU consumers (notably EXP-016b N=16 if it overruns), resume from the resume point.
+- **Both arms collapse to identical seed-to-seed point estimates across 3 seeds**: that's evidence of true determinism — accept the result at N=3 with an ADR-004 deviation note, do not burn 5 more seeds.
 
 ## Followups gated on this result
 
